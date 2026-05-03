@@ -158,6 +158,42 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 ---
 
+## DEC-023 — Testing philosophy
+
+**Decision:** Two principles for test discipline in bushel:
+
+1. **Test the user, not the function.** Coverage weighted toward integration (Playwright + API + RLS via pgTAP) over unit tests. Unit tests reserved for genuinely stable utilities (date math, validation, parsing). Avoids brittle implementation-coupled tests that break on every refactor.
+
+2. **Test-first when behavior changes.** When a feature's behavior changes, update the test FIRST (it goes red), then change the code (it goes green). If the test is hard to write, the new behavior isn't decided yet — think before coding. Lagging tests (chasing code changes) become a record of what code does, not what we want; they stop catching real regressions.
+
+**Why:** Pre-bushel pattern was whole sessions spent fixing tests that broke from implementation shifts. Both principles attack that root cause directly. The second is the higher-leverage one — it's the discipline that prevents the pattern from re-emerging.
+
+**Operational implications:**
+- Local: fast unit + critical-path integration only. Sub-10-second feedback.
+- CI (Vercel): full integration, E2E across browser matrix, lint, types, security. `workers: 1` on CI to mute parallel-state flakiness; revisit when CI time becomes painful.
+- Browser matrix: Chromium on every PR (fast feedback). Full matrix incl. WebKit on main / release. WebKit included on PR for the customer-side mobile component (DEC-019).
+
+---
+
+## DEC-024 — Project management workflow
+
+**Decision:** Hybrid PROJECT_PLAN.md + GitHub Issues + Project board.
+
+- `docs/PROJECT_PLAN.md` is a **phase-boundary document**: read at planning, written at retro. Untouched mid-phase. Holds phase narratives, scope, velocity table.
+- The **current phase's tasks materialize as GitHub Issues** with labels `phase:N` and `points:X`. Closed via PR's `closes #N`.
+- A GitHub Project board (Projects v2) gives kanban visibility for multi-dev work.
+- Per-session files under `sessions/` (`YYYY-MM-DD-HHMM-<dev>-<slug>.md`) replace the legacy monolithic `session-log.md`.
+
+**Why:** Solo + scaling-to-2-devs (Josh joins for stewardship). Single PROJECT_PLAN.md was a merge bomb at >1 dev. Issues give per-task assignee + comment thread + mobile review. Phase-boundary writes eliminate plan-file contention.
+
+**Rituals:**
+- `/start-phase` materializes a phase: reads tasks from PROJECT_PLAN.md, creates Issues, writes `#N` references back into the plan, adds to board.
+- `/retro` closes a phase: marks `[x]`, reconciles drift (mid-phase additions), computes phase velocity, writes to RETROSPECTIVES.md.
+
+**Trade-off accepted:** mid-phase scope changes create temporary drift between Issues (truth) and PROJECT_PLAN.md (read-only until retro). Reconciliation at retro restores alignment, with inline annotations preserving the story.
+
+---
+
 ## Open / Pending Product Owner Discussion
 
 - **Minimum delivery amount (in dollars).** Threshold below which delivery is unavailable, or above which delivery is free. Phase 8+ candidate.

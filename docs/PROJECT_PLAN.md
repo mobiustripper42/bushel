@@ -46,7 +46,7 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 0.1 | Init `bushel`, copy `seeds` → `.claude/`, `docs/`, fill placeholders | 3 | started |
+| 0.1 | Init `bushel`, copy `seeds` → `.claude/`, `docs/`, fill placeholders | 3 | [x] <!-- completed 2026-05-03 in seeds session 15: copied skills/agents/settings, populated docs (SPEC, USER_STORIES, BRAND, AGENTS, VELOCITY_AND_POKER_GUIDE), wrote bushel CLAUDE.md, added DEC-023 (testing) + DEC-024 (PM workflow), created sessions/ dir --> |
 | 0.2 | Next.js 16 + TS strict + sailbook-style CSS scaffold; Vercel project; CNAME for `order` | 3 | TBD |
 | 0.3 | Supabase project; Google OAuth + customer token column | 2 | TBD |
 | 0.5 | Test scaffolding: Playwright (3-device), `tests/helpers.ts`, pgTAP harness, `supabase/seed.sql` with test users | 3 | TBD |
