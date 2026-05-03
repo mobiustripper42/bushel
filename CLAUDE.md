@@ -29,6 +29,7 @@ Roles:
 | `docs/AGENTS.md` | Agent and skill specs |
 | `docs/BRAND.md` | Voice, type, color (TODO: fill at start of Phase 0.7) |
 | `docs/VELOCITY_AND_POKER_GUIDE.md` | Estimation methodology |
+| `docs/CHEATSHEET.md` | One-page printable skill reference |
 | `sessions/*.md` | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md` |
 
 ## Core Data Model (target — see Phase 1.1)
