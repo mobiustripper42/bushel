@@ -156,9 +156,13 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 | `/pause-this` | Mid-session break | Build check, commit WIP, note pause |
 | `/restart-this` | Resume from pause | Reload context, continue same session |
 | `/kill-this` | Session end (part 1) | Build check, commit, push branch, open PR, code review, draft body |
-| `/its-dead` | Session end (part 2) | Calc duration + points, finalize session file, branch cleanup |
+| `/its-dead` | Session end (part 2) | Calc duration + points, finalize session file, branch cleanup, patch-bump on merged PR |
 | `/start-phase` | Phase boundary (start) | Materialize phase as Issues with `phase:N`, `points:X` labels |
-| `/retro` | Phase boundary (end) | Close phase, reconcile drift, compute velocity, write retro |
+| `/retro` | Phase boundary (end) | Close phase, reconcile drift, compute velocity, write retro, minor-bump |
+| `/bump-major` | Breaking change | Manually bump major version. CHANGELOG.md entry + tag (on main) or deferred tag (on staging). Dev projects only |
+| `/promote-staging` | Ship staging to prod | ff-merge `staging` → `main`, tag the release with current `package.json` version, push both. Staging-flow projects only |
+| `/push-seeds` | After workflow improvements | Backport project-side improvements to the seeds templates via @sync-config |
+| `/read-the-tape` | After a session worth learning from | Audit JSONL transcript, find anti-patterns, propose skill improvements |
 
 **Dev identity:** `~/.claude/devname` (one-line file with handle, e.g. `eric`). Set once per machine.
 
@@ -185,11 +189,53 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - Keep ≤3 open PRs. Prefer 1.
 - Never two open PRs with migrations on the same table — merge one first.
 
+### Staging vs no-staging (DEC-008)
+
+Bushel currently has no `origin/staging`, so it ships PRs straight to `main`:
+- `/kill-this` opens PRs into `main`.
+- `/its-dead` patch-bumps on `main` and tags `vX.Y.Z` immediately.
+- `/retro` minor-bumps on `main` and tags `vX.0.0` immediately.
+
+Adopting staging later: cut from `main` once and skills auto-detect.
+```
+git checkout -b staging main && git push -u origin staging
+```
+After that, `/kill-this` PRs into `staging`, bumps are untagged on `staging`, and `/promote-staging` ff-merges `staging` → `main` and tags the release. No skill changes required to opt in or out — staging existence (`git show-ref --verify --quiet refs/remotes/origin/staging`) is the only signal.
+
 ### Mobile PR review (developer notes)
 - GitHub mobile app, not web.
 - Tap the preview URL first.
 - Auto-merge enabled per PR after CI green.
 - Branch protection: require CI green; skip reviewer-count requirements for solo phase.
+
+## Versioning (DEC-007)
+
+Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. Currently `0.1.0` — first release path. `/its-dead` patch-bumps from there.
+
+**Three triggers:**
+- **Patch:** `/its-dead` after every PR merge. CHANGELOG entry derived from PR title.
+- **Minor:** `/retro` at phase close. CHANGELOG entry summarizes the phase.
+- **Major:** `/bump-major` manual. User supplies the breaking-change rationale.
+
+**Tag rule:** tags only ever applied on `main`. In staging-flow projects (which bushel currently isn't — see above), bumps on `staging` are untagged; the tag lands when `/promote-staging` ff-merges.
+
+### `<VersionTag />` component
+
+Build-time version display at `src/components/VersionTag.tsx`. Reads `process.env.NEXT_PUBLIC_APP_VERSION` + `process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`. Renders e.g. `v1.2.3 (a1b2c3)`.
+
+Wiring:
+- `next.config.ts` forwards `npm_package_version` → `NEXT_PUBLIC_APP_VERSION`. Critical — without `NEXT_PUBLIC_`, client trees silently render `v0.0.0`.
+- Currently rendered in the placeholder home page footer at `src/app/page.tsx`. **Move to login screen + global footer when those land.** Per `dev/claude/CLAUDE.md §Versioning` in seeds.
+- Vercel sets `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` automatically. Local `npm run dev` outside Vercel omits the commit hash — that's intentional.
+
+```tsx
+import { VersionTag } from "@/components/VersionTag";
+<VersionTag className="text-xs text-muted-foreground" />
+```
+
+### CHANGELOG.md
+
+Auto-maintained by `/its-dead`, `/retro`, and `/bump-major`. Don't edit by hand mid-flow — the skills always prepend after the `# Changelog` header. The first bump creates the file if absent.
 
 ## Workflow Notes
 - **Diagnostic commands** (build, lint, type, test): run directly.
@@ -221,3 +267,34 @@ If a task feels bigger than its estimate:
 
 ## Tone
 Occasional dry humor and sarcasm welcome. One good line beats three forced ones.
+
+## Verbosity
+
+End-of-turn summaries: one or two sentences. What changed, what's next. Stop there.
+
+Do not recap work I just watched you do. Do not restate the task. Do not explain why an obvious step was obvious. The summary exists so I can re-enter context next session — not so you can demonstrate effort.
+
+If a turn ends with a tidy bullet list followed by three paragraphs of prose, the prose is wrong. Delete it.
+
+Mid-session updates: one sentence per state change. "Found X." "Switching to Y." "Build green." Not a paragraph.
+
+This rule applies double at session end. The session-summary block is the first thing I read next session — make it dense, not voluminous. Five points of work and a wall of text means I cannot actually use the summary. Cut the wall.
+
+## Cost and Waste
+
+Never minimize cost. Banned phrasings include but are not limited to:
+- "essentially zero"
+- "negligible"
+- "only a few cents"
+- "just X dollars"
+- "a rounding error"
+- "not a big deal"
+- "don't worry about it"
+
+If you find yourself reaching for one, stop.
+
+It's my money. Willing-to-spend is not the same as willing-to-spend-flippantly. Treat every cost as real, including small ones. Same rule for compute, API calls, third-party services, and dependencies — anything that consumes resources I'm paying for.
+
+Waste of any kind — food thrown out, hours lost, a bad batch, a bricked migration, an over-provisioned instance, a wrong dependency pulled — is a fact, not a problem to console me about. When I tell you something had to be discarded, do not reassure me it's fine. Acknowledge it and move on.
+
+If you catch yourself about to write a reassurance, just don't. The fact is the fact.
