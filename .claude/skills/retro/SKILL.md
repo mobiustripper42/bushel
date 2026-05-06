@@ -110,6 +110,47 @@ git commit -m "Phase <N> retro — <points> pts, <hours>h, <hrs/pt> hrs/pt"
 git push origin <BRANCH>
 ```
 
+## Step 6.5 — Minor version bump (dev projects only)
+
+Run only if `package.json` exists at the repo root (dev-project signal — DEC-007). Otherwise: skip silently.
+
+Resolve the working branch — phase boundaries land on `staging` if it exists, `main` otherwise:
+```
+git show-ref --verify --quiet refs/remotes/origin/staging && WORKING_BRANCH=staging || WORKING_BRANCH=main
+```
+
+If `BRANCH != $WORKING_BRANCH`: STOP. Phase retros must run on the working branch (otherwise the bump lands on a feature branch and gets orphaned). Tell the user: "Switch to `$WORKING_BRANCH` and re-run /retro." Wait.
+
+a. **Bump minor:**
+   ```
+   NEW_VERSION=$(npm version minor --no-git-tag-version | tr -d 'v')
+   ```
+   `npm version minor` zeros the patch automatically (e.g. `1.2.7 → 1.3.0`).
+
+b. **Append CHANGELOG entry.** If `CHANGELOG.md` doesn't exist, create with `# Changelog\n\n`. If it exists but doesn't start with the literal `# Changelog\n` header (e.g. setext form, `# CHANGELOG`, or notes above the header), STOP and surface to the user — do not guess where to insert. Otherwise prepend after the `# Changelog` header:
+   ```
+   ## [<NEW_VERSION>] - <YYYY-MM-DD> — Phase <N>
+   - <points> pts shipped across <session count> sessions (<hrs/pt> hrs/pt)
+   - See `docs/RETROSPECTIVES.md` for the full retro
+   ```
+
+c. **Commit:**
+   ```
+   git add package.json CHANGELOG.md
+   [ -f package-lock.json ] && git add package-lock.json
+   git commit -m "Phase <N> close — bump version to v$NEW_VERSION"
+   ```
+
+d. **Tag (main only):** if `$WORKING_BRANCH = main`, also `git tag "v$NEW_VERSION"`. On staging, the tag waits for `/promote-staging`.
+
+e. **Push:**
+   ```
+   git push origin "$WORKING_BRANCH"
+   ```
+   If a tag was created: `git push origin "v$NEW_VERSION"`.
+
+f. **Echo:** `Phase <N> closed at v<NEW_VERSION>` (and `tagged` if main).
+
 ## Step 7 — Offer to start next phase
 
 Ask: "Phase <N+1> is next. Run `/start-phase <N+1>` now or stop here?"
@@ -123,4 +164,5 @@ Phase <N> closed.
 Points: <P> in <hours>h → <hrs/pt> hrs/pt
 Issues: <closed>/<created> closed; <moved> moved to Phase <N+1>
 Retro: docs/RETROSPECTIVES.md
+Version: v<NEW_VERSION> (dev projects only; skipped if no package.json)
 ```

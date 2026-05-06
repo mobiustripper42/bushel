@@ -1,3 +1,5 @@
+import { VersionTag } from "@/components/VersionTag";
+
 export default function Home() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
@@ -9,6 +11,9 @@ export default function Home() {
           Wholesale ordering — coming soon.
         </p>
       </div>
+      <footer className="fixed bottom-2 right-3">
+        <VersionTag className="text-xs text-muted-foreground" />
+      </footer>
     </main>
   );
 }
