@@ -1,4 +1,4 @@
-SEEDS WORKFLOW CHEATSHEET                                v2026-05-03
+SEEDS WORKFLOW CHEATSHEET                                v2026-05-05
 
   /its-alive  ->  [ work ]  ->  /kill-this  ->  /its-dead
                      ^                              v
@@ -18,12 +18,20 @@ PHASE
   /start-phase     materialize current phase as Issues
                    ( phase:N + points:X labels )
   /retro           close phase. mark [x], reconcile drift,
-                   compute velocity, write retro entry.
+                   compute velocity, write retro, bump minor.
+
+SEMVER  ( dev projects only — needs package.json )
+  /bump-major      breaking change. manual. tag on main.
+  /promote-staging staging->main ff-merge + tag + push.
+                   ( needs origin/staging — DEC-008 )
+  patch bumps      automatic in /its-dead on PR merge.
 
 REFLECT / SYNC
   /read-the-tape   scan a session for anti-patterns.
                    arg: number, file path, or none = latest.
   /push-seeds      backport workflow wins to seeds.
+  /pull-seeds      pull seeds improvements into this project.
+                   gated on `seeds-version` match.
 
 INFRA                              DOMAIN
   /update-config                     /stripe-best-practices
@@ -48,3 +56,4 @@ THE SHORT VERSION
   end of phase:      /retro
   after a rough one: /read-the-tape
   after a good one:  /push-seeds
+  refresh template:  /pull-seeds

@@ -11,13 +11,37 @@ You are executing the /pull-seeds skill. The user wants to pull seeds template i
 The seeds repo lives outside this project. Find it in this order; stop at the first hit:
 
 1. **Skill arg:** if invoked as `/pull-seeds <path>`, use that path as `SEEDS`.
-2. **Sibling default:** `SEEDS=$(git rev-parse --show-toplevel)/../seeds`. Use it if `$SEEDS/seeds-version` exists.
-3. **Env var:** `$SEEDS_REPO` if set and `$SEEDS_REPO/seeds-version` exists.
+2. **Sibling default:** `SEEDS=$(git rev-parse --show-toplevel)/../seeds` if a git repo exists at that path (`git -C "$SEEDS" rev-parse --git-dir 2>/dev/null`).
+3. **Env var:** `$SEEDS_REPO` if set and a git repo exists at that path.
 4. **STOP:** if none resolve, ask: "Where's your seeds checkout? Re-run as `/pull-seeds /path/to/seeds`."
 
-Verify `$SEEDS/seeds-version` exists. If not: STOP. "Path `$SEEDS` exists but has no `seeds-version` file — is this actually the seeds repo?"
-
 Echo: "Seeds checkout: `$SEEDS`."
+
+## Step 0.5 — Seeds checkout freshness
+
+`seeds-version` and template files are read straight off disk in later steps. Stale or feature-branch checkouts produce wrong syncs — refresh first. The seeds checkout is the contract; never let it drift silently.
+
+**Branch check:**
+```
+SEEDS_BRANCH=$(git -C "$SEEDS" branch --show-current)
+```
+If `SEEDS_BRANCH != main`: STOP. "Seeds checkout is on `$SEEDS_BRANCH`, not `main`. Pulling templates from a feature branch usually means the wrong files. Switch (`git -C $SEEDS checkout main`) and re-run, or pass an explicit path if you really mean to pull from a feature branch."
+
+**Fetch + distance check:**
+```
+git -C "$SEEDS" fetch origin main
+BEHIND=$(git -C "$SEEDS" rev-list --count main..origin/main)
+AHEAD=$(git -C "$SEEDS" rev-list --count origin/main..main)
+```
+- **`BEHIND=0` and `AHEAD=0`:** echo "Seeds checkout up-to-date with origin/main." Continue.
+- **`BEHIND>0` and `AHEAD=0`:** ASK "Seeds is behind origin/main by $BEHIND commit(s). Pull now? (y/n)" Wait. If yes: `git -C "$SEEDS" pull --ff-only origin main`. If no: STOP — pulling templates from a stale seeds checkout is the wrong move.
+- **`AHEAD>0`:** STOP. "Seeds local main has $AHEAD un-pushed commit(s) (may also be behind). Never auto-resolve seeds-side state. Inspect: `git -C $SEEDS log --oneline origin/main..main` and `git -C $SEEDS log --oneline main..origin/main`."
+
+**Verify the version file is now present:**
+```
+[ -f "$SEEDS/seeds-version" ]
+```
+If still not: STOP. "`$SEEDS/seeds-version` doesn't exist even after refresh. The file lives at the seeds repo root from V2 onward. Either this is a pre-V2 seeds checkout (extremely unlikely if you're running /pull-seeds) or the file was deleted — investigate before continuing."
 
 ## Step 1 — Schema version compatibility check (gating)
 
