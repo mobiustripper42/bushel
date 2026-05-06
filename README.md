@@ -19,7 +19,7 @@ npm install
 npm run dev
 ```
 
-Then `http://localhost:3000`.
+Dev server: `http://mill-dev:3001` (tailnet only — works from laptop, phone, iPad). Pinned to `:3001` so it can run alongside sailbook on `:3000`. Rationale: see [DEC-025](./docs/DECISIONS.md#dec-025--dev-server-access-pattern).
 
 ## Project context
 
