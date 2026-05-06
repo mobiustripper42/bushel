@@ -70,6 +70,19 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 - After schema changes: `npx supabase gen types typescript --local > src/lib/supabase/types.ts`
 - Before creating: `gh pr list` to check overlapping migrations; merge in-flight first or rename to later timestamp.
 
+### Supabase CLI auth (mill-dev)
+
+The global `supabase login` on mill-dev is the **sailbook** account. Bushel lives in a different Supabase account, so any bushel CLI command that talks to the cloud project must override with `SUPABASE_ACCESS_TOKEN` (a Personal Access Token generated in the bushel account's profile):
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_xxx supabase link --project-ref nnmfubmlvnkouxxfxxlh
+SUPABASE_ACCESS_TOKEN=sbp_xxx supabase db push
+```
+
+If direnv is wired (`.envrc` exports the token, gitignored), the var is set automatically when you `cd ~/bushel/`. Without the override, you'll get `Your account does not have the necessary privileges` — that's the symptom. Local-only commands (`supabase start`, `supabase test db`, `supabase migration new`) don't need the token.
+
+Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
+
 ## Commands
 ```bash
 # Development
