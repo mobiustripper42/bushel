@@ -19,6 +19,7 @@
       "Bash(mv *)",
       "Bash(chmod *)",
       "Bash(curl *)",
+      "Bash(supabase *)",
       "mcp__ccd_session__mark_chapter"
     ],
     "deny": [
