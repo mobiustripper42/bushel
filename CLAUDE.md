@@ -279,7 +279,7 @@ If a turn ends with a tidy bullet list followed by three paragraphs of prose, th
 
 Mid-session updates: one sentence per state change. "Found X." "Switching to Y." "Build green." Not a paragraph.
 
-This rule applies double at session end. The session-summary block is the first thing I read next session — make it dense, not voluminous. Five points of work and a wall of text means I cannot actually use the summary. Cut the wall.
+This rule applies double at session end. The session-summary block is the first thing I read next session — make it dense, not voluminous. Five bullets of work and a wall of text means I cannot actually use the summary. Cut the wall.
 
 ## Cost and Waste
 
@@ -292,7 +292,7 @@ Never minimize cost. Banned phrasings include but are not limited to:
 - "not a big deal"
 - "don't worry about it"
 
-If you find yourself reaching for one, stop.
+If you find yourself reaching for one, stop. Any synonym counts. If the function of the phrase is to minimize, it's banned.
 
 It's my money. Willing-to-spend is not the same as willing-to-spend-flippantly. Treat every cost as real, including small ones. Same rule for compute, API calls, third-party services, and dependencies — anything that consumes resources I'm paying for.
 
