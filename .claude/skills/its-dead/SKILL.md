@@ -74,50 +74,132 @@ Use whichever produced a number. If both are empty, mark `points: 0` with a note
 
 ## Step 5 — Branch cleanup + final push
 
-**Worktree check first:** `git rev-parse --git-dir`. If output contains `/worktrees/`, take the worktree path; do NOT `git checkout main` or FF-merge.
+**Worktree check first:** `git rev-parse --git-dir`. If output contains `/worktrees/`, the worktree path applies (no `checkout main`, no FF-merge). Capture `IS_WORKTREE=1`; otherwise `IS_WORKTREE=0`.
 
-**Worktree path:**
-1. `BRANCH=$(git branch --show-current)`, `WORKTREE_PATH=$(git rev-parse --show-toplevel)`.
-2. `gh pr view $BRANCH --json state -q '.state' 2>/dev/null` to check PR state.
-3. **OPEN:** `git add` (the session file or session-log.md, plus PROJECT_PLAN.md if legacy) + commit + `git push origin $BRANCH`. Remind user to review/merge. Stop here — worktree stays until merged.
-4. **MERGED:** same commit + push (log travels with branch). Tell user: "Worktree cleanup — from main repo: `git worktree remove $WORKTREE_PATH`"
-5. **CLOSED:** STOP. Ask: "PR was closed without merging — discard this worktree or keep for archeology?" Wait.
-6. **No PR:** commit + push, remind user to open a PR.
+`BRANCH=$(git branch --show-current)`.
 
-**Normal path:** `BRANCH=$(git branch --show-current)`.
-
-**Files to add** depend on mode:
-- NEW MODE: `git add "$SESSION_FILE"`
-- LEGACY MODE: `git add session-log.md docs/PROJECT_PLAN.md`
-
-**On `main`:** commit + `git push origin main`. Done.
-
-**On non-main branch — PR-state check:**
+**Working branch:** projects using staging-flow (DEC-008) merge PRs into `staging`, not `main`. Resolve `WORKING_BRANCH`:
 ```
-gh pr view $BRANCH --json state -q '.state' 2>/dev/null
+git show-ref --verify --quiet refs/remotes/origin/staging && WORKING_BRANCH=staging || WORKING_BRANCH=main
 ```
+All references to `main` in the STATE=MERGED branches below should use `$WORKING_BRANCH` instead — checkout, pull, push, and the post-merge version bump in Step 5.3 all target wherever the PR was actually merged. Local-ref check (not `git ls-remote`) so offline sessions still resolve correctly — `/its-alive` already fetched at session start.
 
-- **OPEN:** PR is the merge gate. Commit + push to the task branch so the log lands in the PR. Surface the PR URL. Do NOT FF-merge or delete the branch. Stop.
-- **MERGED:** commit the log directly to main (NOT the task branch — that requires cherry-pick).
+### Step 5.0 — Resolve PR state (gating)
+
+If `BRANCH=main`, skip this sub-step — `STATE` is irrelevant.
+
+Otherwise resolve `STATE` to exactly one of: `OPEN`, `MERGED`, `CLOSED`, `NO_PR`. Try methods in order; never silently default.
+
+**Method 1 — `gh` CLI:**
+```
+gh pr view "$BRANCH" --json state,number,title 2>/dev/null
+```
+- Exit 0 with non-empty JSON: parse `state` (uppercased) → `STATE`. Also capture `number` → `PR_NUMBER` and `title` → `PR_TITLE` (used by Step 5.3 changelog write). Done.
+- Exit 0 with empty output: `STATE=NO_PR`. Done.
+- `gh: command not found` / auth error / non-zero exit: fall through.
+
+**Method 2 — MCP github fallback:** call `mcp__github__list_pull_requests` with `head: <owner>:$BRANCH, state: all, perPage: 5`.
+- A PR is returned: `STATE` = its `state` uppercased; `PR_NUMBER` = `number`; `PR_TITLE` = `title`.
+- No PRs returned: `STATE=NO_PR`.
+
+**Method 3 — STOP:** if neither tool is available, STOP. Ask: "Cannot determine PR state for `$BRANCH` — `gh` CLI and `mcp__github__list_pull_requests` both unavailable. Tell me the state (OPEN / MERGED / CLOSED / NO_PR), or abort /its-dead so it can be fixed manually." Wait for the answer. Never default.
+
+Echo the resolved `STATE` (and `PR_NUMBER`, `PR_TITLE` if any) to the user before branching.
+
+### Step 5.1 — Files to commit
+
+Set `FILES` based on mode:
+- NEW MODE: `FILES="$SESSION_FILE"`
+- LEGACY MODE: `FILES="session-log.md docs/PROJECT_PLAN.md"`
+
+Commit message: `Update session log for session $N`.
+
+### Step 5.2 — Branch on IS_WORKTREE and STATE
+
+**On `main` (no worktree):**
+```
+git add $FILES
+git commit -m "Update session log for session $N"
+git push origin main
+```
+Done.
+
+**Worktree path (`IS_WORKTREE=1`, `WORKTREE_PATH=$(git rev-parse --show-toplevel)`):**
+- **STATE=OPEN:** `git add $FILES && git commit -m "..." && git push origin $BRANCH`. Remind user to review/merge. Worktree stays until merged.
+- **STATE=MERGED:** same commit + push (log travels with the branch). Tell user: "Worktree cleanup — from main repo: `git worktree remove $WORKTREE_PATH`".
+- **STATE=CLOSED:** STOP. Ask: "PR was closed without merging — discard this worktree or keep for archeology?" Wait.
+- **STATE=NO_PR:** `git add $FILES && git commit -m "..." && git push origin $BRANCH`. Remind user to open a PR.
+
+**Normal path, non-main (`IS_WORKTREE=0`):**
+- **STATE=OPEN:** PR is the merge gate. `git add $FILES && git commit -m "..." && git push origin $BRANCH` so the log lands in the PR. Surface the PR URL. Do NOT FF-merge or delete the branch. Stop.
+- **STATE=MERGED:** commit the log directly to the working branch (NOT the task branch — task branch is now orphaned post-merge):
   ```
-  git checkout main
-  git pull --ff-only origin main
-  git add <files>
-  git commit -m "Update session log for session N"
-  git push origin main
-  git branch -d $BRANCH
-  git push origin --delete $BRANCH   # no-op if GitHub already deleted on merge
+  git checkout $WORKING_BRANCH
+  git pull --ff-only origin $WORKING_BRANCH
+  git add $FILES
+  git commit -m "Update session log for session $N"
+  git push origin $WORKING_BRANCH
+  git branch -d "$BRANCH"
+  git push origin --delete "$BRANCH"   # no-op if GitHub already deleted on merge
   ```
-  If `git branch -d` fails: tell the user, provide `git branch -D` for them to run manually.
-- **CLOSED:** STOP. Ask: "PR was closed without merging — discard this branch or keep?" Wait.
-- **No PR:** legacy DEC-005 cleanup (orphan auto-branches like `claude/<slug>`):
-  a. Commit on the current branch.
-  b. `git checkout main` (or `git checkout -b main origin/main` if no local main yet). `git pull --ff-only origin main`.
+  If `git branch -d` fails: tell the user, provide `git branch -D` to run manually.
+  Then continue to Step 5.3 for the post-merge version bump.
+- **STATE=CLOSED:** STOP. Ask: "PR was closed without merging — discard this branch or keep?" Wait.
+- **STATE=NO_PR:** legacy DEC-005 cleanup (orphan auto-branches like `claude/<slug>`):
+  a. `git add $FILES && git commit -m "..."` on the current branch.
+  b. `git checkout $WORKING_BRANCH` (or `git checkout -b $WORKING_BRANCH origin/$WORKING_BRANCH` if no local copy yet). `git pull --ff-only origin $WORKING_BRANCH`.
   c. `git merge --ff-only $BRANCH`. If can't FF, surface and ask.
   d. `git branch -d $BRANCH` (lowercase, safe). If fails: surface, do not retry with `-D`.
   e. `git push origin --delete $BRANCH`. Capture success/failure.
   f. If remote delete failed: append `**Orphan branch:** \`$BRANCH\` could not be deleted on origin (best-effort failure). Manual cleanup via GitHub UI required.` to the session file's Context section. Amend the commit.
-  g. `git push origin main`.
+  g. `git push origin $WORKING_BRANCH`.
+  No version bump for NO_PR — it's a legacy cleanup path, not a real merge event. (If a project on this path adopts semver, it should also adopt PR flow.)
+
+### Step 5.3 — Version bump (dev projects only, post-merge)
+
+Run only if **all** of these are true:
+- `STATE=MERGED` (a PR was actually merged into the working branch this session).
+- `IS_WORKTREE=0` (worktree paths don't bump — the log stayed on the worktree branch, not on `$WORKING_BRANCH`).
+- `package.json` exists at the repo root (dev-project signal — DEC-007).
+
+Otherwise: skip silently. No echo, no noise.
+
+You are already on `$WORKING_BRANCH` from Step 5.2's MERGED block. Proceed:
+
+a. **Bump patch:**
+   ```
+   NEW_VERSION=$(npm version patch --no-git-tag-version | tr -d 'v')
+   ```
+   `--no-git-tag-version` is critical — we control tagging in (d) so each release gets exactly one tag.
+
+b. **Append CHANGELOG entry.** If `CHANGELOG.md` doesn't exist at the repo root, create it with `# Changelog\n\n`. If it exists but doesn't start with the literal `# Changelog\n` header (e.g. setext form `Changelog\n=========`, or `# CHANGELOG`, or notes above the header), STOP and surface to the user — do not guess where to insert. Otherwise prepend a new section after the `# Changelog` header (CHANGELOG entries are reverse-chronological, newest at top):
+   ```
+   ## [<NEW_VERSION>] - <YYYY-MM-DD>
+   - PR #<PR_NUMBER>: <PR_TITLE>
+   ```
+   Use the `PR_NUMBER` and `PR_TITLE` captured in Step 5.0. If they were not captured (e.g. user supplied STATE manually under Method 3), prompt: "What was the merged PR number and title for the CHANGELOG entry?" Wait for input; never invent.
+
+c. **Stage + commit:**
+   ```
+   git add package.json CHANGELOG.md
+   [ -f package-lock.json ] && git add package-lock.json
+   git commit -m "Bump version to v$NEW_VERSION"
+   ```
+   `package-lock.json` is staged conditionally — some node projects don't commit it.
+
+d. **Tag (main only):** tags only ever appear on `main` (DEC-007). If `$WORKING_BRANCH = main`:
+   ```
+   git tag "v$NEW_VERSION"
+   ```
+   If `$WORKING_BRANCH = staging`: skip the tag — `/promote-staging` will tag when promoting to main.
+
+e. **Push:**
+   ```
+   git push origin "$WORKING_BRANCH"
+   ```
+   If a tag was created in (d), also: `git push origin "v$NEW_VERSION"`.
+
+f. **Echo:** `Version bumped: v<previous> → v<NEW_VERSION>` (and `tag: v<NEW_VERSION>` if main).
 
 ## Step 6 — Closing summary
 

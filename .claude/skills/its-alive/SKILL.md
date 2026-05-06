@@ -26,9 +26,10 @@ Run `git fetch origin` to refresh remote state. Capture `BRANCH=$(git branch --s
   - **Stop here** — do not open a session file in the main worktree.
 
 **Branch handling:**
-- `task/*` or other intentional feature branch: continue (PR-flow project).
+- `task/*` or other intentional feature branch: continue (PR-flow project, DEC-005).
+- `claude/*` (CC Desktop / web / mobile auto-branch): accept and continue. The platform pre-cuts this branch when launching a session — `/kill-this` will PR it into `main` (or `staging`) at session end. Do **not** switch to `main` here; the platform's branch is the intended workspace.
 - `main`: `git pull --ff-only origin main`. On divergence, show `git log --oneline origin/main..HEAD` and `git log --oneline HEAD..origin/main`, then ask: **"(a) rebase, (b) reset to origin/main, (c) abort?"** Wait for the choice.
-- Anything else (e.g. `claude/<slug>` CC web auto-branch): if `git status --porcelain` is dirty, stop and ask the user to commit/stash. If clean, switch to main per the rule above. Per `docs/DECISIONS.md` DEC-005, seeds/solo projects work on `main`; PR-flow projects (sailbook, bushel) use `task/*`.
+- Anything else (manual non-standard branch): if `git status --porcelain` is dirty, stop and ask the user to commit/stash. If clean, ask the user **"Stay on `$BRANCH` or switch to `main`?"** Wait for the choice — don't auto-switch.
 
 ## Step 1 — Stamp the time
 
