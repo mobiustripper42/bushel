@@ -3,7 +3,7 @@ import { Page } from "@playwright/test";
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
 
 export function customerOrderUrl(token: string): string {
-  return `${BASE_URL}/order/${token}`;
+  return `${BASE_URL}/c/${token}`;
 }
 
 export async function loginAsAdmin(page: Page): Promise<void> {

@@ -4,8 +4,9 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
   workers: 1,
-  retries: 0,
-  reporter: "list",
+  retries: process.env.CI ? 2 : 0,
+  forbidOnly: !!process.env.CI,
+  reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001",
     trace: "on-first-retry",
@@ -21,7 +22,7 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      use: { ...devices["iPhone 13"], viewport: { width: 375, height: 812 } },
+      use: { ...devices["iPhone 13"], browserName: "webkit", viewport: { width: 375, height: 812 } },
     },
   ],
 });
