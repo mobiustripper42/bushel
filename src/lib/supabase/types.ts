@@ -34,33 +34,294 @@ export type Database = {
   }
   public: {
     Tables: {
-      customers: {
+      codes: {
         Row: {
-          contact_email: string | null
-          contact_phone: string | null
-          created_at: string
-          id: string
-          name: string
-          notification_preference: string
-          token: string
+          code: string
+          label: string
+          sort_order: number | null
+          type: string
         }
         Insert: {
-          contact_email?: string | null
-          contact_phone?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          notification_preference?: string
-          token?: string
+          code: string
+          label: string
+          sort_order?: number | null
+          type: string
         }
         Update: {
-          contact_email?: string | null
-          contact_phone?: string | null
+          code?: string
+          label?: string
+          sort_order?: number | null
+          type?: string
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          business_name: string | null
+          created_at: string
+          delivery_address: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notification_preference: string
+          phone: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          business_name?: string | null
           created_at?: string
+          delivery_address?: string | null
+          email?: string | null
           id?: string
+          is_active?: boolean
+          name: string
+          notification_preference?: string
+          phone?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          business_name?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
           name?: string
           notification_preference?: string
+          phone?: string | null
           token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          product_id: string
+          qty: number
+          unit_price_cents: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          product_id: string
+          qty: number
+          unit_price_cents: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          product_id?: string
+          qty?: number
+          unit_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordering_schedule: {
+        Row: {
+          created_at: string
+          id: string
+          is_open: boolean
+          is_singleton: boolean
+          override_closes_at: string | null
+          updated_at: string
+          weekly_close_day: number | null
+          weekly_close_time: string | null
+          weekly_open_day: number | null
+          weekly_open_time: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          is_singleton?: boolean
+          override_closes_at?: string | null
+          updated_at?: string
+          weekly_close_day?: number | null
+          weekly_close_time?: string | null
+          weekly_open_day?: number | null
+          weekly_open_time?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          is_singleton?: boolean
+          override_closes_at?: string | null
+          updated_at?: string
+          weekly_close_day?: number | null
+          weekly_close_time?: string | null
+          weekly_open_day?: number | null
+          weekly_open_time?: string | null
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          created_at: string
+          customer_id: string
+          delivery_address: string | null
+          fulfillment_type: string
+          id: string
+          needs_reconciliation: boolean
+          notes: string | null
+          pickup_window_id: string | null
+          status: string
+          updated_at: string
+          week_of: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          delivery_address?: string | null
+          fulfillment_type?: string
+          id?: string
+          needs_reconciliation?: boolean
+          notes?: string | null
+          pickup_window_id?: string | null
+          status?: string
+          updated_at?: string
+          week_of: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          delivery_address?: string | null
+          fulfillment_type?: string
+          id?: string
+          needs_reconciliation?: boolean
+          notes?: string | null
+          pickup_window_id?: string | null
+          status?: string
+          updated_at?: string
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_pickup_window_id_fkey"
+            columns: ["pickup_window_id"]
+            isOneToOne: false
+            referencedRelation: "pickup_windows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pickup_windows: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number | null
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number | null
+          start_time?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_available: boolean
+          name: string
+          price_cents: number
+          qty_available: number
+          sort_order: number | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_available?: boolean
+          name: string
+          price_cents: number
+          qty_available?: number
+          sort_order?: number | null
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_available?: boolean
+          name?: string
+          price_cents?: number
+          qty_available?: number
+          sort_order?: number | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string
+          id: string
+          is_admin: boolean
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          is_admin?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
         }
         Relationships: []
       }
