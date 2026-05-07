@@ -23,7 +23,7 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 
 | Sessions | Points completed | Hours | Hours/point |
 |---|---|---|---|
-| _none yet_ | — | — | — |
+| 5 (Phase 0) | 17 (issues) + 3 (0.1 pre-issue) = 20 | 11.28 | 0.66 |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
@@ -47,11 +47,11 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 | # | Task | Pts | Status |
 |---|---|---|---|
 | 0.1 | Init `bushel`, copy `seeds` → `.claude/`, `docs/`, fill placeholders | 3 | [x] <!-- completed 2026-05-03 in seeds session 15: copied skills/agents/settings, populated docs (SPEC, USER_STORIES, BRAND, AGENTS, VELOCITY_AND_POKER_GUIDE), wrote bushel CLAUDE.md, added DEC-023 (testing) + DEC-024 (PM workflow), created sessions/ dir --> |
-| 0.2 | Next.js 16 + TS strict + sailbook-style CSS scaffold; Vercel project; CNAME for `order` | 3 | [#3](https://github.com/mobiustripper42/bushel/issues/3) |
-| 0.3 | Supabase project; Google OAuth + customer token column | 2 | [#4](https://github.com/mobiustripper42/bushel/issues/4) |
-| 0.5 | Test scaffolding: Playwright (3-device), `tests/helpers.ts`, pgTAP harness, `supabase/seed.sql` with test users | 3 | [#5](https://github.com/mobiustripper42/bushel/issues/5) |
-| 0.6 | GitHub Actions CI: Supabase Docker, `playwright test`, `supabase test db` (from-scratch; high-priority `seeds` backport) | 5 | [#6](https://github.com/mobiustripper42/bushel/issues/6) |
-| 0.7 | `BRAND.md` filled, B2B-warm voice rules, color/type matched to baybranchfarm.com, `ui-reviewer` agent customized | 3 | [#7](https://github.com/mobiustripper42/bushel/issues/7) |
+| 0.2 | Next.js 16 + TS strict + sailbook-style CSS scaffold; Vercel project; CNAME for `order` | 3 | [x] [#3](https://github.com/mobiustripper42/bushel/issues/3) |
+| 0.3 | Supabase project; Google OAuth + customer token column | 2 | [x] [#4](https://github.com/mobiustripper42/bushel/issues/4) |
+| 0.5 | Test scaffolding: Playwright (3-device), `tests/helpers.ts`, pgTAP harness, `supabase/seed.sql` with test users | 3 | [x] [#5](https://github.com/mobiustripper42/bushel/issues/5) |
+| 0.6 | GitHub Actions CI: Supabase Docker, `playwright test`, `supabase test db` (from-scratch; high-priority `seeds` backport) | 5 | [x] [#6](https://github.com/mobiustripper42/bushel/issues/6) |
+| 0.7 | `BRAND.md` filled, B2B-warm voice rules, color/type matched to baybranchfarm.com, `ui-reviewer` agent customized | 3 | [x] [#7](https://github.com/mobiustripper42/bushel/issues/7) |
 
 ---
 
