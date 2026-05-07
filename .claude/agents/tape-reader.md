@@ -49,8 +49,9 @@ For each pattern, note: **occurred / not found / inconclusive**.
 ---
 
 ### P2 — Repeated permission prompt for same command
-**Signal:** Same Bash command pattern appears in multiple tool calls — suggests the allowlist didn't catch it
+**Signal:** Same Bash command pattern appears in multiple tool calls AND the command is not on Claude Code's built-in auto-allow list — suggests the allowlist didn't catch it
 **Why it hurts:** User clicks Allow repeatedly for identical operations
+**Cross-reference before flagging:** Claude Code never prompts for these commands — skip them entirely: `cat`, `head`, `tail`, `ls`, `find`, `grep`, `wc`, `echo`, `printf`, `date`, `which`, `file`, `pwd`, `true`, `false`, `test`, `[`, `[[`, `basename`, `dirname`, `sort`, `uniq`, `tr`, `cut`, `diff`, `stat`. A repeated `ls` or `grep` is not a P2 hit.
 **Fix:** Add the pattern to `.claude/settings.json` `permissions.allow`
 **Files:** `.claude/settings.json`
 

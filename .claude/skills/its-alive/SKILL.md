@@ -78,8 +78,11 @@ If `sessions/` does not exist: this is the first session under the new format. C
 ```
 PROJECT_SLUG=$(pwd | tr '/' '-')
 JSONL_DIR="$HOME/.claude/projects/$PROJECT_SLUG"
-TRANSCRIPT=$(ls -t "$JSONL_DIR"/*.jsonl 2>/dev/null | head -1)
+TRANSCRIPT=$(cd "$JSONL_DIR" 2>/dev/null && ls -t *.jsonl 2>/dev/null | head -1)
+[ -n "$TRANSCRIPT" ] && TRANSCRIPT="$JSONL_DIR/$TRANSCRIPT"
 ```
+
+The `cd`-and-relative-glob form is deliberate. Tree-sitter-bash (used by Claude Code's static command validator) parses `"$VAR"/*.glob` as a string-concatenated-with-glob node it can't classify, so the harness drops to "needs confirmation" on every session start. Doing the lookup from inside the dir sidesteps the pattern entirely. Don't revert to `ls -t "$JSONL_DIR"/*.jsonl`.
 
 If no JSONL is found, leave `transcript:` empty in the frontmatter. /read-the-tape will fall back to "latest JSONL" matching at audit time.
 
