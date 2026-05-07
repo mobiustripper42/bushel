@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.1.4] - 2026-05-07
+- PR #15: Phase 0.7 — brand tokens, customer status pages, design archive (closes #7)
+
 ## [0.1.3] - 2026-05-07
 - PR #13: Phase 0.6 — GitHub Actions CI + rename PUBLISHABLE_KEY → ANON_KEY
 
