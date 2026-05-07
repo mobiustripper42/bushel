@@ -59,11 +59,11 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 1.1a | Schema design (sketched in plan; finalize tweaks) | 3 | TBD |
-| 1.1b | Schema migrations + indexes (`products`, `customers`, `orders` w/ `needs_reconciliation`, `order_items`, `pickup_windows`, `ordering_schedule`) | 5 | TBD |
-| 1.2 | RLS policies + pgTAP tests; service-role-as-gate, RLS-as-backstop | 3 | TBD |
-| 1.3 | Admin route group; Google OAuth flow; admin guard middleware | 3 | TBD |
-| 1.4 | Empty admin shell with nav; auth-required Playwright spec | 2 | TBD |
+| 1.1a | Schema design (sketched in plan; finalize tweaks) | 3 | [#16](https://github.com/mobiustripper42/bushel/issues/16) |
+| 1.1b | Schema migrations + indexes (`products`, `customers`, `orders` w/ `needs_reconciliation`, `order_items`, `pickup_windows`, `ordering_schedule`) | 5 | [#17](https://github.com/mobiustripper42/bushel/issues/17) |
+| 1.2 | RLS policies + pgTAP tests; service-role-as-gate, RLS-as-backstop | 3 | [#18](https://github.com/mobiustripper42/bushel/issues/18) |
+| 1.3 | Admin route group; Google OAuth flow; admin guard middleware | 3 | [#19](https://github.com/mobiustripper42/bushel/issues/19) |
+| 1.4 | Empty admin shell with nav; auth-required Playwright spec | 2 | [#20](https://github.com/mobiustripper42/bushel/issues/20) |
 
 ---
 
