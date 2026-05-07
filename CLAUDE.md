@@ -83,6 +83,35 @@ If direnv is wired (`.envrc` exports the token, gitignored), the var is set auto
 
 Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
 
+### Production write protection (DEC-009)
+
+Two-layer defense against accidentally running destructive Supabase CLI ops on production:
+
+1. **Discipline:** never `supabase link` to a prod project ref from a dev box. Production deploys read `SUPABASE_URL` and the service-role key from Vercel env vars — there is no reason for a local link to prod. Link only to staging or local.
+2. **Wrapper script (`scripts/safe-supabase.sh`):** reads the linked ref from `supabase/.temp/project-ref` and refuses to pass through `db reset`, `db push`, `db remote *`, `migration up`, or `migration repair` if the linked ref appears in `.claude/prod-supabase-refs`. Pass-through for everything else. The matcher walks adjacent argument pairs, so leading global flags (`--debug`, `--workdir`, etc.) don't bypass the guard.
+
+Setup (one-time):
+
+```
+chmod +x scripts/safe-supabase.sh
+mkdir -p .claude
+echo "<your-prod-project-ref>" > .claude/prod-supabase-refs
+echo ".claude/prod-supabase-refs" >> .gitignore
+```
+
+Optional shell alias for transparent protection:
+
+```
+alias supabase='./scripts/safe-supabase.sh'
+```
+
+The `.claude/prod-supabase-refs` file accepts one ref per line; blank lines and `#` comments are ignored. Per-project rather than global so multi-project dev boxes don't cross-contaminate.
+
+The wrapper only catches CLI ops. The following are **not** guarded — they rely on the discipline:
+- `--db-url postgres://...prod...` flags on `db push` / `db remote commit` skip the linked-project entirely.
+- Direct `psql` against the prod URL.
+- Any tool that doesn't go through the `supabase` binary.
+
 ## Commands
 ```bash
 # Development
