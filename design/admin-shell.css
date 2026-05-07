@@ -1,0 +1,327 @@
+/* Admin login + shell */
+
+/* ── Brand mark guards ────────────────────────────── */
+.brand-mark { display: inline-flex; align-items: center; }
+.brand-mark .brand-name { white-space: nowrap; }
+.brand-mark .brand-leaf { flex-shrink: 0; }
+
+/* ── Login ────────────────────────────────────────── */
+.login-bg {
+  min-height: 100vh;
+  background: var(--leaf-50);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(59,109,17,0.08), transparent 38%),
+    radial-gradient(circle at 88% 82%, rgba(59,109,17,0.07), transparent 42%),
+    /* dotted texture */
+    radial-gradient(rgba(59,109,17,0.18) 1px, transparent 1px);
+  background-size: auto, auto, 16px 16px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 48px 24px;
+  font-family: var(--sans);
+  color: var(--ink-900);
+}
+
+.login-card {
+  width: 100%; max-width: 440px;
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-lg);
+  padding: 36px 38px 32px;
+  box-shadow: 0 24px 60px -28px rgba(31,30,26,0.25), 0 2px 6px rgba(31,30,26,0.04);
+}
+.login-mark { margin-bottom: 22px; }
+.login-eyebrow {
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--leaf-700);
+  margin-bottom: 10px;
+}
+.login-title {
+  font-family: var(--serif);
+  font-size: 1.8rem; font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  margin-bottom: 10px;
+  text-wrap: pretty;
+}
+.login-lede {
+  color: var(--ink-700);
+  font-size: 0.97rem;
+  margin-bottom: 28px;
+  line-height: 1.55;
+}
+
+.btn-google {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  min-height: 50px;
+  background: var(--ink-900);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--r-md);
+  font-family: var(--sans);
+  font-size: 0.98rem; font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 0 18px;
+  transition: background 0.12s, transform 0.05s;
+}
+.btn-google > span { white-space: nowrap; }
+.btn-google > svg { flex-shrink: 0; }
+.btn-google:hover { background: #2c2b27; }
+.btn-google:active { transform: translateY(1px); }
+.btn-google svg { background: var(--paper); border-radius: 4px; padding: 2px; box-sizing: content-box; }
+
+.login-foot {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ink-200);
+  font-size: 0.82rem;
+  color: var(--ink-500);
+  line-height: 1.5;
+}
+
+.login-meta {
+  margin-top: 22px;
+  font-size: 0.78rem; color: var(--ink-500);
+  display: flex; gap: 24px;
+  font-family: var(--mono);
+}
+.login-meta span:nth-child(2) { opacity: 0.7; }
+
+/* ── Admin shell ─────────────────────────────────────── */
+.admin-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  background: var(--cream);
+  font-family: var(--sans);
+  color: var(--ink-900);
+}
+
+.admin-side {
+  background: var(--ink-900);
+  color: var(--paper);
+  padding: 22px 18px 18px;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+}
+.admin-side-mark {
+  color: var(--paper);
+  margin-bottom: 4px;
+  padding: 0 6px;
+}
+.admin-side-mark .brand-name { color: var(--paper); }
+.admin-side-mark .brand-leaf { color: var(--leaf-100); }
+
+.admin-side-eyebrow {
+  font-size: 0.66rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: rgba(251,250,245,0.5);
+  padding: 0 6px;
+  margin-bottom: 24px;
+}
+
+.admin-nav {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.admin-nav-item {
+  position: relative;
+  display: flex; align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: rgba(251,250,245,0.78);
+  font-family: var(--sans);
+  font-size: 0.93rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.admin-nav-item:hover {
+  background: rgba(251,250,245,0.06);
+  color: var(--paper);
+}
+.admin-nav-item.is-active {
+  background: rgba(251,250,245,0.1);
+  color: var(--paper);
+}
+.admin-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 22px;
+  background: var(--leaf-100);
+  border-radius: 0 3px 3px 0;
+}
+.admin-nav-icon {
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(251,250,245,0.6);
+  flex-shrink: 0;
+}
+.admin-nav-item.is-active .admin-nav-icon,
+.admin-nav-item:hover .admin-nav-icon { color: var(--leaf-100); }
+.admin-nav-label { flex: 1; }
+.admin-nav-badge {
+  font-size: 0.7rem; font-weight: 500;
+  font-family: var(--mono);
+  background: rgba(251,250,245,0.08);
+  color: rgba(251,250,245,0.75);
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.admin-side-foot {
+  border-top: 1px solid rgba(251,250,245,0.08);
+  padding-top: 14px;
+  margin-top: 14px;
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.admin-side-foot-row {
+  display: flex; flex-direction: column;
+  padding: 0 6px;
+}
+.admin-side-foot-key {
+  font-size: 0.66rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(251,250,245,0.45);
+  margin-bottom: 2px;
+}
+.admin-side-foot-val {
+  font-size: 0.85rem;
+  color: rgba(251,250,245,0.85);
+  display: flex; align-items: center; gap: 8px;
+}
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ink-300);
+}
+.status-dot.is-open {
+  background: #79C44E;
+  box-shadow: 0 0 0 3px rgba(121,196,78,0.18);
+}
+
+/* main */
+.admin-main {
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+
+.admin-top {
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink-200);
+  padding: 0 32px;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 5;
+}
+.admin-crumb {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.88rem;
+  color: var(--ink-500);
+}
+.admin-crumb-sep { color: var(--ink-300); }
+.admin-crumb-active {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+.admin-top-right {
+  display: flex; align-items: center; gap: 18px;
+}
+.admin-week {
+  text-align: right;
+  padding-right: 18px;
+  border-right: 1px solid var(--ink-200);
+}
+.admin-week-key {
+  font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-500);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.admin-week-val {
+  font-size: 0.9rem; font-weight: 600;
+  color: var(--ink-900);
+  font-family: var(--serif);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+
+.admin-signout {
+  background: transparent;
+  border: 1px solid var(--ink-200);
+  color: var(--ink-700);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  font-family: var(--sans);
+  font-size: 0.85rem; font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.admin-signout:hover {
+  background: var(--leaf-50);
+  border-color: var(--leaf-100);
+  color: var(--leaf-700);
+}
+
+.admin-content {
+  padding: 28px 32px 60px;
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+}
+
+/* placeholder */
+.admin-page-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.admin-page-title {
+  font-family: var(--serif);
+  font-size: 2rem; font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+.admin-page-actions { display: flex; gap: 10px; }
+
+.admin-empty {
+  background: var(--paper);
+  border: 1px dashed var(--ink-300);
+  border-radius: var(--r-md);
+  padding: 56px 32px;
+  text-align: center;
+  color: var(--ink-500);
+}
+.admin-empty-title {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink-700);
+  margin: 14px 0 6px;
+}
+.admin-empty-sub {
+  font-size: 0.9rem;
+  max-width: 42ch;
+  margin: 0 auto;
+  line-height: 1.55;
+}

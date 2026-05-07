@@ -1,10 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito_Sans } from "next/font/google";
+import { Source_Sans_3, Playfair_Display, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const nunitoSans = Nunito_Sans({
+const sourceSans = Source_Sans_3({
   variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "600"],
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "600"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +39,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={nunitoSans.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${sourceSans.variable} ${playfair.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-background font-sans antialiased">
         {process.env.NODE_ENV === "development" && (
           <div className="fixed top-0 left-0 right-0 h-0.5 bg-red-500 z-[9999]" />
