@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.1] - 2026-05-08
+- PR #29: read-the-tape session 9 — workflow improvements (P3/P10, CX1, CX2, P11)
+
 ## [0.3.0] - 2026-05-08 — Phase 1
 - 16 pts shipped across 3 sessions (1.13 hrs/pt)
 - See `docs/RETROSPECTIVES.md` for the full retro
