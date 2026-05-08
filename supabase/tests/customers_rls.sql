@@ -16,7 +16,7 @@ select is(
 );
 
 -- Seed one row as the postgres role (bypasses RLS)
-insert into public.customers (name) values ('Test Farm Stand');
+insert into public.customers (name, token) values ('Test Farm Stand', 'test-token-postgres-001');
 
 -- Anonymous cannot read
 set local role anon;
@@ -25,9 +25,9 @@ select is_empty(
   'anon cannot read customers'
 );
 
--- Anonymous cannot insert
+-- Anonymous cannot insert (token must be supplied so RLS fires, not the NOT NULL constraint)
 select throws_ok(
-  $$ insert into public.customers (name) values ('sneaky') $$,
+  $$ insert into public.customers (name, token) values ('sneaky', 'sneaky-token-anon-001') $$,
   '42501',
   'new row violates row-level security policy for table "customers"',
   'anon cannot insert into customers'
@@ -44,7 +44,7 @@ select isnt_empty(
 
 -- Authenticated can insert
 select lives_ok(
-  $$ insert into public.customers (name) values ('Authed Farm') $$,
+  $$ insert into public.customers (name, token) values ('Authed Farm', 'test-token-auth-001') $$,
   'authenticated can insert into customers'
 );
 

@@ -7,6 +7,8 @@
 -- App is Ohio-only; DST handled automatically by the IANA tz database.
 
 -- Drop stale Phase 0.3 customers table if it exists on remote (dev only — no real data).
+-- Only customers existed before this migration; all other tables are net-new, so no
+-- equivalent drop is needed for them.
 drop table if exists public.customers cascade;
 
 
@@ -39,7 +41,10 @@ create table public.users (
   created_at timestamptz not null default now()
 );
 
+-- Trigger to auto-insert into users on auth.users creation lands in Phase 1.3.
+-- Until then, admin row must be inserted manually after first Google OAuth login.
 alter table public.users enable row level security;
+-- Policies land in Phase 1.2.
 
 
 -- ------------------------------------------------------------
@@ -61,6 +66,7 @@ create table public.products (
 );
 
 alter table public.products enable row level security;
+-- Policies land in Phase 1.2.
 
 
 -- ------------------------------------------------------------
@@ -113,6 +119,7 @@ create table public.pickup_windows (
 );
 
 alter table public.pickup_windows enable row level security;
+-- Policies land in Phase 1.2.
 
 
 -- ------------------------------------------------------------
@@ -136,6 +143,7 @@ create table public.ordering_schedule (
 insert into public.ordering_schedule (is_open) values (false);
 
 alter table public.ordering_schedule enable row level security;
+-- Policies land in Phase 1.2.
 
 
 -- ------------------------------------------------------------
@@ -166,10 +174,11 @@ create index orders_needs_reconciliation_idx on public.orders (needs_reconciliat
   where needs_reconciliation = true;
 
 alter table public.orders enable row level security;
+-- Policies land in Phase 1.2.
 
 
 -- ------------------------------------------------------------
--- order_items — line items; qty is integer (denomination via products.unit)
+-- order_items — immutable; edits are delete+reinsert, no updated_at needed
 -- ------------------------------------------------------------
 create table public.order_items (
   id               uuid        not null primary key default gen_random_uuid(),
@@ -184,3 +193,4 @@ create index order_items_order_id_idx   on public.order_items (order_id);
 create index order_items_product_id_idx on public.order_items (product_id);
 
 alter table public.order_items enable row level security;
+-- Policies land in Phase 1.2.
