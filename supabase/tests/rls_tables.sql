@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(33);
 
 -- ============================================================
 -- Schema sanity: RLS enabled on all tables
@@ -112,6 +112,8 @@ select is_empty(
 );
 reset role;
 
+reset role;
+
 set local role authenticated;
 select isnt_empty($$ select * from public.pickup_windows $$, 'authenticated can read all pickup windows');
 reset role;
@@ -210,6 +212,22 @@ select set_config('app.customer_id', '', true);
 select is_empty(
   $$ select * from public.order_items $$,
   'anon with no session var cannot read order_items'
+);
+
+reset role;
+
+-- Cross-customer isolation: Customer B sees only their own order_items
+set local role anon;
+select set_config('app.customer_id', 'aaaaaaaa-0000-0000-0000-000000000002', true);
+select is(
+  (select count(*)::int from public.order_items),
+  1,
+  'anon as Customer B sees only their own order_items'
+);
+select is(
+  (select order_id from public.order_items limit 1),
+  'dddddddd-0000-0000-0000-000000000002'::uuid,
+  'anon as Customer B sees correct order_item'
 );
 
 reset role;

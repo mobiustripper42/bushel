@@ -23,11 +23,18 @@ create policy "read_codes" on public.codes
 
 
 -- ------------------------------------------------------------
--- users — authenticated only; full CRUD on own row
--- (is_admin enforcement moves here in Phase 1.3)
+-- users — authenticated only
+-- Read-all is fine (single-admin system). Writes scoped to own row to prevent
+-- self-escalation (e.g. flipping is_admin = true) until 1.3 adds proper guard.
 -- ------------------------------------------------------------
-create policy "admin_all_users" on public.users
-  for all to authenticated using (true) with check (true);
+create policy "admin_read_users" on public.users
+  for select to authenticated using (true);
+
+create policy "user_insert_own" on public.users
+  for insert to authenticated with check (auth.uid() = id);
+
+create policy "user_update_own" on public.users
+  for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
 
 
 -- ------------------------------------------------------------
