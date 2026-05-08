@@ -24,6 +24,7 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 | Sessions | Points completed | Hours | Hours/point |
 |---|---|---|---|
 | 5 (Phase 0) | 17 (issues) + 3 (0.1 pre-issue) = 20 | 11.28 | 0.66 |
+| 3 (Phase 1) | 16 | 18.0 | 1.13 |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
@@ -61,11 +62,12 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 1.1a | Schema design (sketched in plan; finalize tweaks) | 3 | [#16](https://github.com/mobiustripper42/bushel/issues/16) |
-| 1.1b | Schema migrations + indexes (`products`, `customers`, `orders` w/ `needs_reconciliation`, `order_items`, `pickup_windows`, `ordering_schedule`) | 5 | [#17](https://github.com/mobiustripper42/bushel/issues/17) |
-| 1.2 | RLS policies + pgTAP tests; service-role-as-gate, RLS-as-backstop | 3 | [#18](https://github.com/mobiustripper42/bushel/issues/18) |
-| 1.3 | Admin route group; Google OAuth flow; admin guard middleware | 3 | [#19](https://github.com/mobiustripper42/bushel/issues/19) |
-| 1.4 | Empty admin shell with nav; auth-required Playwright spec | 2 | [#20](https://github.com/mobiustripper42/bushel/issues/20) |
+| 1.1a | Schema design (sketched in plan; finalize tweaks) | 3 | [x] [#16](https://github.com/mobiustripper42/bushel/issues/16) |
+| 1.1b | Schema migrations + indexes (`products`, `customers`, `orders` w/ `needs_reconciliation`, `order_items`, `pickup_windows`, `ordering_schedule`) | 5 | [x] [#17](https://github.com/mobiustripper42/bushel/issues/17) |
+| 1.2 | RLS policies + pgTAP tests; service-role-as-gate, RLS-as-backstop | 3 | [x] [#18](https://github.com/mobiustripper42/bushel/issues/18) |
+| 1.3 | Admin route group; Google OAuth flow; admin guard middleware | 3 | [x] [#19](https://github.com/mobiustripper42/bushel/issues/19) |
+| 1.4 | Empty admin shell with nav; auth-required Playwright spec | 2 | [x] [#20](https://github.com/mobiustripper42/bushel/issues/20) |
+| — | Authenticated admin Playwright tests (blocked on headless auth) | — | Moved to Phase 2 [#27](https://github.com/mobiustripper42/bushel/issues/27) |
 
 ---
 
