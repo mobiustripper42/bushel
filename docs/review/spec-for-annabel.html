@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bushel — How the App Will Work</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Source Sans 3', sans-serif; font-size: 14px; color: #1a1a1a; background: #fff; line-height: 1.65; }
+  @media print { @page { margin: 0.75in; size: letter portrait; } .page { padding: 0; } h1, h2, h3 { page-break-after: avoid; } .section { page-break-inside: avoid; } }
+  .page { max-width: 760px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .doc-header { border-bottom: 2px solid #3B6D11; padding-bottom: 1.25rem; margin-bottom: 2rem; }
+  .doc-header .farm { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: #3B6D11; margin-bottom: 0.2rem; }
+  .doc-header h1 { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 600; color: #1a1a1a; margin-bottom: 0.5rem; }
+  .doc-header .sub { font-size: 0.95rem; color: #666; font-style: italic; }
+  .meta { display: flex; gap: 2rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; margin-top: 0.6rem; }
+  .meta span strong { color: #1a1a1a; }
+  .section { margin-bottom: 2.25rem; }
+  h2 { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600; color: #1a1a1a; border-left: 3px solid #3B6D11; padding-left: 0.75rem; margin-bottom: 1rem; margin-top: 0.25rem; }
+  h3 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #3B6D11; margin-bottom: 0.5rem; margin-top: 1.25rem; }
+  p { margin-bottom: 0.75rem; color: #2a2a2a; }
+  ul { padding-left: 1.4rem; margin-bottom: 0.75rem; }
+  li { margin-bottom: 0.45rem; color: #2a2a2a; }
+  .lead { font-size: 1.02rem; color: #333; }
+  .lead strong { color: #1a1a1a; }
+  .rhythm { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.5rem; margin: 1rem 0 1.25rem; }
+  .day { border: 1px solid #d4e6c3; border-radius: 6px; background: #f7faf4; padding: 0.7rem 0.75rem; }
+  .day .when { font-family: 'Playfair Display', serif; font-size: 0.95rem; color: #3B6D11; font-weight: 600; margin-bottom: 0.2rem; }
+  .day .what { font-size: 0.82rem; color: #444; line-height: 1.45; }
+  .role-card { border: 1px solid #d4e6c3; border-radius: 8px; padding: 1.1rem 1.25rem; margin-bottom: 1rem; background: #fdfdfb; }
+  .role-card h3 { margin-top: 0; }
+  .role-card .who { font-size: 1.02rem; color: #1a1a1a; margin-bottom: 0.6rem; }
+  .role-card .who strong { font-weight: 600; }
+  .step { display: grid; grid-template-columns: 1.6rem 1fr; gap: 0.4rem; margin-bottom: 0.6rem; align-items: baseline; }
+  .step .n { font-family: 'Playfair Display', serif; font-size: 1rem; color: #3B6D11; font-weight: 600; }
+  .step .body { font-size: 0.93rem; color: #2a2a2a; line-height: 1.55; }
+  .step .body strong { color: #1a1a1a; }
+  .callout { background: #fffbea; border-left: 3px solid #e6a817; border-radius: 0 6px 6px 0; padding: 0.85rem 1rem; margin: 1rem 0; font-size: 0.9rem; color: #444; }
+  .callout strong { color: #1a1a1a; }
+  .callout-leaf { background: #f7faf4; border-left: 3px solid #3B6D11; }
+  .questions { padding-left: 1.25rem; }
+  .questions li { margin-bottom: 0.7rem; font-size: 0.95rem; color: #333; }
+  .questions li strong { color: #1a1a1a; }
+  .not-yet { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.9rem 1.1rem; }
+  .not-yet h3 { margin-top: 0; color: #666; }
+  .not-yet ul { margin-bottom: 0; }
+  .not-yet li { font-size: 0.9rem; color: #555; }
+  .divider { border: none; border-top: 1px solid #e0e0e0; margin: 2rem 0; }
+  .footer { font-size: 0.82rem; color: #666; text-align: center; padding-top: 1rem; }
+  em.label { color: #3B6D11; font-style: normal; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div class="farm">Bay Branch Farm</div>
+    <h1>Bushel — How the App Will Work</h1>
+    <div class="sub">A walkthrough for Annabel of what the app is going to do, and what it isn't.</div>
+    <div class="meta">
+      <span><strong>Date:</strong> May 2026</span>
+      <span><strong>Status:</strong> For your review</span>
+      <span><strong>For:</strong> Annabel</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>What Bushel is</h2>
+    <p class="lead">Bushel is your weekly inventory and ordering tool. It replaces tend.com for your seven wholesale customers — the two farm stands, the grocery store, and the three or four restaurants. It runs at <strong>order.baybranchfarm.com</strong>. The main farm site stays exactly where it is.</p>
+    <p>The whole app is built around your existing rhythm: post what's available Sunday or Monday, customers order through the week, deliveries and pickups happen Wednesday and Thursday. Nothing about that timing changes — Bushel just makes each step less manual.</p>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>The weekly rhythm</h2>
+    <div class="rhythm">
+      <div class="day">
+        <div class="when">Sun / Mon</div>
+        <div class="what">You update what's available and send out the weekly text.</div>
+      </div>
+      <div class="day">
+        <div class="when">Mon – Wed</div>
+        <div class="what">Customers tap their link and place orders. You watch them come in.</div>
+      </div>
+      <div class="day">
+        <div class="when">Tue / Wed</div>
+        <div class="what">Ordering closes (manually or on a schedule). You see the final list.</div>
+      </div>
+      <div class="day">
+        <div class="when">Wed / Thu</div>
+        <div class="what">You deliver or hand off pickups. Mark orders fulfilled. Export to Wave.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>What you'll do each week</h2>
+
+    <div class="role-card">
+      <div class="who"><strong>You</strong> — running the farm side. You'll do this from your laptop or your phone, whichever's handy.</div>
+
+      <h3>Sunday or Monday — open the week</h3>
+      <div class="step"><div class="n">1.</div><div class="body"><strong>Update inventory.</strong> Open the inventory page. It's laid out like a spreadsheet — one row per item, with quantity, unit, and price. There's a <em class="label">"Pre-fill from last week"</em> button that drops in the previous week's items so you're editing instead of starting blank. Adjust what's available, remove what isn't, add anything new.</div></div>
+      <div class="step"><div class="n">2.</div><div class="body"><strong>Open ordering.</strong> One toggle flips ordering on. Customers can see the list and start placing orders.</div></div>
+      <div class="step"><div class="n">3.</div><div class="body"><strong>Send the weekly text.</strong> Bushel shows you the customer list and a draft message with each customer's link. The list is sorted by priority, so your most important customers get it first. Tap a customer → your phone's Messages app opens with that customer's number and the message already typed. Tap Send. Move to the next one. Twenty-one taps gets the whole list out.</div></div>
+
+      <h3>Through the week — watch orders come in</h3>
+      <div class="step"><div class="n">4.</div><div class="body"><strong>Get a buzz when an order arrives.</strong> Bushel pings your phone each time a customer submits an order, so you don't have to keep checking.</div></div>
+      <div class="step"><div class="n">5.</div><div class="body"><strong>See the running list.</strong> The orders page shows everything that's come in this week, sortable by customer or item. You can spot-check anything as it lands.</div></div>
+      <div class="step"><div class="n">6.</div><div class="body"><strong>Watch for the oversell flag.</strong> If two customers both grab the last of something at the same time, Bushel lets the order through and flags it. You'll see a clear marker on that order so you can call the customer and sort it out — instead of one customer getting an awkward error mid-checkout.</div></div>
+
+      <h3>Tuesday or Wednesday — close the week</h3>
+      <div class="step"><div class="n">7.</div><div class="body"><strong>Close ordering.</strong> Flip it back off, or let the schedule do it. There's also an "open for two more hours" override if a customer asks for a late add.</div></div>
+      <div class="step"><div class="n">8.</div><div class="body"><strong>See the final picking list.</strong> One screen with everything to harvest, by item, totaled across orders.</div></div>
+
+      <h3>Wednesday or Thursday — fulfill</h3>
+      <div class="step"><div class="n">9.</div><div class="body"><strong>Deliver or hand off pickups.</strong> Each order is tagged delivery or pickup, with the address pre-filled or the pickup window the customer chose.</div></div>
+      <div class="step"><div class="n">10.</div><div class="body"><strong>Send pickup reminders</strong> the morning of, the same way as the weekly text — tap each customer, message opens pre-filled, send.</div></div>
+      <div class="step"><div class="n">11.</div><div class="body"><strong>Mark orders fulfilled</strong> as you finish.</div></div>
+      <div class="step"><div class="n">12.</div><div class="body"><strong>Export to Wave.</strong> One button gives you a CSV (or copies the lines to your clipboard) so you can paste straight into Wave for invoicing. Bushel does not bill the customer — Wave still does that part.</div></div>
+
+      <h3>Anytime — manage customers</h3>
+      <div class="step"><div class="n">·</div><div class="body">Add a new customer (name, contact, delivery address). Bushel makes them a personal ordering link.</div></div>
+      <div class="step"><div class="n">·</div><div class="body">Mark a customer as priority. Priority customers move to the top of every send list — weekly text, order confirmations, pickup reminders.</div></div>
+      <div class="step"><div class="n">·</div><div class="body">Regenerate that link if a customer ever needs a fresh one (lost phone, etc.).</div></div>
+      <div class="step"><div class="n">·</div><div class="body">Pause or remove a customer who isn't ordering this season.</div></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>What your customers will do</h2>
+
+    <div class="role-card">
+      <div class="who"><strong>Each customer</strong> — the buyer at a farm stand, the grocery store buyer, a restaurant chef. Most will be doing this on their phone.</div>
+
+      <div class="step"><div class="n">1.</div><div class="body"><strong>Get a text from you</strong> on Sunday or Monday with a link.</div></div>
+      <div class="step"><div class="n">2.</div><div class="body"><strong>Tap the link.</strong> Their phone opens Bushel and recognizes them automatically — no login, no password. The link is theirs and stays theirs week after week.</div></div>
+      <div class="step"><div class="n">3.</div><div class="body"><strong>See what's available.</strong> The week's inventory: each item with price, unit, and the quantity left.</div></div>
+      <div class="step"><div class="n">4.</div><div class="body"><strong>Build their order.</strong> Tap quantities up and down. A running total stays at the bottom.</div></div>
+      <div class="step"><div class="n">5.</div><div class="body"><strong>Choose delivery or pickup.</strong> Delivery is the default; their address is pre-filled. If they pick pickup, they choose one of four pickup windows.</div></div>
+      <div class="step"><div class="n">6.</div><div class="body"><strong>Submit.</strong> Confirmation screen on the spot, plus a quick follow-up text from Annabel once she's seen the order land.</div></div>
+      <div class="step"><div class="n">7.</div><div class="body"><strong>Get a reminder text</strong> the morning of pickup or delivery.</div></div>
+
+      <div class="callout callout-leaf"><strong>The customer experience is intentionally bare.</strong> No account creation, no password reset, no app to install. They tap the link in your text, place the order, and put the phone down. If you want to message them about a substitution or a delay, you text them the way you do today.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>About the texts</h2>
+    <p>Bushel doesn't send texts on its own. Instead, when it's time to send the weekly update, an order confirmation, or a pickup reminder, Bushel hands the message to your phone — pre-filled with the right recipient and the right wording — and you tap Send.</p>
+    <p>This sounds like a small distinction, but it's the difference between something we can ship next month and something that needs a multi-week carrier-approval gauntlet to send a few dozen texts a week. At your volume — about twenty-one messages a week — having you tap Send is the right trade.</p>
+    <p>Customers will reply to the texts the way they always have: directly to your phone. Nothing changes about that.</p>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>What Bushel will not do (in this version)</h2>
+    <div class="not-yet">
+      <h3>Out of scope for v1</h3>
+      <ul>
+        <li><strong>Payments.</strong> Wave still handles invoicing. Bushel exports the order list; Wave bills.</li>
+        <li><strong>Public signup.</strong> No "sign up to order" link for the general public — wholesale customers only, added by you.</li>
+        <li><strong>Per-customer pricing.</strong> One price per item this week. If you need to discount someone, do it on the Wave side.</li>
+        <li><strong>Customer-side order edits.</strong> If a customer wants to change an order after submitting, they text you and you adjust it. (Same as today.)</li>
+        <li><strong>Order history for customers.</strong> They can see this week's order, not past weeks.</li>
+        <li><strong>Delivery fees / minimum order.</strong> Open question — see below.</li>
+        <li><strong>Inventory snapshots / week-by-week comparisons.</strong> "Pre-fill from last week" is the only history.</li>
+        <li><strong>Email notifications.</strong> Texts only in v1.</li>
+      </ul>
+    </div>
+    <p style="font-size: 0.88rem; color: #666; margin-top: 0.6rem;">Most of these are deliberate v1 simplifications, not "no forever." If something here is a deal-breaker, that's exactly the kind of thing this review is for.</p>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>What we still need from you</h2>
+    <ul class="questions">
+      <li><strong>Pickup window times.</strong> We'll have four windows — what days and times work for you?</li>
+      <li><strong>Sunday or Monday text — preferred time?</strong> When do you want to be sending the weekly update?</li>
+      <li><strong>Open / close timing.</strong> Do you want a hard cutoff (e.g., orders close Tuesday at 8 PM), or do you want to leave ordering open all week and just close it manually before you start picking? Either works — the all-week version is simpler to build.</li>
+      <li><strong>Delivery minimum.</strong> Is there a dollar minimum for delivery? Or a free-delivery threshold? Or no rule at all?</li>
+      <li><strong>Final wording for the texts.</strong> We'll draft the weekly update, the order confirmation, and the pickup reminder — you'll get to read them and rewrite anything before they go out.</li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section">
+    <h2>What we'd like from you on this doc</h2>
+    <p>Three things, in order of usefulness:</p>
+    <ul class="questions">
+      <li><strong>Anything described here that's wrong</strong> — a step you don't actually do, a flow that doesn't match how you work.</li>
+      <li><strong>Anything missing</strong> — something you do every week that isn't covered, or something you want the app to do that isn't in here.</li>
+      <li><strong>Anything in the "not in v1" list that you'd actually need.</strong></li>
+    </ul>
+    <p>Don't worry about how it looks yet — that's a separate review with a clickable design preview. This is just about <em>what it does</em>.</p>
+  </div>
+
+  <hr class="divider">
+
+  <div class="footer">
+    Bay Branch Farm &nbsp;·&nbsp; baybranchfarm.com
+  </div>
+
+</div>
+</body>
+</html>
