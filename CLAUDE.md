@@ -142,6 +142,10 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - Strict mode. No `any`.
 - Generated Supabase types from `lib/supabase/types.ts`. Regenerate after every schema change.
 
+### Next.js 16 routing
+- `src/proxy.ts` is the middleware entry point — export name is `proxy`, not `middleware`. Do NOT create `src/middleware.ts`; Next.js 16 will reject both existing simultaneously.
+- Check `src/` structure before writing new auth/routing files.
+
 ### Components
 - Server Components by default. `'use client'` only when needed.
 - shadcn/ui in `components/ui/` — don't edit directly.
@@ -231,6 +235,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - `/kill-this` opens PR. Self-merge after review unless stakeholder review needed.
 - Keep ≤3 open PRs. Prefer 1.
 - Never two open PRs with migrations on the same table — merge one first.
+- **Stacking PRs is preferred** when tasks depend on each other. Branch the next task off the previous task branch (`git checkout -b task/X.Y-next task/X.Y-prev`), not off main. Only wait for the previous PR to merge when there's a migration conflict on the same table.
 
 ### Staging vs no-staging (DEC-008)
 
