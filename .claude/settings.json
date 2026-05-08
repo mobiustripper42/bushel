@@ -20,7 +20,11 @@
       "Bash(chmod *)",
       "Bash(curl *)",
       "Bash(supabase *)",
-      "mcp__ccd_session__mark_chapter"
+      "mcp__ccd_session__mark_chapter",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot"
     ],
     "deny": [
       "Bash(git reset --hard*)",
