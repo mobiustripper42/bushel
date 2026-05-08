@@ -121,6 +121,14 @@ For each pattern, note: **occurred / not found / inconclusive**.
 
 ---
 
+### P11 — Multi-hypothesis debugging without step-gating
+**Signal:** User message corrects or redirects Claude after Claude proposed 2+ simultaneous fixes during a manual testing sequence; or user explicitly asks for "one step at a time"
+**Why it hurts:** User runs the wrong step, gets a different error, and both parties lose track of which variable changed; prolongs debugging significantly
+**Fix:** When user reports a runtime error during manual testing, propose exactly one diagnostic check or one code change, then stop and wait for the result before the next step
+**Files:** `CLAUDE.md` (Workflow Notes section) — not a skill file
+
+---
+
 ## Step 3 — Look for new patterns
 
 Beyond P1–P10, scan for friction signals not yet on the list:
