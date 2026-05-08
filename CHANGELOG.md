@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.2.2] - 2026-05-08
+- PR #25: SMS pivot + spec-for-annabel review HTML
+
 ## [0.2.1] - 2026-05-08
 - PR #23: Phase 1.2 — RLS policies + pgTAP tests (service-role-as-gate, RLS-as-backstop)
 
