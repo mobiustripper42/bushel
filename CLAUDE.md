@@ -12,7 +12,7 @@ Roles:
 
 - **Frontend:** Next.js 16 (App Router), TypeScript strict, sailbook-style CSS (DEC-021)
 - **Backend:** Supabase (PostgreSQL + Auth + RLS) — no separate API server
-- **Notifications:** Twilio (toll-free SMS). Resend dropped (DEC-020).
+- **Notifications:** Operator-sent customer SMS via native `sms:` deep links — no third-party SMS provider (DEC-026). Admin order-arrival alert via transactional email (DEC-027); PWA push as stretch upgrade.
 - **Hosting:** Vercel (frontend), Supabase Cloud (database)
 - **Testing:** pgTAP (RLS), Playwright (integration, mobile/tablet/desktop), axe-core (a11y)
 - **Domain:** `order.baybranchfarm.com` (CNAME → Vercel); apex stays Astro/Netlify
@@ -22,7 +22,7 @@ Roles:
 | File | Purpose |
 |------|---------|
 | `docs/SPEC.md` | What we're building — scope, V1 vs V2 vs V3 |
-| `docs/DECISIONS.md` | Architectural decisions (DEC-001…DEC-024) |
+| `docs/DECISIONS.md` | Architectural decisions (DEC-001…DEC-027) |
 | `docs/USER_STORIES.md` | What each role does (TODO: B2B-reframe) |
 | `docs/PROJECT_PLAN.md` | Phases, scope, velocity. **Phase-boundary doc** — read at planning, written at retro. Current-phase tasks live in GitHub Issues. |
 | `docs/RETROSPECTIVES.md` | Phase-end retrospectives — written by `/retro` |

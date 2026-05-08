@@ -6,9 +6,9 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 ## DEC-001 — Stack
 
-**Decision:** Next.js 16 + TypeScript strict + Supabase + Twilio (toll-free SMS) + Vercel. baybranchfarm.com stays Astro on Netlify, untouched.
+**Decision:** Next.js 16 + TypeScript strict + Supabase + Vercel + transactional email (provider TBD). No third-party SMS — customer outbound is operator-sent via native `sms:` deep links. baybranchfarm.com stays Astro on Netlify, untouched.
 
-**Why:** User is fluent in Next.js. Supabase bundles Postgres + RLS + auth + realtime. Vercel is already paid. Resend dropped — see DEC-020.
+**Why:** User is fluent in Next.js. Supabase bundles Postgres + RLS + auth + realtime. Vercel is already paid. Twilio dropped — see DEC-026. Email/PWA-push admin alert — see DEC-027.
 
 ---
 
@@ -86,7 +86,7 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 **Decision:** No strict rejection. Insert order + items in a transaction, decrement product qty (allow negative), set `needs_reconciliation` flag if any line went oversold. Admin sees flagged orders highlighted; reconciles via text.
 
-**Why:** "Vegetables to friends, not heart medicine." May stay this way forever. Strict-rejection moved to Phase 8+ if needed.
+**Why:** "Vegetables to friends, not heart medicine." May stay this way forever. Strict-rejection moved to Phase 7+ if needed.
 
 ---
 
@@ -140,9 +140,13 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 ---
 
-## DEC-020 — Notifications channel: SMS-only in v1
+## DEC-020 — Notifications channel: SMS-only in v1 [SUPERSEDED]
 
-**Decision:** Resend dropped from stack. `notification_preference` enum on `customers` retained for v2 expansion to email. Admin alerts are SMS to Annabel's number.
+**Status:** Superseded 2026-05-08 by DEC-026 (customer outbound via operator-sent `sms:` deep links) and DEC-027 (admin order-arrival alert via email, with PWA push as upgrade).
+
+**Original decision:** Resend dropped from stack. `notification_preference` enum on `customers` retained for v2 expansion to email. Admin alerts are SMS to Annabel's number.
+
+**Why superseded:** Twilio's 10DLC compliance overhead (brand registration, campaign vetting, multi-week approval queue, ongoing fees) is disproportionate at ~21 messages/week. Pivoting customer outbound to operator-sent deep links keeps the work in the P2P regulatory perimeter at $0/mo. Admin order alerts move to transactional email since the operator-in-the-loop pattern doesn't apply to automated machine-to-Annabel messages.
 
 ---
 
@@ -214,7 +218,52 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 ---
 
+## DEC-026 — Customer outbound SMS: operator-sent native deep links
+
+**Decision:** Bushel does not send customer SMS itself. The admin UI generates `sms:+1XXXXXXXXXX?body=<encoded>` URIs and surfaces them as per-customer "Send" buttons. Operator taps a button → her native Messages app opens with the recipient and message body pre-filled → she taps Send. The send-queue UI tracks which customers have been marked sent for the current cycle (weekly update, order confirmation, pickup reminder).
+
+**Why:**
+- ~21 messages/week across 7 customers — Twilio's 10DLC compliance overhead (brand registration, campaign vetting, ~10–15 business-day approval, ongoing fees) is disproportionate.
+- Operator-sent from a personal handset is P2P, sitting outside the A2P regulatory perimeter (TCR, TCPA, carrier review).
+- Operator already does this manually today. The deep-link approach speeds up an existing behavior; it doesn't change who sends or how.
+- Customer replies route to the operator's cell directly, matching current behavior.
+
+**Trade-offs accepted:**
+- Manual send required per message. ~21 taps/week is fine; not viable at 50+ customers.
+- No carrier delivery receipts. Sent-status is "operator marked sent," not "carrier confirmed delivered."
+- Operator's personal number is the sender. If the operator ever wants Bushel-branded sender ID, that triggers A2P registration.
+
+**Send queue ordering:** Customers carry a `priority` column; the send queue lists customers in priority order so high-priority customers receive each cycle's message first. No enforced delay between sends — manual pacing diffuses the inventory-page load naturally.
+
+**Trigger to revisit:** ~50 messages/week, or operator wants automated unattended sends. At that point, register a Bushel 10DLC brand under the farm's EIN and migrate to A2P. Deferred to Phase 7+.
+
+**Supersedes:** DEC-020 (customer-outbound SMS path).
+
+---
+
+## DEC-027 — Admin order-arrival alert: email primary, PWA push as upgrade
+
+**Decision:** When a customer submits an order, Bushel sends a transactional email to the operator's address. Email push notifications on her phone deliver the buzz. Provider TBD (Resend or similar) — single recipient, low volume, no marketing.
+
+PWA push notification is a stretch upgrade: if reliable on Android (the operator's platform), wire it as the primary alert path with email as fallback.
+
+**Why:**
+- Order alert is application-to-person and automated — DEC-026's operator-in-the-loop pattern does not apply.
+- Email is the cheapest reliable path with no carrier or compliance overhead, and admin-only outbound keeps the customer side untouched.
+- One outbound recipient, volume measured in dozens per week — well under any free-tier limit.
+- PWA push is desirable (immediacy, no email-app dependence) and Android push is solid; worth attempting once the admin shell is a PWA install.
+
+**Trade-offs accepted:**
+- Email push latency depends on the operator's mail provider — typically seconds, occasionally a minute.
+- Re-introduces a transactional-email dependency the project had previously dropped (DEC-020). Limited in scope to admin-only.
+
+**Stretch upgrade:** PWA push for order alerts. If proven reliable, opens the door to a v2 "next-customer nudge" during send batches (Phase 7+).
+
+**Supersedes (in part):** DEC-020 (the "admin alerts are SMS" portion).
+
+---
+
 ## Open / Pending Product Owner Discussion
 
-- **Minimum delivery amount (in dollars).** Threshold below which delivery is unavailable, or above which delivery is free. Phase 8+ candidate.
-- **No open/close time?** Possibility of dropping the open/close toggle entirely (always open). Major scope reduction (eliminates 4b.1 + race specs in 4b.2). Needs deeper discussion before committing.
+- **Minimum delivery amount (in dollars).** Threshold below which delivery is unavailable, or above which delivery is free. Phase 7+ candidate.
+- **No open/close time?** Possibility of dropping the open/close toggle entirely (always open). Major scope reduction (eliminates 3.6 + race specs in 3.7). Needs deeper discussion before committing.

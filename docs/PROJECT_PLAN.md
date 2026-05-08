@@ -5,9 +5,9 @@ customers (2 farm stands, 1 grocery store, 3–4 restaurants) on a weekly
 Sun/Mon → Wed/Thu cadence.
 
 See also:
-- `docs/PROJECT_PLAN.html` — shiny version for the product owner
+- `docs/review/spec-for-annabel.html` — high-level review doc for the product owner (post-pivot)
 - `docs/SPEC.md` — original product spec (TODO: port from HTML)
-- `docs/DECISIONS.md` — architectural decisions (DEC-001…DEC-022)
+- `docs/DECISIONS.md` — architectural decisions (DEC-001…DEC-027)
 - `docs/USER_STORIES.md` — flows A/B/C, B2B-reframed (TODO)
 - `docs/BRAND.md` — voice, type, color (TODO)
 
@@ -31,12 +31,14 @@ Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
 ## v1 Total
 
-- **107 pts all-in** (with realtime live)
-- **102 pts** with 4c.1 (realtime) shipped behind a dark flag
+- **108 pts all-in** (with realtime live)
+- **103 pts** with 3.8 (realtime) shipped behind a dark flag
 
 **Time projection:**
-- Best case (0.15 hrs/pt): **~16 hrs** all-in / **~15 hrs** dark realtime
-- Conservative (0.35 hrs/pt): **~37 hrs** all-in / **~36 hrs** dark realtime
+- Best case (0.15 hrs/pt): **~16.2 hrs** all-in / **~15.5 hrs** dark realtime
+- Conservative (0.35 hrs/pt): **~37.8 hrs** all-in / **~36 hrs** dark realtime
+
+**Re-baselined 2026-05-08:** SMS pivot (DEC-026/027) reshaped the old Phase 5 (Notifications, 12 pt Twilio integration) into the new Phase 4 (Notifications, 11 pt deep-link + email), removing the multi-week carrier-approval risk from the critical path. The old Phase 3 (customers + tokens) and Phase 4 (public ordering) were combined into a single customer-side Phase 3, with a new 3.0 priority-column migration. Old Phases 6 and 7 renumbered to 5 and 6. Net: +1 pt, materially less schedule risk.
 
 ---
 
@@ -76,63 +78,60 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 ---
 
-## Phase 3 — Customer management + tokens (11 pts → ~1.65–3.85 hrs)
+## Phase 3 — Customer side (37 pts all-in / 32 pts with 3.8 dark → ~5.55–12.95 hrs)
+
+Customer management, tokenized URL access, and the public ordering experience. Combined from the prior Phase 3 (customers + tokens, 11 pts) and Phase 4 (public ordering, 24 pts), plus a new 3.0 priority-column migration. Both prior phases were small and coherent as one customer-side surface.
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 3.1 | Manual customer CRUD UI (admin); email/phone OR validation | 3 | TBD |
+| 3.0 | Customer `priority` column migration + types regenerated | 2 | TBD |
+| 3.1 | Manual customer CRUD UI (admin); priority field; email/phone OR validation | 3 | TBD |
 | 3.2 | Token generation, durable per-customer URL, regenerate button + thorough testing | 5 | TBD |
 | 3.3 | `/c/[token]` route validates token, sets cookie, identifies customer; thorough session testing | 3 | TBD |
+| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, pickup window picker) | 8 | TBD |
+| 3.5 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | TBD |
+| 3.6 | Open/close toggle + scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math | 5 | TBD (pending PO discussion) |
+| 3.7 | Closed/sold-out states; Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | TBD |
+| 3.8 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 3 | 5 | TBD |
 
 ---
 
-## Phase 4 — Public ordering (24 pts all-in / 19 pts with 4c.1 dark → ~3.6–8.4 hrs)
+## Phase 4 — Notifications (11 pts → ~1.65–3.85 hrs)
+
+Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via transactional email (DEC-027). No third-party SMS provider — no carrier compliance, no provisioning, no approval queue.
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 4a.1 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, pickup window picker) | 8 | TBD |
-| 4a.2 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | TBD |
-| 4b.1 | Open/close toggle + scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math | 5 | TBD (pending PO discussion) |
-| 4b.2 | Closed/sold-out states; Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | TBD |
-| 4c.1 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 4 | 5 | TBD |
+| 4.1 | `sms:` deep-link builder utility (URL-encode body + token, iOS/Android verified) | 2 | TBD |
+| 4.2 | Send-queue page: weekly update + order confirmation + pickup reminder modes; priority-ordered customer list (DEC-026); per-customer Send button + mark-as-sent state | 5 | TBD |
+| 4.3 | Order-arrival admin email alert: transactional send on order create; provider config (Resend or similar) | 2 | TBD |
+| 4.4 | Playwright spec: deep-link generation, customer ordering, mark-as-sent flow | 2 | TBD |
+
+**Stretch:** PWA push for the order-arrival alert (DEC-027 upgrade path). Wire if Android push proves reliable; otherwise email is the v1 path.
 
 ---
 
-## Phase 5 — Notifications (12 pts → ~1.8–4.2 hrs)
-
-SMS-only in v1 (DEC-020). Resend dropped.
+## Phase 5 — Order management (8 pts → ~1.2–2.8 hrs)
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 5.2 | SMS templates (weekly update, order confirmation, pickup reminder) via Twilio | 3 | TBD |
-| 5.3 | Send flow with preview + dispatch + history log | 3 | TBD |
-| 5.4 | Order confirmation + admin SMS alert: auto-send on order create | 2 | TBD |
-| 5.5 | Pickup reminder Vercel Cron: morning-of dispatch | 2 | TBD |
-| 5.6 | Playwright spec covering preview + send (boundary-mocked outbound) | 2 | TBD |
+| 5.1 | Order list (column sort + week filter); status update UI; `needs_reconciliation` rows highlighted regardless of sort | 3 | TBD |
+| 5.2 | Export to Wave: CSV download + copy-to-clipboard (TSV) | 3 | TBD |
+| 5.3 | Playwright spec: status transitions + export (clipboard read) | 2 | TBD |
 
 ---
 
-## Phase 6 — Order management (8 pts → ~1.2–2.8 hrs)
+## Phase 6 — Polish + go-live (10 pts → ~1.5–3.5 hrs)
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 6.1 | Order list (column sort + week filter); status update UI; `needs_reconciliation` rows highlighted regardless of sort | 3 | TBD |
-| 6.2 | Export to Wave: CSV download + copy-to-clipboard (TSV) | 3 | TBD |
-| 6.3 | Playwright spec: status transitions + export (clipboard read) | 2 | TBD |
+| 6.1 | Customer-side responsive sweep + brand polish + `ui-reviewer` pass + optional Claude design tooling pass | 5 | TBD |
+| 6.2 | Production env: Vercel env vars, transactional email service configured (provider, API key, single-recipient deny-list test), DNS for `order` confirmed, secrets | 2 | TBD |
+| 6.3 | UAT with Annabel; final fixes; structural issues defer to Phase 7+ | 3 | TBD |
 
 ---
 
-## Phase 7 — Polish + go-live (10 pts → ~1.5–3.5 hrs)
-
-| # | Task | Pts | Status |
-|---|---|---|---|
-| 7.1 | Customer-side responsive sweep + brand polish + `ui-reviewer` pass + optional Claude design tooling pass | 5 | TBD |
-| 7.2 | Production env: Vercel env vars, Twilio toll-free verified, DNS for `order` confirmed, secrets | 2 | TBD |
-| 7.3 | UAT with Annabel; final fixes; structural issues defer to Phase 8+ | 3 | TBD |
-
----
-
-## Phase 8+ (deferred / optional)
+## Phase 7+ (deferred / optional)
 
 - Wave API direct integration
 - Per-customer pricing
@@ -143,8 +142,10 @@ SMS-only in v1 (DEC-020). Resend dropped.
 - Delivery fee logic
 - Order history page for repeat customers
 - Strict-decrement / hard rejection (only if optimistic causes real pain)
-- Realtime inventory subscription (if 4c.1 shipped dark)
+- Realtime inventory subscription (if 3.8 shipped dark)
 - Weekly inventory snapshots / history
+- **PWA push: "next-customer nudge" during send batches** — wire after PWA push proves reliable for the order-arrival alert (DEC-027). Lets Annabel walk away mid-batch and get pinged for the next send.
+- **Bushel 10DLC brand registration + A2P migration** — trigger when volume crosses ~50 messages/week or operator wants automated unattended sends. Reverses DEC-026 in part; DEC-026 captures the trip-wire.
 
 ---
 
@@ -160,12 +161,12 @@ SMS-only in v1 (DEC-020). Resend dropped.
 
 ## Open Questions (pending product-owner discussion)
 
-- **Minimum delivery amount (dollars):** threshold for delivery, or free-delivery cutoff? Phase 8+ candidate.
-- **No open/close time?** Drop the toggle entirely (always open)? Major scope reduction — eliminates 4b.1 (~5 pts) and most of 4b.2. Needs deeper discussion before committing.
+- **Minimum delivery amount (dollars):** threshold for delivery, or free-delivery cutoff? Phase 7+ candidate.
+- **No open/close time?** Drop the toggle entirely (always open)? Major scope reduction — eliminates 3.6 (~5 pts) and most of 3.7. Needs deeper discussion before committing.
 - Specific Sun/Mon send time → Annabel fills in once cadence stabilizes
 - Specific four pickup window times → Annabel fills in
-- Final SMS copy → drafted in Phase 5 with feedback in preview UI
+- Final SMS copy → drafted in Phase 4 with feedback in preview UI
 - sailbook's exact CSS approach → confirm at start of Phase 0 (DEC-021)
-- GitHub Actions CI scope → revisit in Phase 7
-- Split admin into `admin.baybranchfarm.com` if surface grows → revisit at end of Phase 4
-- Realtime live or dark → decide at end of Phase 4
+- GitHub Actions CI scope → revisit in Phase 6
+- Split admin into `admin.baybranchfarm.com` if surface grows → revisit at end of Phase 3
+- Realtime live or dark → decide at end of Phase 3

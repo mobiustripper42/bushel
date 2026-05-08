@@ -9,7 +9,7 @@ Replaces tend.com for ~7 B2B customers (farm stands, grocery, restaurants) on a 
 - Next.js 16 (App Router) · TypeScript strict
 - Supabase (Postgres + Auth + RLS)
 - Tailwind v4 · shadcn/ui (radix-maia)
-- Twilio (toll-free SMS)
+- Native `sms:` deep links for operator-sent customer SMS · transactional email for admin alerts
 - Vercel · Supabase Cloud
 
 ## Getting started
