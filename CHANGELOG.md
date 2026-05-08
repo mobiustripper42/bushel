@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.3] - 2026-05-08
+- PR #28: Phase 1.4 — Admin shell layout, sidebar nav, sign-out action
+- PR #26: Phase 1.3 — Admin route group, proxy auth guard, is_admin escalation fix
+
 ## [0.2.2] - 2026-05-08
 - PR #25: SMS pivot + spec-for-annabel review HTML
 
