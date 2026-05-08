@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.0] - 2026-05-08 — Phase 1
+- 16 pts shipped across 3 sessions (1.13 hrs/pt)
+- See `docs/RETROSPECTIVES.md` for the full retro
+
 ## [0.2.3] - 2026-05-08
 - PR #28: Phase 1.4 — Admin shell layout, sidebar nav, sign-out action
 - PR #26: Phase 1.3 — Admin route group, proxy auth guard, is_admin escalation fix
