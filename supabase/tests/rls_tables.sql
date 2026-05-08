@@ -1,0 +1,226 @@
+begin;
+select plan(31);
+
+-- ============================================================
+-- Schema sanity: RLS enabled on all tables
+-- ============================================================
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.codes'::regclass),
+  true, 'RLS enabled on codes'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.users'::regclass),
+  true, 'RLS enabled on users'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.products'::regclass),
+  true, 'RLS enabled on products'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.pickup_windows'::regclass),
+  true, 'RLS enabled on pickup_windows'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.ordering_schedule'::regclass),
+  true, 'RLS enabled on ordering_schedule'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.orders'::regclass),
+  true, 'RLS enabled on orders'
+);
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.order_items'::regclass),
+  true, 'RLS enabled on order_items'
+);
+
+-- ============================================================
+-- Seed test data (postgres role bypasses RLS)
+-- ============================================================
+insert into public.customers (id, name, token) values
+  ('aaaaaaaa-0000-0000-0000-000000000001'::uuid, 'Customer A', 'token-a'),
+  ('aaaaaaaa-0000-0000-0000-000000000002'::uuid, 'Customer B', 'token-b');
+
+insert into public.products (id, name, unit, price_cents, qty_available, is_available) values
+  ('bbbbbbbb-0000-0000-0000-000000000001'::uuid, 'Kale', 'bunch', 300, 10, true),
+  ('bbbbbbbb-0000-0000-0000-000000000002'::uuid, 'Hidden Item', 'each', 500, 5, false);
+
+insert into public.pickup_windows (id, label, day_of_week, start_time, end_time, is_active) values
+  ('cccccccc-0000-0000-0000-000000000001'::uuid, 'Wed 2–4 PM', 3, '14:00', '16:00', true),
+  ('cccccccc-0000-0000-0000-000000000002'::uuid, 'Inactive Window', 4, '10:00', '12:00', false);
+
+insert into public.orders (id, customer_id, week_of, fulfillment_type, status) values
+  ('dddddddd-0000-0000-0000-000000000001'::uuid,
+   'aaaaaaaa-0000-0000-0000-000000000001'::uuid, '2026-05-04', 'delivery', 'new'),
+  ('dddddddd-0000-0000-0000-000000000002'::uuid,
+   'aaaaaaaa-0000-0000-0000-000000000002'::uuid, '2026-05-04', 'delivery', 'new');
+
+insert into public.order_items (order_id, product_id, qty, unit_price_cents) values
+  ('dddddddd-0000-0000-0000-000000000001'::uuid,
+   'bbbbbbbb-0000-0000-0000-000000000001'::uuid, 2, 300),
+  ('dddddddd-0000-0000-0000-000000000002'::uuid,
+   'bbbbbbbb-0000-0000-0000-000000000001'::uuid, 1, 300);
+
+-- ============================================================
+-- codes
+-- ============================================================
+set local role anon;
+select isnt_empty($$ select * from public.codes $$, 'anon can read codes');
+reset role;
+
+set local role authenticated;
+select isnt_empty($$ select * from public.codes $$, 'authenticated can read codes');
+reset role;
+
+-- ============================================================
+-- products
+-- ============================================================
+set local role anon;
+select isnt_empty(
+  $$ select * from public.products where is_available = true $$,
+  'anon can read available products'
+);
+select is_empty(
+  $$ select * from public.products where is_available = false $$,
+  'anon cannot read unavailable products'
+);
+select throws_ok(
+  $$ insert into public.products (name, unit, price_cents) values ('X', 'each', 100) $$,
+  '42501', null, 'anon cannot insert products'
+);
+reset role;
+
+set local role authenticated;
+select isnt_empty($$ select * from public.products $$, 'authenticated can read all products');
+select lives_ok(
+  $$ insert into public.products (name, unit, price_cents, qty_available)
+     values ('Test Product', 'lb', 200, 5) $$,
+  'authenticated can insert products'
+);
+reset role;
+
+-- ============================================================
+-- pickup_windows
+-- ============================================================
+set local role anon;
+select isnt_empty(
+  $$ select * from public.pickup_windows where is_active = true $$,
+  'anon can read active pickup windows'
+);
+select is_empty(
+  $$ select * from public.pickup_windows where is_active = false $$,
+  'anon cannot read inactive pickup windows'
+);
+reset role;
+
+set local role authenticated;
+select isnt_empty($$ select * from public.pickup_windows $$, 'authenticated can read all pickup windows');
+reset role;
+
+-- ============================================================
+-- ordering_schedule
+-- ============================================================
+set local role anon;
+select isnt_empty($$ select * from public.ordering_schedule $$, 'anon can read ordering_schedule');
+-- UPDATE with no matching policy silently affects 0 rows; verify value is unchanged
+update public.ordering_schedule set is_open = true;
+select is(
+  (select is_open from public.ordering_schedule),
+  false,
+  'anon cannot update ordering_schedule (value unchanged after attempt)'
+);
+reset role;
+
+set local role authenticated;
+select lives_ok(
+  $$ update public.ordering_schedule set is_open = false $$,
+  'authenticated can update ordering_schedule'
+);
+reset role;
+
+-- ============================================================
+-- customers
+-- ============================================================
+set local role anon;
+select is_empty($$ select * from public.customers $$, 'anon cannot read customers');
+select throws_ok(
+  $$ insert into public.customers (name, token) values ('X', 'token-x') $$,
+  '42501', null, 'anon cannot insert customers'
+);
+reset role;
+
+set local role authenticated;
+select isnt_empty($$ select * from public.customers $$, 'authenticated can read customers');
+reset role;
+
+-- ============================================================
+-- orders — customer self-read via app.customer_id session var
+-- ============================================================
+set local role anon;
+
+-- No session var set: cannot read any orders
+select is_empty(
+  $$ select * from public.orders $$,
+  'anon with no session var cannot read orders'
+);
+
+-- Session var set to Customer A: can read only their order
+select set_config('app.customer_id', 'aaaaaaaa-0000-0000-0000-000000000001', true);
+select is(
+  (select count(*)::int from public.orders),
+  1,
+  'anon with customer_id sees only their own orders'
+);
+select is(
+  (select customer_id from public.orders limit 1),
+  'aaaaaaaa-0000-0000-0000-000000000001'::uuid,
+  'anon sees correct customer order'
+);
+
+-- Cannot insert orders directly
+select throws_ok(
+  $$ insert into public.orders (customer_id, week_of, fulfillment_type, status)
+     values ('aaaaaaaa-0000-0000-0000-000000000001', '2026-05-11', 'delivery', 'new') $$,
+  '42501', null, 'anon cannot insert orders'
+);
+
+reset role;
+
+-- Authenticated sees all orders
+set local role authenticated;
+select is(
+  (select count(*)::int from public.orders),
+  2,
+  'authenticated can read all orders'
+);
+reset role;
+
+-- ============================================================
+-- order_items — customer self-read follows their orders
+-- ============================================================
+set local role anon;
+
+select set_config('app.customer_id', 'aaaaaaaa-0000-0000-0000-000000000001', true);
+select is(
+  (select count(*)::int from public.order_items),
+  1,
+  'anon with customer_id sees only their own order_items'
+);
+
+select set_config('app.customer_id', '', true);
+select is_empty(
+  $$ select * from public.order_items $$,
+  'anon with no session var cannot read order_items'
+);
+
+reset role;
+
+set local role authenticated;
+select is(
+  (select count(*)::int from public.order_items),
+  2,
+  'authenticated can read all order_items'
+);
+reset role;
+
+select * from finish();
+rollback;
