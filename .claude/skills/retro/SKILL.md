@@ -77,6 +77,35 @@ Ask the user three questions, one at a time:
 
 Capture verbatim — do not summarize or rewrite.
 
+## Step 4.5 — PM retro commentary
+
+The user's answers go in cold storage in Step 5; before that, give them something to react to from `@pm`. The agent has visibility you don't bring fresh to the retro — pace vs prior phases, session-file gotchas, scope-drift it can spot.
+
+Invoke `@pm` (Sonnet) with the full retro context. Pass:
+
+- **Phase number + name** (from Step 0)
+- **Metrics** (from Step 2): duration in hours, points completed vs planned, velocity (hrs/pt), sessions-touched count
+- **User's verbatim answers** (from Step 4): all three
+- **Session file paths** in the phase window (let `@pm` read them itself for the in-the-trenches detail)
+- **Closed issues** (from Step 1's listing): numbers, titles, points labels, any descoped/moved
+- **Reference:** `docs/RETROSPECTIVES.md` for cross-phase comparison
+
+`@pm`'s "Phase retro commentary" responsibility (see `pm.md`) covers the rest — 3–5 short paragraphs on pace, scope, patterns, a reaction to the user's answers (not a paraphrase), and a forward-looking note. Tone is allowed to be dry per the project's `CLAUDE.md §Tone`.
+
+When `@pm` returns, show the commentary verbatim to the user:
+
+> **PM read on Phase \<N\>:**
+>
+> \<commentary\>
+>
+> Use it (a), edit (e), or skip (s)?
+
+- **Use (a):** carry the commentary as-is into Step 5.
+- **Edit (e):** ask the user "What would you change?" — accept inline edits or a full rewrite paste, then carry the edited version forward.
+- **Skip (s):** carry an explicit "skip" sentinel forward; Step 5 omits the `### PM read` section entirely.
+
+This is post-answers on purpose — putting `@pm` in front of your reflection would prime your own answers, which makes "what didn't" recall worse. The order matters; don't reorder lightly.
+
 ## Step 5 — Append to RETROSPECTIVES.md
 
 If `docs/RETROSPECTIVES.md` doesn't exist, create it with a header. Append:
@@ -100,7 +129,12 @@ If `docs/RETROSPECTIVES.md` doesn't exist, create it with a header. Append:
 
 ### Scope changes
 - [List any tasks added mid-phase, moved out, or descoped]
+
+### PM read
+<commentary from Step 4.5, verbatim or edited>
 ```
+
+If the user chose **skip** in Step 4.5, omit the `### PM read` section entirely — don't write an empty header.
 
 ## Step 6 — Commit and push
 

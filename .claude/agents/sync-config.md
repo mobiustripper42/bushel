@@ -18,6 +18,24 @@ Same classifier, two directions (DEC-003). The hard part — deciding "structura
 
 The invoking skill passes `direction: push` or `direction: pull` in your prompt. If the direction is missing or ambiguous, ASK before doing anything. Never guess — applying changes in the wrong direction silently overwrites the wrong file.
 
+## Mode parameter
+
+The invoking caller passes `mode: interactive` (default) or `mode: auto`.
+
+- **`mode: interactive`** — the original behavior. Step 3 presents a table and asks "Apply? (y/n)" per backport hunk and "Keep watching, or act now?" per pattern flag. Used by `/push-seeds`, `/pull-seeds`, and any direct human invocation.
+- **`mode: auto`** — non-interactive automation. Used by the nightly sync Routine (DEC-010). Behavior changes:
+  - Skip Step 3 prompts entirely. Make your own judgment calls.
+  - Apply every hunk classified as **backport** / **forward-port**. Skip every **skip** hunk silently.
+  - Pattern **flag** entries are recorded in the Step 6 report only — never applied, never extracted.
+  - When in doubt about a hunk's classification, default to **skip**, not backport. Human review of the resulting PR is the safety net; over-skipping is recoverable on the next run, over-backporting pollutes the template.
+  - Stage commits with one of these literal message formats (no placeholders — substitute the actual values):
+    - **PUSH:** `sync-config: push backport from <repo>` (e.g. `sync-config: push backport from bushel`)
+    - **PULL:** `sync-config: pull propagate from seeds` (no `<repo>` — pull always sources from seeds)
+  One commit per source repo per direction. No empty commits.
+  - Do NOT push, do NOT open a PR. The calling Routine handles git operations.
+
+If `mode` is missing, default to `interactive`. If `mode: auto` is requested but `direction` is also missing or ambiguous, STOP — auto mode requires both parameters resolved upfront.
+
 ## Context You Need
 
 - `<seeds>/dev/` — template for dev projects (Next.js + Supabase shape)
@@ -75,10 +93,16 @@ Output a table:
 | File | Change summary | Classification | Action |
 |------|----------------|----------------|--------|
 
-For each **backport** (push) / **forward-port** (pull), show the diff hunk and ask: "Apply? (y/n)"
-For each **pattern flag**, describe what you're seeing and ask: "Keep watching, or act now?"
+In `mode: interactive`:
+- For each **backport** (push) / **forward-port** (pull), show the diff hunk and ask: "Apply? (y/n)"
+- For each **pattern flag**, describe what you're seeing and ask: "Keep watching, or act now?"
+- Wait for user response on each before proceeding.
 
-Wait for user response on each before proceeding.
+In `mode: auto`:
+- Emit the table to stdout but do NOT prompt.
+- Apply every **backport**/**forward-port** automatically in Step 4.
+- Pattern flags are recorded in Step 6 only — never applied.
+- Continue straight through to Step 4.
 
 ### Step 4 — Apply approved changes
 
@@ -125,11 +149,11 @@ Remind the user to review the diff before committing. For PUSH, that's the seeds
 
 ## Behavior
 
-- Default to skepticism on backports. It's easier to add to the template later than to unwind a pollution event.
-- Never act on "pattern flags" without explicit approval. The whole reason `shared/` doesn't exist yet is that premature extraction is worse than duplication.
-- When classifying, if you're not sure whether something is structural or project-specific, ask before deciding.
+- Default to skepticism on backports. It's easier to add to the template later than to unwind a pollution event. Even more so in `mode: auto` — when you can't ask, default to skip.
+- Never act on "pattern flags" without explicit approval. The whole reason `shared/` doesn't exist yet is that premature extraction is worse than duplication. In `mode: auto`, "explicit approval" is impossible by definition — flags get reported, never acted on.
+- In `mode: interactive`, when classifying, if you're not sure whether something is structural or project-specific, ask before deciding. In `mode: auto`, default to skip and surface the ambiguity in the Step 6 report so the PR reviewer can make the call.
 - Be specific in your output. File paths, line numbers, exact hunks. Don't paraphrase diffs.
-- One run, one commit per repo. Don't mix backports and bug fixes in the same commit.
+- One run, one commit per repo per direction. Don't mix backports and bug fixes in the same commit.
 
 ## What You Don't Do
 
