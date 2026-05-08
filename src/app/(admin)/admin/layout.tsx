@@ -82,8 +82,8 @@ export default function AdminShellLayout({
           flexDirection: "column",
           position: "sticky",
           top: 0,
-          height: "100vh",
-          overflow: "hidden",
+          height: "100dvh",
+          overflowY: "auto",
         }}
       >
         {/* Brand mark */}
