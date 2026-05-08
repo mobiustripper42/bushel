@@ -24,8 +24,9 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Touch auth.getUser() to refresh the session cookie if needed.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return supabaseResponse;
+  return { response: supabaseResponse, user };
 }

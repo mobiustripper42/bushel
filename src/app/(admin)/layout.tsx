@@ -16,11 +16,16 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  // Proxy already called getUser() for session refresh — this is the second call per request.
+  const { data: profile, error } = await supabase
     .from("users")
     .select("is_admin")
     .eq("id", user.id)
     .single();
+
+  if (error) {
+    redirect("/login?error=auth_error");
+  }
 
   if (!profile?.is_admin) {
     redirect("/");
