@@ -38,7 +38,7 @@ Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 - Best case (0.15 hrs/pt): **~16.2 hrs** all-in / **~15.5 hrs** dark realtime
 - Conservative (0.35 hrs/pt): **~37.8 hrs** all-in / **~36 hrs** dark realtime
 
-**Re-baselined 2026-05-08:** SMS pivot (DEC-026/027) reshaped the notifications phase from a 12pt Twilio-integration phase into the new 11pt Phase 4 (deep-link + email), removing the multi-week carrier-approval risk from the critical path. The prior Phase 3 (customers + tokens) and Phase 4 (public ordering) were combined into a single customer-side Phase 3, with a new 3.0 priority-column migration. Phases 6 and 7 renumbered to 5 and 6. Net: +1 pt, materially less schedule risk.
+**Re-baselined 2026-05-08:** SMS pivot (DEC-026/027) reshaped the old Phase 5 (Notifications, 12 pt Twilio integration) into the new Phase 4 (Notifications, 11 pt deep-link + email), removing the multi-week carrier-approval risk from the critical path. The old Phase 3 (customers + tokens) and Phase 4 (public ordering) were combined into a single customer-side Phase 3, with a new 3.0 priority-column migration. Old Phases 6 and 7 renumbered to 5 and 6. Net: +1 pt, materially less schedule risk.
 
 ---
 

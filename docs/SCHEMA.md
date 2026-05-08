@@ -77,7 +77,7 @@ B2B customers. Authenticate via tokenized URL — no Supabase Auth account (DEC-
 | name | text | NOT NULL | | Contact name |
 | business_name | text | NULL | | Farm stand / restaurant name |
 | phone | text | NULL | | E.164 format; required if notification_preference = 'sms' |
-| email | text | NULL | | Reserved for v2 email support (DEC-020) |
+| email | text | NULL | | Reserved for v2 customer email channel (DEC-020 superseded; v1 admin alerts use a separate transactional address per DEC-027) |
 | notification_preference | text | NOT NULL | 'sms' | CHECK IN ('sms', 'email', 'none') |
 | token | text | NOT NULL | | Secure random; regeneratable (DEC-004, DEC-005) |
 | delivery_address | text | NULL | | Fixed per customer; copied to order at placement (DEC-008) |
@@ -180,6 +180,6 @@ Indexes:
 
 - **`qty` integer on order_items** — whole-unit ordering only. Works if Bay Branch sells in pre-packed denominations ("1 lb bag" × N). If fractional weight ordering is ever needed, migrate to `numeric(10,2)`.
 - **Pickup constraint app-side** — `pickup_window_id` required when `fulfillment_type = 'pickup'` is enforced in application code in V1, not a DB CHECK. Simple enough at this scale.
-- **`notification_preference` text + CHECK** — retained flexible for v2 email expansion (DEC-020). Could move into `codes` when email lands; CHECK constraint is sufficient for now.
+- **`notification_preference` text + CHECK** — retained flexible for a v2 customer email channel (placeholder; DEC-020 superseded by DEC-026/027 — v1 customer outbound is operator-sent SMS only). Could move into `codes` when email customer-side lands; CHECK constraint is sufficient for now.
 - **`codes` table, no DB FK** — `orders.fulfillment_type` and `orders.status` reference `codes` by convention, app-enforced. Avoids composite FK ugliness on `orders`.
 - **`ordering_schedule` is inert until Phase 3.6** — table shape is defined here; cron logic and open/close wiring land in Phase 3.6.
