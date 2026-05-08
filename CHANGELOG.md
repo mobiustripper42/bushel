@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.2.1] - 2026-05-08
+- PR #23: Phase 1.2 — RLS policies + pgTAP tests (service-role-as-gate, RLS-as-backstop)
+
 ## [0.2.0] - 2026-05-07 — Phase 0
 - 20 pts shipped across 5 sessions (0.66 hrs/pt)
 - See `docs/RETROSPECTIVES.md` for the full retro
