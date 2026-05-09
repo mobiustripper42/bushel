@@ -60,18 +60,29 @@ For each relevant file pair, diff project-live against seeds-template:
 - Skills: `.claude/skills/<name>/SKILL.md` vs `<seeds>/dev/claude/skills/<name>/SKILL.md`
 - Agents: `.claude/agents/<name>.md` vs `<seeds>/dev/claude/agents/<name>.md`
 - Project docs: `docs/<name>.md` vs `<seeds>/dev/claude/docs/<name>.md` (or `domain/` for non-dev projects)
+- Project root `CLAUDE.md` vs `<seeds>/dev/claude/CLAUDE.md` — the project's own file is heavily customized (stack, role descriptions, project-specific commands), but the template has structural sections (`§Migration Protocol`, `§Versioning`, `§PR Workflow`, `§Tone`, `§Verbosity`, `§Cost and Waste`, etc.) that propagate as new headers or amended subsections. Diff and hunk-classify per the rubric below; never blanket-skip this pair.
 
 The diff itself is direction-symmetric — same hunks, same classification rubric. Direction only matters at apply time (Step 4).
 
+**Never blanket-skip a file** that has a corresponding template, even if the project's copy is heavily customized. Hunk-classify the diff. Files like `docs/BRAND.md`, `docs/PROJECT_PLAN.md`, `docs/RETROSPECTIVES.md`, and `CLAUDE.md` carry both project substitutions AND structural template content; treating them as 100%-project-specific blanks out the structural channel and was the failure mode of the 2026-05-08 first run.
+
 ### Step 2 — Classify each diff hunk
 
-For every changed hunk, classify:
+For every changed hunk, first label its **provenance** by where the content lives:
+
+- **Project-only** — the hunk's content is in the project file but absent from the template. The project either filled in a `[placeholder]` slot (concrete project text where the template has a blank) OR added structure the template doesn't have.
+- **Template-only** — the hunk's content is in the template but absent from the project file. The template added something the project hasn't received yet — typically a structural improvement.
+- **Both-modified** — both sides have non-matching content for the same logical hunk. Project customized AND template diverged at the same place.
+
+Then classify each hunk into one of three actions:
 
 **Skip — project-specific substitution:**
 - Project name token replacement (e.g., "SailBook" → "[Project]")
 - Hardcoded deadlines, season references, client names
 - Project-specific file paths or schema references
 - Stack choices specific to this project's domain
+- Concrete content filling in a `[placeholder]` slot
+- **Default action for `Project-only` hunks in PULL direction** (and for `Both-modified` in `mode: auto` — see below)
 
 **Backport — structural improvement:**
 - New step added to a skill
@@ -80,18 +91,24 @@ For every changed hunk, classify:
 - Additions to session log format, commit message format, etc.
 - New branching or conditional behavior
 - Improvements to agent prompts or review checklists
+- New section header / subsection that isn't `[placeholder]` content
+- **Default action for `Template-only` hunks in PULL direction** (and `Project-only` hunks in PUSH direction, after generification)
 
 **Flag — pattern emerging:**
 - A change that looks useful in BOTH `dev/` and `domain/` contexts
 - Content that could sensibly live in a future `shared/` location
 - Do NOT extract shared content automatically. Flag it and describe the pattern.
 
+The provenance + action together resolve most hunks unambiguously. For genuinely uncertain hunks (e.g. a `Both-modified` where it's unclear whether the project intentionally diverged from a structural template change or accidentally drifted), classify as **Flag** in `mode: interactive` (ask the user) or **Skip** in `mode: auto` (the PR is the safety net — over-skipping is recoverable next run, over-applying pollutes).
+
 ### Step 3 — Present findings
 
 Output a table:
 
-| File | Change summary | Classification | Action |
-|------|----------------|----------------|--------|
+| File | Hunk | Provenance | Classification | Action |
+|------|------|------------|----------------|--------|
+
+`Hunk` is a one-line summary of the changed content (e.g. `"## Voice" body diverged`, `new "## Color tokens" section`, `[placeholder] filled with "We write in second person..."`). `Provenance` is one of `Project-only` / `Template-only` / `Both-modified`. `Classification` is `Skip` / `Backport` / `Flag`. `Action` is what you actually did/will do (`Skipped`, `Forward-ported`, `Backported`, `Flagged in PR body`).
 
 In `mode: interactive`:
 - For each **backport** (push) / **forward-port** (pull), show the diff hunk and ask: "Apply? (y/n)"
