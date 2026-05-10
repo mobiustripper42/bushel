@@ -120,8 +120,6 @@ select is_empty(
 );
 reset role;
 
-reset role;
-
 set local role authenticated;
 select isnt_empty($$ select * from public.pickup_windows $$, 'authenticated can read all pickup windows');
 reset role;
