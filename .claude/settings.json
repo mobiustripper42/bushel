@@ -20,6 +20,8 @@
       "Bash(chmod *)",
       "Bash(curl *)",
       "Bash(supabase *)",
+      "Bash(eval *)",
+      "Bash(node *)",
       "mcp__ccd_session__mark_chapter",
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_resize",

@@ -291,6 +291,7 @@ Auto-maintained by `/its-dead`, `/retro`, and `/bump-major`. Don't edit by hand 
 - **Diagnostic commands** (build, lint, type, test): run directly.
 - **Environment-changing commands** (npm install, migrations, push, deploys): output for user to run.
 - **Never rebase a task branch with commits on origin.** Use GitHub's "Update branch" at merge time.
+- **Debugging CI failures:** Before any multi-step local debug (spawning servers, reading cookies, modifying middleware), confirm the environment is functional: "Can you run `npx playwright test` locally right now? What env vars are set?" One environmental check before any code change.
 - **Bug reports:** create a GitHub issue, label `bug`, add to current or next phase.
 
 ## Approval Before Action (all tasks)
