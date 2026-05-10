@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(37);
 
 -- ============================================================
 -- Schema sanity: RLS enabled on all tables
@@ -32,6 +32,14 @@ select is(
   (select relrowsecurity from pg_class where oid = 'public.order_items'::regclass),
   true, 'RLS enabled on order_items'
 );
+
+-- ============================================================
+-- Schema sanity: Phase 2.0a columns
+-- ============================================================
+select col_not_null('public', 'products', 'category', 'products.category is not null');
+select col_has_default('public', 'products', 'category', 'products.category has a default');
+select col_not_null('public', 'customers', 'send_weekly_link', 'customers.send_weekly_link is not null');
+select col_has_default('public', 'customers', 'send_weekly_link', 'customers.send_weekly_link has a default');
 
 -- ============================================================
 -- Seed test data (postgres role bypasses RLS)
@@ -110,8 +118,6 @@ select is_empty(
   $$ select * from public.pickup_windows where is_active = false $$,
   'anon cannot read inactive pickup windows'
 );
-reset role;
-
 reset role;
 
 set local role authenticated;

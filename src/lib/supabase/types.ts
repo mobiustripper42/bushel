@@ -64,8 +64,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
-          notification_preference: string
           phone: string | null
+          send_weekly_link: boolean
           token: string
           updated_at: string
         }
@@ -77,8 +77,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          notification_preference?: string
           phone?: string | null
+          send_weekly_link?: boolean
           token: string
           updated_at?: string
         }
@@ -90,8 +90,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
-          notification_preference?: string
           phone?: string | null
+          send_weekly_link?: boolean
           token?: string
           updated_at?: string
         }
@@ -270,6 +270,7 @@ export type Database = {
       }
       products: {
         Row: {
+          category: string
           created_at: string
           description: string | null
           id: string
@@ -282,6 +283,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -294,6 +296,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string
           created_at?: string
           description?: string | null
           id?: string
