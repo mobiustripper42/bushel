@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  globalSetup: "./tests/global-setup",
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
@@ -18,10 +19,14 @@ export default defineConfig({
     },
     {
       name: "tablet",
+      // Admin is desktop-only (DEC-019); admin specs run on desktop project only.
+      testIgnore: ["**/admin*.spec.ts"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 768, height: 1024 } },
     },
     {
       name: "mobile",
+      // Admin is desktop-only (DEC-019); admin specs run on desktop project only.
+      testIgnore: ["**/admin*.spec.ts"],
       use: { ...devices["iPhone 13"], browserName: "webkit", viewport: { width: 375, height: 812 } },
     },
   ],
