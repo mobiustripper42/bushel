@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.2] - 2026-05-10
+- PR #37: Phase 2.0a — UX/schema audit: add products.category, replace notification_preference with send_weekly_link
+
 ## [0.3.1] - 2026-05-08
 - PR #29: read-the-tape session 9 — workflow improvements (P3/P10, CX1, CX2, P11)
 
