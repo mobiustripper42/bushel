@@ -75,8 +75,8 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 2.1 | Inventory editor (spreadsheet-style row form); Playwright spec rolled in | 5 | TBD |
-| 2.2 | "Pre-populate from last week" action (simple reset, no snapshots in v1) | 2 | TBD |
+| 2.1 | Inventory editor (spreadsheet-style row form); Playwright spec rolled in | 5 | [#32](https://github.com/mobiustripper42/bushel/issues/32) |
+| 2.2 | "Pre-populate from last week" action (simple reset, no snapshots in v1) | 2 | [#33](https://github.com/mobiustripper42/bushel/issues/33) |
 
 ---
 
