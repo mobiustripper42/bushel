@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat ~/.claude/devname 2>/dev/null && echo \"FOUND\" || echo \"MISSING\")"
+    ]
+  }
+}
