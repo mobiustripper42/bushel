@@ -1,6 +1,6 @@
 ---
 name: tape-reader
-description: Analyzes session JSONL transcripts for workflow anti-patterns and proposes targeted improvements to skill and agent files. Invoked by /read-the-tape. Covers known patterns P1–P10 and surfaces new candidates to grow its own checklist.
+description: Analyzes session JSONL transcripts for workflow anti-patterns and proposes targeted improvements to skill and agent files. Invoked by /read-the-tape. Covers known patterns P1–P11 and surfaces new candidates to grow its own checklist.
 tools: Read, Edit, Write, Bash, Glob, Grep
 ---
 
@@ -131,7 +131,7 @@ For each pattern, note: **occurred / not found / inconclusive**.
 
 ## Step 3 — Look for new patterns
 
-Beyond P1–P10, scan for friction signals not yet on the list:
+Beyond P1–P11, scan for friction signals not yet on the list:
 
 - Any tool call that failed and was retried 2+ times
 - The same file being read multiple times in the same session
@@ -194,7 +194,7 @@ If nothing was approved, skip the PR entirely. Report findings only.
 If Step 3 found new patterns, list them clearly:
 
 > **Candidate patterns for @tape-reader:**
-> - CX: [description] — suggest adding as P11
+> - CX: [description] — suggest adding as P12
 >
 > To add: edit `.claude/agents/tape-reader.md` and add to the known-patterns section. Then `/push-seeds` to backport.
 
