@@ -4,22 +4,29 @@ import { mkdir } from "fs/promises";
 
 export const TEST_ADMIN_EMAIL = "test-admin@bushel.test";
 const TEST_ADMIN_PASSWORD = "BushelTest1!";
-const AUTH_STORAGE_KEY = "supabase.auth.token";
 const MAX_CHUNK_SIZE = 3180;
+
+// @supabase/ssr v0.10+ derives the storage key from the project hostname:
+// sb-<hostname[0]>-auth-token (e.g. sb-nnmfubmlvnkouxxfxxlh-auth-token for remote,
+// sb-127-auth-token for local). Hard-coding "supabase.auth.token" breaks the lookup.
+function storageKeyFromUrl(supabaseUrl: string): string {
+  return `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
+}
 
 function sessionToCookies(
   session: object,
+  storageKey: string,
 ): Array<{ name: string; value: string }> {
   const encoded =
     "base64-" +
     Buffer.from(JSON.stringify(session), "utf-8").toString("base64url");
   if (encoded.length <= MAX_CHUNK_SIZE) {
-    return [{ name: AUTH_STORAGE_KEY, value: encoded }];
+    return [{ name: storageKey, value: encoded }];
   }
   const chunks: Array<{ name: string; value: string }> = [];
   for (let i = 0, offset = 0; offset < encoded.length; i++, offset += MAX_CHUNK_SIZE) {
     chunks.push({
-      name: `${AUTH_STORAGE_KEY}.${i}`,
+      name: `${storageKey}.${i}`,
       value: encoded.slice(offset, offset + MAX_CHUNK_SIZE),
     });
   }
@@ -85,7 +92,7 @@ export default async function globalSetup() {
   }
 
   // Inject session into browser context via @supabase/ssr cookie format
-  const sessionCookies = sessionToCookies(signInData.session);
+  const sessionCookies = sessionToCookies(signInData.session, storageKeyFromUrl(supabaseUrl));
   const hostname = new URL(baseURL).hostname;
   const secure = baseURL.startsWith("https://");
 
