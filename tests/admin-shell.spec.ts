@@ -31,6 +31,12 @@ test.describe("admin shell — authenticated", () => {
     const customersLink = page.getByRole("link", { name: /customers/i });
     await expect(customersLink).not.toHaveAttribute("aria-current");
   });
+});
+
+// Isolated from the shared-session block — sign-out invalidates the refresh
+// token server-side (scope: global), which would corrupt retries of sibling tests.
+test.describe("admin shell — sign-out", () => {
+  test.use({ storageState: ADMIN_STORAGE_STATE });
 
   test("sign-out redirects to /login", async ({ page }) => {
     await page.goto("/admin");

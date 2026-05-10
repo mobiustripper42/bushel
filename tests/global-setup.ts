@@ -54,8 +54,9 @@ export default async function globalSetup() {
   userId = createData?.user?.id;
 
   if (!userId) {
+    // User already exists — page through up to 1000 users to find them
     const { data: listData } = await adminClient.auth.admin.listUsers({
-      perPage: 100,
+      perPage: 1000,
     });
     userId = listData?.users?.find((u) => u.email === TEST_ADMIN_EMAIL)?.id;
   }
@@ -90,8 +91,6 @@ export default async function globalSetup() {
 
   const browser = await chromium.launch();
   const context = await browser.newContext({ baseURL });
-  const page = await context.newPage();
-  await page.goto("/");
 
   await context.addCookies(
     sessionCookies.map(({ name, value }) => ({
