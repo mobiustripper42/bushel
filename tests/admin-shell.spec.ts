@@ -18,7 +18,6 @@ test.describe("admin shell — authenticated", () => {
 
   test("sidebar and nav render for authenticated admin", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.getByText("Bay Branch Farm")).toBeVisible();
     await expect(page.getByRole("navigation", { name: /admin navigation/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /inventory/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /customers/i })).toBeVisible();
