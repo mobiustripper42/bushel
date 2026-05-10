@@ -71,10 +71,11 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 ---
 
-## Phase 2 — Inventory editing (7 pts → ~1.05–2.45 hrs)
+## Phase 2 — Inventory editing (9 pts → ~1.35–3.15 hrs)
 
 | # | Task | Pts | Status |
 |---|---|---|---|
+| 2.0a | UX screen vs schema + decision audit: close gaps found (products.category, notification_preference cleanup, delivery window decision) | 2 | [#35](https://github.com/mobiustripper42/bushel/issues/35) |
 | 2.1 | Inventory editor (spreadsheet-style row form); Playwright spec rolled in | 5 | [#32](https://github.com/mobiustripper42/bushel/issues/32) |
 | 2.2 | "Pre-populate from last week" action (simple reset, no snapshots in v1) | 2 | [#33](https://github.com/mobiustripper42/bushel/issues/33) |
 
