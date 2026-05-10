@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.3] - 2026-05-10
+- PR #34: Phase 2 / #27 — authenticated admin Playwright tests via session injection
+
 ## [0.3.2] - 2026-05-10
 - PR #37: Phase 2.0a — UX/schema audit: add products.category, replace notification_preference with send_weekly_link
 
