@@ -2,15 +2,17 @@ import { Page } from "@playwright/test";
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
 
+export const ADMIN_STORAGE_STATE = "playwright/.auth/admin.json";
+
 export function customerOrderUrl(token: string): string {
   return `${BASE_URL}/c/${token}`;
 }
 
-export async function loginAsAdmin(page: Page): Promise<void> {
-  // Admin auth goes through Google OAuth — not automatable in Playwright.
-  // This helper is a placeholder for future cookie/session injection once
-  // we have a test-mode bypass (tracked in Phase 0.6 CI work).
-  throw new Error("Admin auth not yet automatable — see Phase 0.6");
+// Admin session is injected via global-setup.ts (cookie-based, no OAuth needed).
+// Use `test.use({ storageState: ADMIN_STORAGE_STATE })` in authenticated test blocks.
+export async function loginAsAdmin(_page: Page): Promise<void> {
+  // No-op: session is pre-loaded via storageState. Call this only if you need
+  // to navigate after storage state is already applied.
 }
 
 export const TEST_CUSTOMERS = {

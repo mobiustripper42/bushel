@@ -38,8 +38,10 @@ jobs:
           eval $(supabase status --output env)
           [[ -z "$API_URL" ]] && echo "ERROR: API_URL empty — supabase status failed" && exit 1
           [[ -z "$ANON_KEY" ]] && echo "ERROR: ANON_KEY empty — supabase status failed" && exit 1
+          [[ -z "$SERVICE_ROLE_KEY" ]] && echo "ERROR: SERVICE_ROLE_KEY empty — supabase status failed" && exit 1
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
 
       - name: Build
         run: npm run build
