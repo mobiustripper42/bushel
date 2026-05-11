@@ -90,22 +90,9 @@ Indexes:
 
 ---
 
-### `pickup_windows`
+### `pickup_windows` — REMOVED (DEC-029)
 
-Four fixed windows per week, configurable but set-once in practice (DEC-013).
-
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|-------|
-| id | uuid | NOT NULL | gen_random_uuid() | PK |
-| label | text | NOT NULL | | e.g. "Wednesday 2–4 PM" |
-| day_of_week | smallint | NOT NULL | | 0 = Sun … 6 = Sat |
-| start_time | time | NOT NULL | | |
-| end_time | time | NOT NULL | | |
-| is_active | boolean | NOT NULL | true | Hide without deleting |
-| sort_order | integer | NULL | | |
-| created_at | timestamptz | NOT NULL | now() | |
-
-Indexes: none beyond PK.
+Originally specified by DEC-013 (4 fixed windows per week). Removed by DEC-029: fulfillment is free-text per order. Replacement: `orders.pickup_note` and `orders.delivery_preference` (see `orders` section below). Migration drops the table.
 
 ---
 
@@ -116,7 +103,7 @@ Singleton config row (expect exactly 1). Controls live open/close state and week
 | Column | Type | Nullable | Default | Notes |
 |--------|------|----------|---------|-------|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
-| is_open | boolean | NOT NULL | false | Authoritative live toggle |
+| is_open | boolean | NOT NULL | true | Authoritative live toggle. Default `true` per DEC-030 — store is open until manually closed. |
 | weekly_open_day | smallint | NULL | | 0 = Sun … 6 = Sat |
 | weekly_open_time | time | NULL | | Phase 3.6 cron flips `is_open` on schedule |
 | weekly_close_day | smallint | NULL | | |
@@ -139,11 +126,12 @@ One order per customer per week.
 | customer_id | uuid | NOT NULL | | FK → customers(id) |
 | week_of | date | NOT NULL | | Monday of the ISO week (`date_trunc('week', now())`) |
 | fulfillment_type | text | NOT NULL | 'delivery' | codes(type='fulfillment_type'); app-enforced |
-| pickup_window_id | uuid | NULL | | FK → pickup_windows(id); required when fulfillment_type = 'pickup', enforced app-side in V1 |
+| pickup_note | text | NULL | | Free-text "When are you picking up?"; populated when fulfillment_type='pickup' (DEC-029). No prefill — starts empty every week. |
+| delivery_preference | text | NULL | | Free-text "Delivery preference"; populated when fulfillment_type='delivery' (DEC-029). Customer order form pre-fills from this customer's most recent prior `delivery` order. |
 | delivery_address | text | NULL | | Snapshot of customer address at order time |
 | status | text | NOT NULL | 'new' | codes(type='order_status'); app-enforced |
 | needs_reconciliation | boolean | NOT NULL | false | True if any item went oversold (DEC-012) |
-| notes | text | NULL | | Customer notes to farm |
+| notes | text | NULL | | Customer notes to farm — optional textarea on order form |
 | created_at | timestamptz | NOT NULL | now() | |
 | updated_at | timestamptz | NOT NULL | now() | |
 
@@ -178,8 +166,9 @@ Indexes:
 
 ## Trade-offs
 
-- **`qty` integer on order_items** — whole-unit ordering only. Works if Bay Branch sells in pre-packed denominations ("1 lb bag" × N). If fractional weight ordering is ever needed, migrate to `numeric(10,2)`.
-- **Pickup constraint app-side** — `pickup_window_id` required when `fulfillment_type = 'pickup'` is enforced in application code in V1, not a DB CHECK. Simple enough at this scale.
+- **`qty` integer on order_items** — whole-unit ordering only. Works if Bay Branch sells in pre-packed denominations ("1 lb bag" × N). V1.5 (DEC-032) moves `products.qty_available` to `numeric(10,2)` for multi-unit support; `order_items.qty` stays integer (whole pints, whole flats).
+- **No structured pickup windows** — DEC-029 removed `pickup_windows`. Fulfillment is free-text on the order: `pickup_note` (no prefill) and `delivery_preference` (prefilled from prior delivery order). Migration back to structured windows is reversible if customer count grows.
 - **`notification_preference` text + CHECK** — retained flexible for a v2 customer email channel (placeholder; DEC-020 superseded by DEC-026/027 — v1 customer outbound is operator-sent SMS only). Could move into `codes` when email customer-side lands; CHECK constraint is sufficient for now.
 - **`codes` table, no DB FK** — `orders.fulfillment_type` and `orders.status` reference `codes` by convention, app-enforced. Avoids composite FK ugliness on `orders`.
-- **`ordering_schedule` is inert until Phase 3.6** — table shape is defined here; cron logic and open/close wiring land in Phase 3.6.
+- **`ordering_schedule` is inert until Phase 3.6** — table shape is defined here; cron logic and open/close wiring land in Phase 3.6. Default `is_open = true` per DEC-030.
+- **Multi-unit deferred to V1.5 (DEC-032)** — `products.unit` and `products.price_cents` remain in V1; V1.5 migration moves them into a child `product_units` table and converts `qty_available` to `numeric(10,2)`.

@@ -38,9 +38,10 @@ Roles:
 
 ```
 products → order_items
-customers (token, contact, notification_preference) → orders → order_items
+customers (token, contact, send_weekly_link) → orders → order_items
 orders.needs_reconciliation (oversold flag)
-pickup_windows, ordering_schedule
+orders.pickup_note, orders.delivery_preference (DEC-029: free-text fulfillment, no structured pickup windows in V1)
+ordering_schedule (is_open default true per DEC-030)
 ```
 
 Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
