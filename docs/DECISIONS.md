@@ -78,7 +78,7 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 **Decision:** Single open/close toggle (source of truth) + configurable weekly schedule + manual "open for N hours" override that auto-closes.
 
-**Note:** product owner discussion is open about whether to drop the open/close concept entirely. See Open Questions.
+**Amended by DEC-030** — default mode is now always-open, manually closed; scheduled close is opt-in.
 
 ---
 

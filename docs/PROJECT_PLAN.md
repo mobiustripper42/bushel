@@ -191,7 +191,6 @@ Contingent on Annabel confirming the V1 multi-unit product count is small (~3); 
 - **Minimum delivery amount (dollars):** threshold for delivery, or free-delivery cutoff? Phase 7+ candidate.
 - **Multi-unit product count (DEC-032):** confirm with Annabel how many V1 products genuinely need multi-unit. If small (~3), V1.5 framing in Phase 6.5 holds; if large, pull DEC-032 forward into V1.
 - Specific Sun/Mon send time → Annabel fills in once cadence stabilizes
-- Specific four pickup window times → Annabel fills in
 - Final SMS copy → drafted in Phase 4 with feedback in preview UI
 - sailbook's exact CSS approach → confirm at start of Phase 0 (DEC-021)
 - GitHub Actions CI scope → revisit in Phase 6
