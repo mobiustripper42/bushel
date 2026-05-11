@@ -296,7 +296,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      prepopulate_inventory_from_last_week: {
+        Args: never
+        Returns: {
+          added_qty: number
+          product_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
