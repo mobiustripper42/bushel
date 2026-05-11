@@ -19,3 +19,9 @@ export const TEST_CUSTOMERS = {
     token: "testtoken-restaurant-0001",
   },
 } as const;
+
+export const TEST_PRODUCTS = {
+  kale:  { id: "cccccccc-0000-0000-0000-000000000001", name: "Kale",  unit: "bunch", price_cents: 300,  qty_available: 10 },
+  eggs:  { id: "cccccccc-0000-0000-0000-000000000002", name: "Eggs",  unit: "dozen", price_cents: 600,  qty_available: 5  },
+  honey: { id: "cccccccc-0000-0000-0000-000000000003", name: "Honey", unit: "jar",   price_cents: 1200, qty_available: 8  },
+} as const;

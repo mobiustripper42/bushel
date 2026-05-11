@@ -76,6 +76,18 @@ export default async function globalSetup() {
   if (upsertError)
     throw new Error(`public.users upsert failed: ${upsertError.message}`);
 
+  // Upsert test products so inventory tests are self-contained
+  const { error: productsError } = await adminClient.from("products").upsert(
+    [
+      { id: "cccccccc-0000-0000-0000-000000000001", name: "Kale",  unit: "bunch", price_cents: 300,  qty_available: 10, is_available: true,  sort_order: 1 },
+      { id: "cccccccc-0000-0000-0000-000000000002", name: "Eggs",  unit: "dozen", price_cents: 600,  qty_available: 5,  is_available: true,  sort_order: 2 },
+      { id: "cccccccc-0000-0000-0000-000000000003", name: "Honey", unit: "jar",   price_cents: 1200, qty_available: 8,  is_available: true,  sort_order: 3 },
+    ],
+    { onConflict: "id" },
+  );
+  if (productsError)
+    throw new Error(`products upsert failed: ${productsError.message}`);
+
   // Sign in to get a real, server-verified session
   const anonClient = createClient(supabaseUrl, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
