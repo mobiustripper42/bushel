@@ -92,15 +92,15 @@ Customer management, tokenized URL access, and the public ordering experience. C
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 3.0 | Customer `priority` column migration + types regenerated | 2 | TBD |
-| 3.1 | Manual customer CRUD UI (admin); priority field; email/phone OR validation | 3 | TBD |
-| 3.2 | Token generation, durable per-customer URL, regenerate button + thorough testing | 5 | TBD |
-| 3.3 | `/c/[token]` route validates token, sets cookie, identifies customer; thorough session testing | 3 | TBD |
-| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, free-text pickup-note OR delivery-preference per DEC-029, optional customer-notes textarea) | 5 | TBD |
-| 3.5 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | TBD |
-| 3.6 | Manual open/close toggle (default open per DEC-030); optional scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math kicks in only when schedule columns are set | 5 | TBD |
-| 3.7 | Closed state + per-item sold-out (disabled row at qty=0) + all-sold-out empty state (DEC-031); Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | TBD |
-| 3.8 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 3 | 5 | TBD |
+| 3.0 | Customer `priority` column migration + types regenerated | 2 | [#45](https://github.com/mobiustripper42/bushel/issues/45) |
+| 3.1 | Manual customer CRUD UI (admin); priority field; email/phone OR validation | 3 | [#46](https://github.com/mobiustripper42/bushel/issues/46) |
+| 3.2 | Token generation, durable per-customer URL, regenerate button + thorough testing | 5 | [#47](https://github.com/mobiustripper42/bushel/issues/47) |
+| 3.3 | `/c/[token]` route validates token, sets cookie, identifies customer; thorough session testing | 3 | [#48](https://github.com/mobiustripper42/bushel/issues/48) |
+| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, free-text pickup-note OR delivery-preference per DEC-029, optional customer-notes textarea) | 5 | [#49](https://github.com/mobiustripper42/bushel/issues/49) |
+| 3.5 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | [#50](https://github.com/mobiustripper42/bushel/issues/50) |
+| 3.6 | Manual open/close toggle (default open per DEC-030); optional scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math kicks in only when schedule columns are set | 5 | [#51](https://github.com/mobiustripper42/bushel/issues/51) |
+| 3.7 | Closed state + per-item sold-out (disabled row at qty=0) + all-sold-out empty state (DEC-031); Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | [#52](https://github.com/mobiustripper42/bushel/issues/52) |
+| 3.8 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 3 | 5 | [#53](https://github.com/mobiustripper42/bushel/issues/53) |
 
 ---
 
