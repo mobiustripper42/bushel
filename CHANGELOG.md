@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.4] - 2026-05-10
+- PR #39: Phase 2/3 — capture DEC-029…032; simplify fulfillment + sold-out spec; scope V1.5 multi-unit
+
 ## [0.3.3] - 2026-05-10
 - PR #34: Phase 2 / #27 — authenticated admin Playwright tests via session injection
 
