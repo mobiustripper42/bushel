@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.5] - 2026-05-11
+- PR #42: Phase 2.0b — drop pickup_windows, add fulfillment columns, flip is_open default
+
 ## [0.3.4] - 2026-05-10
 - PR #39: Phase 2/3 — capture DEC-029…032; simplify fulfillment + sold-out spec; scope V1.5 multi-unit
 
