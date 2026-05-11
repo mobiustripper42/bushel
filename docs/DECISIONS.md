@@ -78,7 +78,7 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 **Decision:** Single open/close toggle (source of truth) + configurable weekly schedule + manual "open for N hours" override that auto-closes.
 
-**Note:** product owner discussion is open about whether to drop the open/close concept entirely. See Open Questions.
+**Amended by DEC-030** — default mode is now always-open, manually closed; scheduled close is opt-in.
 
 ---
 
@@ -93,6 +93,8 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 ## DEC-013 — Pickup windows
 
 **Decision:** 4 fixed windows per week, configurable but set-once. Customer chooses one at checkout when picking up.
+
+**Superseded by DEC-029.**
 
 ---
 
@@ -275,7 +277,99 @@ PWA push notification is a stretch upgrade: if reliable on Android (the operator
 
 ---
 
+## DEC-029 — Fulfillment is free-text per order; no structured pickup windows
+
+**Decision:** Drop the `pickup_windows` table and the structured-window picker. The customer order form has two free-text fields, one per fulfillment type:
+
+- **Pickup:** `orders.pickup_note text NULL` — labeled "When are you picking up?", starts empty every week.
+- **Delivery:** `orders.delivery_preference text NULL` — labeled "Delivery preference", **prefilled with the value from this customer's most recent prior `delivery` order** (so customers who switch pickup → delivery don't get stale pickup-time prefills).
+
+Address pre-fill is unchanged (snapshot from `customers.delivery_address` per DEC-008). `orders.fulfillment_type` remains.
+
+**Why:**
+- At 7 customers, structured pickup-window scaffolding is overhead disproportionate to value. Annabel can read prose ("Wednesday afternoon, ~3 if that works") and plan her day.
+- The pickup-window picker was a meaningful chunk of task 3.4 UI; removing it drops 3.4 from 8 pts to 5 pts.
+- Delivery preferences are sticky-but-tweakable info ("leave at back door, gate code 4321"). Prefill-from-prior-order lets a customer keep using the same line week after week without forcing Annabel to maintain a customer-level field.
+
+**Trade-offs accepted:**
+- Operator loses the sortable "3 customers in the Wed 2–4 window" view that structured pickup windows enabled. Mental aggregation across prose is fine at 7 customers; would re-earn its keep around 25+.
+- Free-text is unconstrained — a customer could type "midnight Tuesday" and it would land. Annabel reads and reacts; same as today's SMS workflow.
+
+**Trigger to revisit:** customer count crosses ~25, or operator asks for grouped pickup-day planning. Migration back to structured windows is straightforward (text fields stay as a fallback "other").
+
+**Supersedes:** DEC-013.
+
+---
+
+## DEC-030 — Default mode: always open, manually closed; scheduled close opt-in
+
+**Decision:** Amends DEC-011. `ordering_schedule.is_open` default flips `false` → `true`. The default seeded row has `is_open = true` and all schedule columns (`weekly_open_day`, `weekly_open_time`, `weekly_close_day`, `weekly_close_time`, `override_closes_at`) NULL. The Phase 3.6 cron treats NULL schedule columns as "no schedule configured" and leaves `is_open` alone; it only acts when schedule columns are populated.
+
+**Why:**
+- The practical traffic gate for customer orders is the weekly SMS link, not the open/closed toggle. Customers don't browse `/c/[token]` on their own — they tap the link from Annabel's text. "Always open" doesn't mean 24/7 traffic; it means "when a customer does tap their link, the form works."
+- The closed state is reserved for explicit refuse-new-orders moments (vacation, bad week, broken equipment, end-of-season wind-down). Those are rare and deliberate — making them manual matches their nature.
+- The cron infrastructure from DEC-011 / Phase 3.6 still ships, just as opt-in. Annabel can configure a weekly auto-close later if she finds she wants one.
+
+**Trade-offs accepted:**
+- Customers can theoretically order at any hour if Annabel never closes the store. Acceptable per DEC-012 — vegetables to friends, not heart medicine.
+- Forgotten "close before vacation" is on Annabel. Mitigated by the SMS-as-traffic-gate insight: no new weekly link = effectively no new orders.
+
+**Supersedes/amends:** DEC-011 (the "single open/close toggle + configurable weekly schedule" part stands; the implicit "closed-by-default" assumption is inverted).
+
+**Resolves:** PROJECT_PLAN.md open question "No open/close time? — drop entirely?" Answer: no, keep, but invert default.
+
+---
+
+## DEC-031 — Sold-out display: per-item disabled at qty=0; page-level empty state when all visible items are sold out
+
+**Decision:** The customer inventory page renders four distinct states, depending on the combination of `ordering_schedule.is_open` and `products.qty_available`:
+
+| Store toggle | Inventory | Customer sees |
+|---|---|---|
+| Closed (manual) | any | "Orders are closed this week" message; no form |
+| Open | all visible items qty > 0 | Normal order form |
+| Open | some items qty = 0 (or qty < smallest active unit's `conversion_to_base` once DEC-032 lands) | Form renders; those rows greyed out with "Sold out" in place of the qty stepper |
+| Open | no visible item is orderable | "Everything sold out — check back next week" empty state; no form |
+
+**Why:**
+- Disabled-not-hidden gives customers visibility into what *was* on offer this week, which informs their ordering rhythm ("kale moves fast — I'll order Monday next time").
+- If Annabel restocks mid-week, the same row re-enables — no row-add/row-remove churn.
+- `is_available = false` rows stay filtered out entirely. "Not on the menu this week" is a separate concept from "ran out." Both the per-item disable and the all-sold-out empty state ignore `is_available = false` rows.
+
+**Interaction with DEC-012 (optimistic placement):** The disable is a soft UI hint, not enforcement. A customer who loaded the page when qty=1 and submits after someone else bought the last one still has their order accepted; `needs_reconciliation` fires and Annabel texts to resolve. This is intentional and unchanged. Realtime inventory subscription (Phase 3.8, dark-flagged) would tighten this further if shipped.
+
+---
+
+## DEC-032 — Multi-unit products in V1.5 (per-unit pricing; inventory in base units)
+
+**Decision:** Multi-unit products are not in V1. V1 ships with one unit per product. **V1.5** is a focused follow-up phase (Phase 6.5 in PROJECT_PLAN.md) that adds multi-unit support. Reverses neither DEC-007 (per-customer pricing stays deferred to V2) nor any other prior decision.
+
+**Model when V1.5 ships:**
+
+- Each product has a `base_unit` (e.g. "lb") and `qty_available numeric(10,2)` tracked in base units.
+- New table `product_units (id, product_id, unit text, conversion_to_base numeric(10,4), price_cents integer, sort_order integer, is_active boolean)`. Each product has at least one row (the base unit, conversion=1.0). Cherry tomatoes might have three: lb (1.0), pint (0.83), flat (10.0).
+- `order_items` gains `product_unit_id` FK. `unit_price_cents` continues to snapshot, now from the chosen unit's price.
+- Decrement at order time: `products.qty_available -= order_items.qty * product_units.conversion_to_base`. No rounding — fractional decrements are honest and `numeric(10,2)` handles them cleanly.
+- Per-unit pricing is **independent**, not auto-computed from the conversion factor. Annabel sets pint=$5.00, lb=$4.50, flat=$40.00 directly. Conversion factors govern inventory math only.
+- Per-unit sold-out check: a unit's radio is greyed out when `qty_available < conversion_to_base`. Whole-product sold-out when no active unit is orderable.
+- Customer-side UI: radio-button picker when a product has 2+ active units, no picker when only 1. Switching the radio resets qty to 0 (carrying "6 pints" across to "6 flats" is a recipe for accidental $240 orders).
+
+**Explicit non-coupling to DEC-007:** Per-unit pricing is *not* per-customer pricing. All customers see the same pint price, the same lb price, the same flat price.
+
+**Why V1.5 and not V1:**
+- V1 ships sooner. Real customer usage informs whether multi-unit needs to land in week 2 or month 2 after launch.
+- Multi-unit roughly doubles Phase 2 scope and adds meaningful surface to Phase 3 (admin inventory editor, customer form, sold-out logic, pre-fill behavior). Slotting it as its own phase keeps the V1 plan coherent.
+
+**Why not V2:**
+- Selling the same physical product in different denominations is core wholesale produce behavior, not a "nice to have." Deferring to V2 means an indeterminate slip; V1.5 is a committed follow-up with a sized scope.
+
+**Known V1 kludge:** for products that genuinely need multiple units in V1 (Annabel will identify these), create them as separate products: "Cherry tomatoes (lb)" and "Cherry tomatoes (pint)" with separately-managed `qty_available`. Annabel reconciles harvest-to-inventory split mentally. Tolerable for ~3 products for ~weeks. If the count is higher, this DEC's V1/V1.5 split should be revisited and multi-unit pulled forward into V1.
+
+**Trigger to validate now:** Annabel-facing question — *"How many of the products you sell need to be sold in different units to different customers?"* If answer is 2–3, V1.5 framing holds. If "most of them," pull forward into V1.
+
+---
+
 ## Open / Pending Product Owner Discussion
 
 - **Minimum delivery amount (in dollars).** Threshold below which delivery is unavailable, or above which delivery is free. Phase 7+ candidate.
-- **No open/close time?** Possibility of dropping the open/close toggle entirely (always open). Major scope reduction (eliminates 3.6 + race specs in 3.7). Needs deeper discussion before committing.
+- **Multi-unit product count (DEC-032).** Confirm with Annabel how many V1 products need multi-unit. If small (~3), V1.5 framing holds; if large, pull DEC-032 forward into V1.

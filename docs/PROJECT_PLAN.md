@@ -32,12 +32,16 @@ Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
 ## v1 Total
 
-- **108 pts all-in** (with realtime live)
-- **103 pts** with 3.8 (realtime) shipped behind a dark flag
+- **106 pts all-in** (with realtime live)
+- **101 pts** with 3.8 (realtime) shipped behind a dark flag
 
 **Time projection:**
-- Best case (0.15 hrs/pt): **~16.2 hrs** all-in / **~15.5 hrs** dark realtime
-- Conservative (0.35 hrs/pt): **~37.8 hrs** all-in / **~36 hrs** dark realtime
+- Best case (0.15 hrs/pt): **~15.9 hrs** all-in / **~15.2 hrs** dark realtime
+- Conservative (0.35 hrs/pt): **~37.1 hrs** all-in / **~35.4 hrs** dark realtime
+
+**V1.5 (Phase 6.5):** **15 pts** for multi-unit products (DEC-032). Sized as a focused follow-up phase; not counted in V1 totals.
+
+**Re-baselined 2026-05-10:** Phase 2 +1 pt (2.0b migration to drop pickup_windows + flip is_open default per DEC-029/DEC-030). Phase 3.4 8→5 pts (DEC-029 simplification of order form: free-text fulfillment replaces pickup-window picker). Net: −2 pts in V1; +15 pts in new V1.5 phase. See DEC-029, DEC-030, DEC-031, DEC-032.
 
 **Re-baselined 2026-05-08:** SMS pivot (DEC-026/027) reshaped the old Phase 5 (Notifications, 12 pt Twilio integration) into the new Phase 4 (Notifications, 11 pt deep-link + email), removing the multi-week carrier-approval risk from the critical path. The old Phase 3 (customers + tokens) and Phase 4 (public ordering) were combined into a single customer-side Phase 3, with a new 3.0 priority-column migration. Old Phases 6 and 7 renumbered to 5 and 6. Net: +1 pt, materially less schedule risk.
 
@@ -71,17 +75,18 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 ---
 
-## Phase 2 — Inventory editing (9 pts → ~1.35–3.15 hrs)
+## Phase 2 — Inventory editing (10 pts → ~1.5–3.5 hrs)
 
 | # | Task | Pts | Status |
 |---|---|---|---|
 | 2.0a | UX screen vs schema + decision audit: close gaps found (products.category, notification_preference cleanup, delivery window decision) | 2 | [#35](https://github.com/mobiustripper42/bushel/issues/35) |
+| 2.0b | Schema migration: drop `pickup_windows` table + `orders.pickup_window_id`; add `orders.pickup_note`, `orders.delivery_preference`; flip `ordering_schedule.is_open` default to `true`; regenerate types (DEC-029, DEC-030) | 1 | TBD |
 | 2.1 | Inventory editor (spreadsheet-style row form); Playwright spec rolled in | 5 | [#32](https://github.com/mobiustripper42/bushel/issues/32) |
 | 2.2 | "Pre-populate from last week" action (simple reset, no snapshots in v1) | 2 | [#33](https://github.com/mobiustripper42/bushel/issues/33) |
 
 ---
 
-## Phase 3 — Customer side (37 pts all-in / 32 pts with 3.8 dark → ~5.55–12.95 hrs)
+## Phase 3 — Customer side (34 pts all-in / 29 pts with 3.8 dark → ~5.1–11.9 hrs)
 
 Customer management, tokenized URL access, and the public ordering experience. Combined from the prior Phase 3 (customers + tokens, 11 pts) and Phase 4 (public ordering, 24 pts), plus a new 3.0 priority-column migration. Both prior phases were small and coherent as one customer-side surface.
 
@@ -91,10 +96,10 @@ Customer management, tokenized URL access, and the public ordering experience. C
 | 3.1 | Manual customer CRUD UI (admin); priority field; email/phone OR validation | 3 | TBD |
 | 3.2 | Token generation, durable per-customer URL, regenerate button + thorough testing | 5 | TBD |
 | 3.3 | `/c/[token]` route validates token, sets cookie, identifies customer; thorough session testing | 3 | TBD |
-| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, pickup window picker) | 8 | TBD |
+| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, free-text pickup-note OR delivery-preference per DEC-029, optional customer-notes textarea) | 5 | TBD |
 | 3.5 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | TBD |
-| 3.6 | Open/close toggle + scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math | 5 | TBD (pending PO discussion) |
-| 3.7 | Closed/sold-out states; Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | TBD |
+| 3.6 | Manual open/close toggle (default open per DEC-030); optional scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math kicks in only when schedule columns are set | 5 | TBD |
+| 3.7 | Closed state + per-item sold-out (disabled row at qty=0) + all-sold-out empty state (DEC-031); Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | TBD |
 | 3.8 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 3 | 5 | TBD |
 
 ---
@@ -132,6 +137,25 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 | 6.2 | Production env: Vercel env vars, transactional email service configured (provider, API key, single-recipient deny-list test), DNS for `order` confirmed, secrets | 2 | TBD |
 | 6.3 | UAT with Annabel; final fixes; structural issues defer to Phase 7+ | 3 | TBD |
 
+V1 ships at end of Phase 6.
+
+---
+
+## Phase 6.5 — V1.5: Multi-unit products (15 pts → ~2.25–5.25 hrs)
+
+Adds multi-unit denomination per product (DEC-032). Inventory in base units; customer picks unit at order; conversion happens at decrement. Pricing is independent per unit (does NOT revive per-customer pricing — DEC-007 still defers that to V2).
+
+Contingent on Annabel confirming the V1 multi-unit product count is small (~3); if "most products," pull DEC-032 forward into V1.
+
+| # | Task | Pts | Status |
+|---|---|---|---|
+| 6.5a | Migration: add `product_units` table; move `products.unit`/`price_cents` semantics into rows there; convert `products.qty_available` to `numeric(10,2)`; add `order_items.product_unit_id` FK; backfill existing single-unit products as one `product_units` row each; backfill existing `order_items.product_unit_id` to the corresponding new row | 3 | TBD |
+| 6.5b | Inventory editor: per-product "Units" sub-sheet (add/remove/edit unit rows with label, conversion-to-base, price, active flag); base-unit row protected | 5 | TBD |
+| 6.5c | Customer order form: radio-button unit picker (2+ active units only); qty resets on radio change; sold-out per-unit (disable radio when `qty_available < conversion_to_base`) | 2 | TBD |
+| 6.5d | Order placement: fractional decrement (`qty * conversion_to_base`), per-unit `unit_price_cents` snapshot, whole-product-sold-out logic ignoring `is_available=false` rows | 2 | TBD |
+| 6.5e | Pre-fill from last week: pre-fills the unit set per product, not just qty | 1 | TBD |
+| 6.5f | Playwright + pgTAP: conversion math, per-unit sold-out, oversell-by-unit reconciliation, order-detail display strings | 2 | TBD |
+
 ---
 
 ## Phase 7+ (deferred / optional)
@@ -165,9 +189,8 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 ## Open Questions (pending product-owner discussion)
 
 - **Minimum delivery amount (dollars):** threshold for delivery, or free-delivery cutoff? Phase 7+ candidate.
-- **No open/close time?** Drop the toggle entirely (always open)? Major scope reduction — eliminates 3.6 (~5 pts) and most of 3.7. Needs deeper discussion before committing.
+- **Multi-unit product count (DEC-032):** confirm with Annabel how many V1 products genuinely need multi-unit. If small (~3), V1.5 framing in Phase 6.5 holds; if large, pull DEC-032 forward into V1.
 - Specific Sun/Mon send time → Annabel fills in once cadence stabilizes
-- Specific four pickup window times → Annabel fills in
 - Final SMS copy → drafted in Phase 4 with feedback in preview UI
 - sailbook's exact CSS approach → confirm at start of Phase 0 (DEC-021)
 - GitHub Actions CI scope → revisit in Phase 6
