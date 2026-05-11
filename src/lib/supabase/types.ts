@@ -183,11 +183,12 @@ export type Database = {
           created_at: string
           customer_id: string
           delivery_address: string | null
+          delivery_preference: string | null
           fulfillment_type: string
           id: string
           needs_reconciliation: boolean
           notes: string | null
-          pickup_window_id: string | null
+          pickup_note: string | null
           status: string
           updated_at: string
           week_of: string
@@ -196,11 +197,12 @@ export type Database = {
           created_at?: string
           customer_id: string
           delivery_address?: string | null
+          delivery_preference?: string | null
           fulfillment_type?: string
           id?: string
           needs_reconciliation?: boolean
           notes?: string | null
-          pickup_window_id?: string | null
+          pickup_note?: string | null
           status?: string
           updated_at?: string
           week_of: string
@@ -209,11 +211,12 @@ export type Database = {
           created_at?: string
           customer_id?: string
           delivery_address?: string | null
+          delivery_preference?: string | null
           fulfillment_type?: string
           id?: string
           needs_reconciliation?: boolean
           notes?: string | null
-          pickup_window_id?: string | null
+          pickup_note?: string | null
           status?: string
           updated_at?: string
           week_of?: string
@@ -226,47 +229,7 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "orders_pickup_window_id_fkey"
-            columns: ["pickup_window_id"]
-            isOneToOne: false
-            referencedRelation: "pickup_windows"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      pickup_windows: {
-        Row: {
-          created_at: string
-          day_of_week: number
-          end_time: string
-          id: string
-          is_active: boolean
-          label: string
-          sort_order: number | null
-          start_time: string
-        }
-        Insert: {
-          created_at?: string
-          day_of_week: number
-          end_time: string
-          id?: string
-          is_active?: boolean
-          label: string
-          sort_order?: number | null
-          start_time: string
-        }
-        Update: {
-          created_at?: string
-          day_of_week?: number
-          end_time?: string
-          id?: string
-          is_active?: boolean
-          label?: string
-          sort_order?: number | null
-          start_time?: string
-        }
-        Relationships: []
       }
       products: {
         Row: {
