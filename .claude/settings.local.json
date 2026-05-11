@@ -2,8 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(cat ~/.claude/devname 2>/dev/null && echo \"FOUND\" || echo \"MISSING\")",
-      "Bash(git config *)",
-      "Bash(awk '/^select \\(is\\\\b|isnt_empty|is_empty|throws_ok|lives_ok|col_not_null|col_has_default|isnt\\\\b\\)/' /home/eric/bushel/supabase/tests/rls_tables.sql)"
+      "Bash(git config *)"
     ]
   }
 }
