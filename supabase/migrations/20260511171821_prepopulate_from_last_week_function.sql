@@ -4,7 +4,8 @@
 -- inventory level Annabel had set at the top of last week.
 --
 -- security invoker: runs as the calling role (authenticated admin).
--- The admin_all_products and authenticated-reads-orders policies cover it.
+-- The admin_all_products / admin_all_orders / admin_all_order_items
+-- policies (each FOR ALL TO authenticated) cover the reads and update.
 
 create or replace function public.prepopulate_inventory_from_last_week()
 returns table(product_id uuid, added_qty integer)
