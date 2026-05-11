@@ -4,6 +4,7 @@
 -- Drop FK before dropping the table
 alter table public.orders drop column if exists pickup_window_id;
 
+-- RLS policies on this table (from 20260508014838) are dropped automatically with the table.
 drop table if exists public.pickup_windows;
 
 -- Free-text fulfillment fields (DEC-029)

@@ -1,5 +1,5 @@
 begin;
-select plan(37);
+select plan(33);
 
 -- ============================================================
 -- Schema sanity: RLS enabled on all tables
@@ -15,10 +15,6 @@ select is(
 select is(
   (select relrowsecurity from pg_class where oid = 'public.products'::regclass),
   true, 'RLS enabled on products'
-);
-select is(
-  (select relrowsecurity from pg_class where oid = 'public.pickup_windows'::regclass),
-  true, 'RLS enabled on pickup_windows'
 );
 select is(
   (select relrowsecurity from pg_class where oid = 'public.ordering_schedule'::regclass),
@@ -52,9 +48,6 @@ insert into public.products (id, name, unit, price_cents, qty_available, is_avai
   ('bbbbbbbb-0000-0000-0000-000000000001'::uuid, 'Kale', 'bunch', 300, 10, true),
   ('bbbbbbbb-0000-0000-0000-000000000002'::uuid, 'Hidden Item', 'each', 500, 5, false);
 
-insert into public.pickup_windows (id, label, day_of_week, start_time, end_time, is_active) values
-  ('cccccccc-0000-0000-0000-000000000001'::uuid, 'Wed 2–4 PM', 3, '14:00', '16:00', true),
-  ('cccccccc-0000-0000-0000-000000000002'::uuid, 'Inactive Window', 4, '10:00', '12:00', false);
 
 insert into public.orders (id, customer_id, week_of, fulfillment_type, status) values
   ('dddddddd-0000-0000-0000-000000000001'::uuid,
@@ -107,33 +100,15 @@ select lives_ok(
 reset role;
 
 -- ============================================================
--- pickup_windows
--- ============================================================
-set local role anon;
-select isnt_empty(
-  $$ select * from public.pickup_windows where is_active = true $$,
-  'anon can read active pickup windows'
-);
-select is_empty(
-  $$ select * from public.pickup_windows where is_active = false $$,
-  'anon cannot read inactive pickup windows'
-);
-reset role;
-
-set local role authenticated;
-select isnt_empty($$ select * from public.pickup_windows $$, 'authenticated can read all pickup windows');
-reset role;
-
--- ============================================================
 -- ordering_schedule
 -- ============================================================
 set local role anon;
 select isnt_empty($$ select * from public.ordering_schedule $$, 'anon can read ordering_schedule');
 -- UPDATE with no matching policy silently affects 0 rows; verify value is unchanged
-update public.ordering_schedule set is_open = true;
+update public.ordering_schedule set is_open = false;
 select is(
   (select is_open from public.ordering_schedule),
-  false,
+  true,
   'anon cannot update ordering_schedule (value unchanged after attempt)'
 );
 reset role;
