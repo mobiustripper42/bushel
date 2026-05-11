@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 type UpdateProductInput = {
@@ -16,7 +17,7 @@ export async function updateProduct(input: UpdateProductInput): Promise<string |
 
   if (!name.trim()) return "Name is required.";
   if (!unit.trim()) return "Unit is required.";
-  if (!Number.isFinite(price_cents) || price_cents < 0) return "Price must be a positive number.";
+  if (!Number.isFinite(price_cents) || price_cents < 0) return "Price must be zero or greater.";
   if (!Number.isInteger(qty_available) || qty_available < 0) return "Qty must be a non-negative whole number.";
 
   const supabase = await createClient();
@@ -26,5 +27,6 @@ export async function updateProduct(input: UpdateProductInput): Promise<string |
     .eq("id", id);
 
   if (error) return error.message;
+  revalidatePath("/admin/inventory");
   return null;
 }
