@@ -5,7 +5,8 @@
 -- to think about NULLs.
 
 alter table public.customers
-  add column priority integer not null default 100;
+  add column priority integer not null default 100
+  check (priority >= 0);
 
 comment on column public.customers.priority is
   'Send-queue ordering (DEC-026/027). Lower = earlier in the cycle. Default 100.';
