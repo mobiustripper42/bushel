@@ -13,7 +13,9 @@ export type CustomerDrawerState = {
   email: string;
   phone: string;
   delivery_address: string;
-  priority: number;
+  // Held as string so an empty field doesn't silently coerce to 0 (highest
+  // send-queue position). Parsed at save.
+  priority: string;
   send_weekly_link: boolean;
   token: string;
 };
@@ -46,17 +48,28 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
 
   function handleSave() {
     setError(null);
+    const priority = c.priority.trim() === "" ? NaN : parseInt(c.priority, 10);
+    if (!Number.isFinite(priority)) {
+      setError("Priority must be a whole number, zero or greater.");
+      return;
+    }
     startSaving(async () => {
-      const result = await saveCustomer({
-        id: c.id,
-        name: c.name,
-        business_name: c.business_name || null,
-        email: c.email || null,
-        phone: c.phone || null,
-        delivery_address: c.delivery_address || null,
-        priority: c.priority,
-        send_weekly_link: c.send_weekly_link,
-      });
+      let result;
+      try {
+        result = await saveCustomer({
+          id: c.id,
+          name: c.name,
+          business_name: c.business_name || null,
+          email: c.email || null,
+          phone: c.phone || null,
+          delivery_address: c.delivery_address || null,
+          priority,
+          send_weekly_link: c.send_weekly_link,
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Save failed. Try again.");
+        return;
+      }
       if (result.error) {
         setError(result.error);
         return;
@@ -68,7 +81,13 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
   function handleDelete() {
     if (!c.id) return;
     startDeleting(async () => {
-      const result = await deactivateCustomer(c.id!);
+      let result;
+      try {
+        result = await deactivateCustomer(c.id!);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Deactivate failed. Try again.");
+        return;
+      }
       if (result.error) {
         setError(result.error);
         return;
@@ -160,8 +179,8 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
               type="number"
               min={0}
               step={1}
-              value={String(c.priority)}
-              onChange={(e) => set("priority", parseInt(e.target.value, 10) || 0)}
+              value={c.priority}
+              onChange={(e) => set("priority", e.target.value)}
             />
           </Field>
 

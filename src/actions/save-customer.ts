@@ -33,10 +33,11 @@ function validate(input: CustomerInput): string | null {
   return null;
 }
 
-// 3.2 owns proper crypto generation + collision retry. This is a placeholder
-// good enough for 3.1's create flow.
+// 3.2 owns proper short-token generation + collision retry. Use the full
+// UUID here so placeholder rows aren't trivially guessable while 3.1 is
+// reachable in production.
 function placeholderToken(): string {
-  return "tmp-" + crypto.randomUUID().split("-")[0];
+  return "tmp-" + crypto.randomUUID();
 }
 
 export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerResult> {

@@ -30,7 +30,7 @@ function emptyDrawerState(): CustomerDrawerState {
     email: "",
     phone: "",
     delivery_address: "",
-    priority: 100,
+    priority: "100",
     send_weekly_link: true,
     token: "",
   };
@@ -44,7 +44,7 @@ function rowToDrawerState(row: CustomerRow): CustomerDrawerState {
     email: row.email ?? "",
     phone: row.phone ?? "",
     delivery_address: row.delivery_address ?? "",
-    priority: row.priority,
+    priority: String(row.priority),
     send_weekly_link: row.send_weekly_link,
     token: row.token,
   };
@@ -54,6 +54,7 @@ export function CustomersPage({ customers }: Props) {
   const router = useRouter();
   const [drawer, setDrawer] = useState<CustomerDrawerState | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
   const [, startToggle] = useTransition();
 
   const subscribedCount = customers.filter((c) => c.send_weekly_link).length;
@@ -64,9 +65,20 @@ export function CustomersPage({ customers }: Props) {
   }
 
   function handleToggle(c: CustomerRow) {
+    setToggleError(null);
     startToggle(async () => {
-      const result = await toggleSubscribed(c.id, !c.send_weekly_link);
-      if (!result.error) router.refresh();
+      let result;
+      try {
+        result = await toggleSubscribed(c.id, !c.send_weekly_link);
+      } catch (e) {
+        setToggleError(e instanceof Error ? e.message : "Couldn't update — try again.");
+        router.refresh(); // resync UI to truth
+        return;
+      }
+      if (result.error) {
+        setToggleError(result.error);
+      }
+      router.refresh();
     });
   }
 
@@ -94,6 +106,12 @@ export function CustomersPage({ customers }: Props) {
           + Add customer
         </Button>
       </PageHeader>
+
+      {toggleError && (
+        <div role="alert" className="drawer-error" style={{ marginBottom: 16 }}>
+          {toggleError}
+        </div>
+      )}
 
       <div className="cust-tableCard">
         <table className="cust-table">
