@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(cat ~/.claude/devname 2>/dev/null && echo \"FOUND\" || echo \"MISSING\")",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(xargs -n1 git branch -d)"
     ]
   }
 }

@@ -1,6 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { ADMIN_STORAGE_STATE, TEST_CUSTOMERS, TEST_PRODUCTS } from "./helpers";
+
+function rowByName(page: Page, name: string) {
+  return page.locator(`tr[data-row-name="${name}"]`);
+}
 
 // Fixed UUIDs so the seed is idempotent across re-runs.
 const LAST_WEEK_ORDER_ID = "eeeeeeee-0000-0000-0000-000000000001";
@@ -78,7 +82,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
   test("button restores last week's ordered qty onto current inventory", async ({ page }) => {
     await page.goto("/admin/inventory");
 
-    const kaleQty = page.getByRole("spinbutton", { name: `Qty available for ${TEST_PRODUCTS.kale.name}` });
+    const kaleQty = rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i });
     await expect(kaleQty).toHaveValue("0");
 
     page.once("dialog", (d) => d.accept());
@@ -87,7 +91,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
     await expect(page.getByText(/restored qty on/i)).toBeVisible();
 
     await page.reload();
-    await expect(page.getByRole("spinbutton", { name: `Qty available for ${TEST_PRODUCTS.kale.name}` }))
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i }))
       .toHaveValue(String(LAST_WEEK_QTY));
   });
 
@@ -95,6 +99,6 @@ test.describe("admin inventory — pre-populate from last week", () => {
     await page.goto("/admin/inventory");
     page.once("dialog", (d) => d.dismiss());
     await page.getByRole("button", { name: /pre-populate from last week/i }).click();
-    await expect(page.getByRole("spinbutton", { name: `Qty available for ${TEST_PRODUCTS.kale.name}` })).toHaveValue("0");
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i })).toHaveValue("0");
   });
 });
