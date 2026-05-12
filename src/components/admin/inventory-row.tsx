@@ -1,141 +1,171 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { updateProduct } from "@/actions/update-product";
-import type { Tables } from "@/lib/supabase/types";
+import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
 
-type Product = Tables<"products">;
+const CATEGORIES = ["Vegetables", "Fruit", "Herbs", "Flowers", "Other"] as const;
 
-const cellStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  borderBottom: "1px solid var(--ink-100)",
-  verticalAlign: "middle",
+export type InventoryRowState = {
+  id: string;
+  isNew?: boolean;
+  name: string;
+  category: string;
+  description: string | null;
+  unit: string;
+  price_cents: number;
+  qty_available: number;
+  is_available: boolean;
+  sort_order: number | null;
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "transparent",
-  border: "1px solid transparent",
-  borderRadius: "var(--r-sm)",
-  padding: "4px 6px",
-  fontSize: "0.875rem",
-  color: "var(--ink-900)",
-  fontFamily: "var(--font-sans)",
+type Props = {
+  row: InventoryRowState;
+  onUpdate: (patch: Partial<InventoryRowState>) => void;
+  onRemove: () => void;
 };
 
-const inputFocusClass = "inv-input";
+function priceToString(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
 
-export function InventoryRow({ product }: { product: Product }) {
-  const [name, setName] = useState(product.name);
-  const [unit, setUnit] = useState(product.unit);
-  const [priceStr, setPriceStr] = useState((product.price_cents / 100).toFixed(2));
-  const [qtyStr, setQtyStr] = useState(String(product.qty_available));
-  const [isAvailable, setIsAvailable] = useState(product.is_available);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  function handleSave() {
-    setError(null);
-    setSaved(false);
-    const price_cents = Math.round(parseFloat(priceStr) * 100);
-    const qty_available = parseInt(qtyStr, 10);
-    startTransition(async () => {
-      const err = await updateProduct({
-        id: product.id,
-        name,
-        unit,
-        price_cents,
-        qty_available,
-        is_available: isAvailable,
-      });
-      if (err) setError(err);
-      else setSaved(true);
-    });
-  }
+export function InventoryRow({ row, onUpdate, onRemove }: Props) {
+  const [descOpen, setDescOpen] = useState(false);
+  const qtyClass =
+    row.qty_available === 0 ? " is-zero" : row.qty_available <= 3 ? " is-low" : "";
 
   return (
-    <tr>
-      <td style={cellStyle}>
-        <input
-          className={inputFocusClass}
-          style={inputStyle}
-          value={name}
-          onChange={(e) => { setName(e.target.value); setSaved(false); }}
-          aria-label={`Name for ${product.name}`}
-        />
-      </td>
-      <td style={cellStyle}>
-        <input
-          className={inputFocusClass}
-          style={{ ...inputStyle, width: 80 }}
-          value={unit}
-          onChange={(e) => { setUnit(e.target.value); setSaved(false); }}
-          aria-label={`Unit for ${product.name}`}
-        />
-      </td>
-      <td style={cellStyle}>
-        <input
-          className={inputFocusClass}
-          style={{ ...inputStyle, width: 90 }}
-          type="number"
-          min="0"
-          step="0.01"
-          value={priceStr}
-          onChange={(e) => { setPriceStr(e.target.value); setSaved(false); }}
-          aria-label={`Price for ${product.name}`}
-        />
-      </td>
-      <td style={cellStyle}>
-        <input
-          className={inputFocusClass}
-          style={{ ...inputStyle, width: 80 }}
-          type="number"
-          min="0"
-          step="1"
-          value={qtyStr}
-          onChange={(e) => { setQtyStr(e.target.value); setSaved(false); }}
-          aria-label={`Qty available for ${product.name}`}
-        />
-      </td>
-      <td style={{ ...cellStyle, textAlign: "center" }}>
-        <input
-          type="checkbox"
-          checked={isAvailable}
-          onChange={(e) => { setIsAvailable(e.target.checked); setSaved(false); }}
-          aria-label={`Available for ${product.name}`}
-          style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--leaf-600)" }}
-        />
-      </td>
-      <td style={{ ...cellStyle, whiteSpace: "nowrap" }}>
-        <button
-          onClick={handleSave}
-          disabled={pending}
-          style={{
-            padding: "4px 14px",
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            background: "var(--leaf-600)",
-            color: "var(--paper)",
-            border: "none",
-            borderRadius: "var(--r-sm)",
-            cursor: pending ? "default" : "pointer",
-            opacity: pending ? 0.6 : 1,
-          }}
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
-        {saved && (
-          <span style={{ marginLeft: 8, fontSize: "0.78rem", color: "var(--leaf-700)" }}>
-            Saved
+    <>
+      <tr
+        className={"data-row" + (!row.is_available ? " is-disabled" : "")}
+        data-row-id={row.id}
+        data-row-name={row.name}
+      >
+        <td className="row-handle">
+          <span className="row-handle-grip" title="Drag to reorder">
+            <svg viewBox="0 0 12 18" width="10" height="14" aria-hidden="true">
+              <circle cx="3" cy="3" r="1.5" fill="currentColor" />
+              <circle cx="9" cy="3" r="1.5" fill="currentColor" />
+              <circle cx="3" cy="9" r="1.5" fill="currentColor" />
+              <circle cx="9" cy="9" r="1.5" fill="currentColor" />
+              <circle cx="3" cy="15" r="1.5" fill="currentColor" />
+              <circle cx="9" cy="15" r="1.5" fill="currentColor" />
+            </svg>
           </span>
-        )}
-        {error && (
-          <span style={{ marginLeft: 8, fontSize: "0.78rem", color: "var(--destructive)" }}>
-            {error}
-          </span>
-        )}
-      </td>
-    </tr>
+        </td>
+        <td>
+          <input
+            type="text"
+            className="field-input"
+            value={row.name}
+            onChange={(e) => onUpdate({ name: e.target.value })}
+            placeholder="Product name…"
+            aria-label="Product name"
+          />
+          {!descOpen && (
+            <button
+              type="button"
+              className="field-desc-toggle"
+              onClick={() => setDescOpen(true)}
+            >
+              {row.description ? (
+                <span className="field-desc-preview">{row.description}</span>
+              ) : (
+                <span className="field-desc-placeholder">+ description</span>
+              )}
+            </button>
+          )}
+        </td>
+        <td>
+          <select
+            className="field-input field-select"
+            value={row.category}
+            onChange={(e) => onUpdate({ category: e.target.value })}
+            aria-label="Category"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td>
+          <div className="field-price">
+            <span className="field-price-sym">$</span>
+            <input
+              type="number"
+              step="0.25"
+              min="0"
+              className="field-input field-num"
+              value={priceToString(row.price_cents)}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                onUpdate({ price_cents: Number.isFinite(v) ? Math.round(v * 100) : 0 });
+              }}
+              aria-label="Price"
+            />
+          </div>
+        </td>
+        <td>
+          <input
+            type="text"
+            className="field-input"
+            value={row.unit}
+            onChange={(e) => onUpdate({ unit: e.target.value })}
+            placeholder="per lb"
+            aria-label="Unit"
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            min="0"
+            className={"field-input field-num" + qtyClass}
+            value={String(row.qty_available)}
+            onChange={(e) => onUpdate({ qty_available: parseInt(e.target.value, 10) || 0 })}
+            aria-label="Quantity available"
+          />
+        </td>
+        <td style={{ width: 90, textAlign: "center" }}>
+          <Switch
+            checked={row.is_available}
+            onChange={(v) => onUpdate({ is_available: v })}
+            ariaLabel={`Available: ${row.name || "new row"}`}
+          />
+        </td>
+        <td className="row-actions">
+          <button
+            type="button"
+            className="row-trash"
+            onClick={onRemove}
+            title="Delete row"
+            aria-label={`Delete ${row.name || "new row"}`}
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18" />
+              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+              <path d="M19 6 17.5 20a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6 M14 11v6" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+      {descOpen && (
+        <tr className="data-row data-row-sub">
+          <td className="row-handle" />
+          <td colSpan={7}>
+            <input
+              type="text"
+              className="field-input field-desc-input"
+              value={row.description ?? ""}
+              onChange={(e) => onUpdate({ description: e.target.value || null })}
+              placeholder="Optional note for the customer — picked yesterday, last batch this week, etc."
+              aria-label="Description"
+              autoFocus
+            />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
