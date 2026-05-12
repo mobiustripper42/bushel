@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(36);
 
 -- ============================================================
 -- Schema sanity: RLS enabled on all tables
@@ -36,6 +36,13 @@ select col_not_null('public', 'products', 'category', 'products.category is not 
 select col_has_default('public', 'products', 'category', 'products.category has a default');
 select col_not_null('public', 'customers', 'send_weekly_link', 'customers.send_weekly_link is not null');
 select col_has_default('public', 'customers', 'send_weekly_link', 'customers.send_weekly_link has a default');
+
+-- ============================================================
+-- Schema sanity: Phase 3.0 columns
+-- ============================================================
+select has_column('public', 'customers', 'priority', 'customers.priority column exists');
+select col_not_null('public', 'customers', 'priority', 'customers.priority is not null');
+select col_default_is('public', 'customers', 'priority', '100', 'customers.priority defaults to 100');
 
 -- ============================================================
 -- Seed test data (postgres role bypasses RLS)
