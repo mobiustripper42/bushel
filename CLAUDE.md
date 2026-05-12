@@ -91,14 +91,17 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 
 ### Supabase CLI auth (mill-dev)
 
-The global `supabase login` on mill-dev is the **sailbook** account. Bushel lives in a different Supabase account, so any bushel CLI command that talks to the cloud project must override with `SUPABASE_ACCESS_TOKEN` (a Personal Access Token generated in the bushel account's profile):
+**TL;DR — anytime you need to push migrations or hit remote Supabase, run:**
 
 ```bash
-SUPABASE_ACCESS_TOKEN=sbp_xxx supabase link --project-ref nnmfubmlvnkouxxfxxlh
-SUPABASE_ACCESS_TOKEN=sbp_xxx supabase db push
+source .envrc && supabase db push
 ```
 
-If direnv is wired (`.envrc` exports the token, gitignored), the var is set automatically when you `cd ~/bushel/`. Without the override, you'll get `Your account does not have the necessary privileges` — that's the symptom. Local-only commands (`supabase start`, `supabase test db`, `supabase migration new`) don't need the token.
+(Or `direnv allow` once to make `.envrc` auto-load on every `cd ~/bushel/`.)
+
+**Why:** the global `supabase login` on mill-dev is the **sailbook** account. Bushel lives in a different Supabase account, so any bushel CLI command that talks to the cloud project must use `SUPABASE_ACCESS_TOKEN` (a Personal Access Token generated in the bushel account's profile, kept in `.envrc` — gitignored).
+
+Without the token: `Your account does not have the necessary privileges` — that's the symptom. Local-only commands (`supabase start`, `supabase test db`, `supabase migration new`) don't need it.
 
 Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
 
