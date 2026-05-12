@@ -1,5 +1,21 @@
 # bushel — Claude Code Project Context
 
+## ⚠ READ FIRST — Design folder is authoritative for ALL UI work
+
+The `/design/` directory at the repo root contains hand-built JSX + CSS + HTML mockups for every page. Filenames match routes (`admin-inventory.jsx` ↔ `/admin/inventory`, `admin-customers.jsx` ↔ `/admin/customers`, `order-page.jsx` ↔ `/c/[token]`, etc.).
+
+**Before writing or modifying ANY file under `src/app/`, `src/components/admin/`, or `src/components/customer/`:**
+
+1. `ls design/` and identify the matching mockup
+2. Open the `.jsx` AND its companion `.css` if one exists
+3. Read both fully — the JSX defines structure + interaction, the CSS defines visual tokens
+4. Match the design's layout, controls, and dirty-state behavior — do not "simplify"
+5. If no design file exists for the page, **stop and ask** before inventing layout
+
+The mockups are the spec. Acceptance criteria in Issues + the design file together define done. Shipping a page that matches the AC but ignores the design is a rebuild, not a fix.
+
+This has been missed in prior sessions. Do not miss it again.
+
 ## What We're Building
 
 Bay Branch Farm Inventory & Order System (`order.baybranchfarm.com`). Replaces tend.com for ~7 B2B customers (2 farm stands, 1 grocery store, 3–4 restaurants) on a weekly Sun/Mon → Wed/Thu cadence.
