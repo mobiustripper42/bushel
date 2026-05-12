@@ -31,7 +31,7 @@ The invoking caller passes `mode: interactive` (default) or `mode: auto`.
   - Stage commits with one of these literal message formats (no placeholders — substitute the actual values):
     - **PUSH:** `sync-config: push backport from <repo>` (e.g. `sync-config: push backport from bushel`)
     - **PULL:** `sync-config: pull propagate from seeds` (no `<repo>` — pull always sources from seeds)
-  One commit per source repo per direction. No empty commits.
+    One commit per source repo per direction. No empty commits.
   - Do NOT push, do NOT open a PR. The calling Routine handles git operations.
 
 If `mode` is missing, default to `interactive`. If `mode: auto` is requested but `direction` is also missing or ambiguous, STOP — auto mode requires both parameters resolved upfront.
@@ -61,9 +61,10 @@ If `mode` is missing, default to `interactive`. If `mode: auto` is requested but
 
 > `<file>` skipped — project type `<type>`, file applies to `[<allowed types>]` (manifest-gated)
 
-If `.claude/project-type` is absent or holds an unrecognized token, treat the project as **ungated** — diff every pair as before, no gating applied. Add a single one-liner to the Step 6 report so the reviewer knows the gate didn't fire:
+If `.claude/project-type` is absent or holds an unrecognized token, treat the project as **ungated** — diff every pair as before, no gating applied. Add a single one-liner to the Step 6 report so the reviewer knows the gate didn't fire. Use one of these two literal forms (substitute the actual token):
 
-> Project-type gating skipped — `.claude/project-type` is `<missing | unknown:"<token>">`. All template files diffed without filtering.
+- File missing: `Project-type gating skipped — .claude/project-type is missing. All template files diffed without filtering.`
+- Unknown token: `Project-type gating skipped — .claude/project-type is "<token>" (unrecognized; supported: webapp, tool). All template files diffed without filtering.`
 
 Type-gating is a **scoping decision**, not a hunk-level one. It removes file pairs from the diff scope before any classification happens. Hunks within an ungated file are still classified normally per Step 2.
 
