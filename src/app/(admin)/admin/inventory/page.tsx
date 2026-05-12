@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { InventoryRow } from "@/components/admin/inventory-row";
+import { PrepopulateButton } from "@/components/admin/prepopulate-button";
 
 const thStyle: React.CSSProperties = {
   padding: "10px 12px",
@@ -42,6 +43,8 @@ export default async function InventoryPage() {
       {!error && (!products || products.length === 0) && (
         <p style={{ color: "var(--ink-500)" }}>No products yet.</p>
       )}
+
+      {!error && products && products.length > 0 && <PrepopulateButton />}
 
       {products && products.length > 0 && (
         <div style={{ overflowX: "auto" }}>
