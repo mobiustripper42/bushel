@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.6] - 2026-05-12
+- PR #44: Phase 2.1 — Inventory editor (spreadsheet-style row form) — ⚠ does not match design/admin-inventory.jsx; rebuild scheduled
+- PR #54: Phase 3.0 — Add customers.priority column for SMS send-queue ordering
+
 ## [0.3.5] - 2026-05-11
 - PR #42: Phase 2.0b — drop pickup_windows, add fulfillment columns, flip is_open default
 
