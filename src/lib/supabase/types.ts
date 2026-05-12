@@ -65,6 +65,7 @@ export type Database = {
           is_active: boolean
           name: string
           phone: string | null
+          priority: number
           send_weekly_link: boolean
           token: string
           updated_at: string
@@ -78,6 +79,7 @@ export type Database = {
           is_active?: boolean
           name: string
           phone?: string | null
+          priority?: number
           send_weekly_link?: boolean
           token: string
           updated_at?: string
@@ -91,6 +93,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           phone?: string | null
+          priority?: number
           send_weekly_link?: boolean
           token?: string
           updated_at?: string

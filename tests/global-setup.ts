@@ -88,6 +88,18 @@ export default async function globalSetup() {
   if (productsError)
     throw new Error(`products upsert failed: ${productsError.message}`);
 
+  // Upsert test customers so customer-CRUD + prepopulate tests are self-contained.
+  // is_active defaults true; tests that deactivate must reset to true.
+  const { error: customersError } = await adminClient.from("customers").upsert(
+    [
+      { name: "Test Farm Stand", token: "testtoken-farmstand-0001",  is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: null },
+      { name: "Test Restaurant", token: "testtoken-restaurant-0001", is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: null },
+    ],
+    { onConflict: "token" },
+  );
+  if (customersError)
+    throw new Error(`customers upsert failed: ${customersError.message}`);
+
   // Sign in to get a real, server-verified session
   const anonClient = createClient(supabaseUrl, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
