@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.0] - 2026-05-12 — Phase 2
+
+- 10 pts shipped across 3 sessions (1.79 hrs/pt)
+- See `docs/RETROSPECTIVES.md` for the full retro
+
 ## [0.3.6] - 2026-05-12
 - PR #44: Phase 2.1 — Inventory editor (spreadsheet-style row form) — ⚠ does not match design/admin-inventory.jsx; rebuild scheduled
 - PR #54: Phase 3.0 — Add customers.priority column for SMS send-queue ordering
