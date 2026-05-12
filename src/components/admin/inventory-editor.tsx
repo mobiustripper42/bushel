@@ -97,25 +97,30 @@ export function InventoryEditor({ initialRows, weekLabel }: Props) {
   function handleSave() {
     setError(null);
     startSaving(async () => {
-      const result = await saveInventory({
-        rows: rows.map((r) => ({
-          id: r.id,
-          isNew: r.isNew,
-          name: r.name,
-          category: r.category,
-          description: r.description,
-          unit: r.unit,
-          price_cents: r.price_cents,
-          qty_available: r.qty_available,
-          is_available: r.is_available,
-          sort_order: r.sort_order,
-        })),
-        deletedIds,
-      });
-      if (result.error) {
-        setError(result.error);
+      let result;
+      try {
+        result = await saveInventory({
+          rows: rows.map((r) => ({
+            id: r.id,
+            isNew: r.isNew,
+            name: r.name,
+            category: r.category,
+            description: r.description,
+            unit: r.unit,
+            price_cents: r.price_cents,
+            qty_available: r.qty_available,
+            is_available: r.is_available,
+            sort_order: r.sort_order,
+          })),
+          deletedIds,
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Save failed. Try again.");
         return;
       }
+
+      // Always remap any rows that did get inserted, even on partial failure —
+      // prevents duplicate inserts on retry.
       const mapped = rows.map((r) => {
         if (r.isNew && result.newIdMap?.[r.id]) {
           return { ...r, id: result.newIdMap[r.id], isNew: false };
@@ -123,6 +128,12 @@ export function InventoryEditor({ initialRows, weekLabel }: Props) {
         return r;
       });
       setRows(mapped);
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
       setBaseline(mapped);
       setDeletedIds([]);
       router.refresh();

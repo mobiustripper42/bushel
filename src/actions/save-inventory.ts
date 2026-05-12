@@ -53,12 +53,12 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
   const supabase = await createClient();
   const now = new Date().toISOString();
 
+  const newIdMap: Record<string, string> = {};
+
   if (input.deletedIds.length > 0) {
     const { error } = await supabase.from("products").delete().in("id", input.deletedIds);
-    if (error) return { error: error.message };
+    if (error) return { error: error.message, newIdMap };
   }
-
-  const newIdMap: Record<string, string> = {};
 
   for (const row of input.rows) {
     const payload = {
@@ -79,11 +79,11 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
         .insert(payload)
         .select("id")
         .single();
-      if (error) return { error: error.message };
+      if (error) return { error: error.message, newIdMap };
       if (data) newIdMap[row.id] = data.id;
     } else {
       const { error } = await supabase.from("products").update(payload).eq("id", row.id);
-      if (error) return { error: error.message };
+      if (error) return { error: error.message, newIdMap };
     }
   }
 
