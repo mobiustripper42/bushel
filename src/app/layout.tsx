@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Playfair_Display, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/app.css";
-import "@/styles/admin-customers.css";
 
 const sourceSans = Source_Sans_3({
   variable: "--font-sans",
