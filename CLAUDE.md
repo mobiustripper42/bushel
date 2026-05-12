@@ -206,6 +206,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - One border radius: `rounded-lg`.
 - Layout padding in `layout.tsx` only.
 - Customer-side: every page works at 375px (DEC-019).
+- **All CSS lives in `src/styles/app.css`.** No per-page CSS files (`inventory.css`, `admin-customers.css`, etc.). No area files (`admin.css`, `customer.css`). When a page needs new styles, extend `app.css` under a clearly-labeled section — that's where the customer-table classes (`.cust-*`) and drawer primitives (`.drawer-*`) sit alongside `.btn` / `.field` / `.data-table`. Per-page CSS duplicates primitives that drift across files; one file with composable primitives is the standard, set in session 15 and re-litigated in session 16. If anyone (you, me, a future contributor) proposes a per-page or area CSS file, push back — the answer is no.
 
 ### Testing (DEC-023)
 - **Test the user, not the function.** Heavy integration, light unit.
