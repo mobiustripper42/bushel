@@ -25,6 +25,7 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 |---|---|---|---|
 | 5 (Phase 0) | 17 (issues) + 3 (0.1 pre-issue) = 20 | 11.28 | 0.66 |
 | 3 (Phase 1) | 16 | 18.0 | 1.13 |
+| 3 (Phase 2) | 10 (labeled) + #27 admin-shell carry-over | 17.87 | 1.79 |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
@@ -79,10 +80,10 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 2.0a | UX screen vs schema + decision audit: close gaps found (products.category, notification_preference cleanup, delivery window decision) | 2 | [#35](https://github.com/mobiustripper42/bushel/issues/35) |
-| 2.0b | Schema migration: drop `pickup_windows` table + `orders.pickup_window_id`; add `orders.pickup_note`, `orders.delivery_preference`; flip `ordering_schedule.is_open` default to `true`; regenerate types (DEC-029, DEC-030) | 1 | [#41](https://github.com/mobiustripper42/bushel/issues/41) |
-| 2.1 | Inventory editor (spreadsheet-style row form); Playwright spec rolled in | 5 | [#32](https://github.com/mobiustripper42/bushel/issues/32) |
-| 2.2 | "Pre-populate from last week" action (simple reset, no snapshots in v1) | 2 | [#33](https://github.com/mobiustripper42/bushel/issues/33) |
+| 2.0a | UX screen vs schema + decision audit: close gaps found (products.category, notification_preference cleanup, delivery window decision) | 2 | [x] [#35](https://github.com/mobiustripper42/bushel/issues/35) |
+| 2.0b | Schema migration: drop `pickup_windows` table + `orders.pickup_window_id`; add `orders.pickup_note`, `orders.delivery_preference`; flip `ordering_schedule.is_open` default to `true`; regenerate types (DEC-029, DEC-030) | 1 | [x] [#41](https://github.com/mobiustripper42/bushel/issues/41) |
+| 2.1 | Inventory editor (spreadsheet-style row form); Playwright spec rolled in. **Shipped twice — first attempt (PR #44) missed `design/admin-inventory.jsx`, rebuilt in PR #57 with app-wide design system stood up alongside.** | 5 | [x] [#32](https://github.com/mobiustripper42/bushel/issues/32) |
+| 2.2 | "Pre-populate from last week" action (simple reset, no snapshots in v1) | 2 | [x] [#33](https://github.com/mobiustripper42/bushel/issues/33) |
 
 ---
 
