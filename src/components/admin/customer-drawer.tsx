@@ -126,6 +126,12 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
         </header>
 
         <div className="drawer-body">
+          {error && (
+            <div role="alert" className="drawer-error" style={{ marginTop: 0, marginBottom: 20 }}>
+              {error}
+            </div>
+          )}
+
           <Field label="Customer name" hint="How you refer to them. Often a short version of the business.">
             <input
               type="text"
@@ -196,12 +202,6 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
               </span>
             </div>
           </Field>
-
-          {error && (
-            <div role="alert" className="drawer-error">
-              {error}
-            </div>
-          )}
         </div>
 
         <footer className="drawer-foot">
