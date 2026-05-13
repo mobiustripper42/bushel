@@ -154,7 +154,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
                 placeholder="orders@…"
               />
             </Field>
-            <Field label="Phone">
+            <Field label="Phone (required)">
               <input
                 type="tel"
                 value={c.phone}
@@ -163,7 +163,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
               />
             </Field>
           </div>
-          <div className="field-help">At least one of email or phone is required.</div>
+          <div className="field-help">Phone is required — that&apos;s how weekly SMS links go out. Email is optional.</div>
 
           <Field label="Delivery address" hint="Used on order confirmations and the delivery list.">
             <textarea

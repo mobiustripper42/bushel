@@ -56,15 +56,16 @@ test.describe("admin customers", () => {
     await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).toBeVisible();
   });
 
-  test("Add customer drawer requires email or phone", async ({ page }) => {
+  test("Add customer drawer requires phone", async ({ page }) => {
     await page.goto("/admin/customers");
     await page.getByRole("button", { name: /add customer/i }).click();
     await expect(drawer(page)).toBeVisible();
 
-    await drawer(page).getByLabel("Customer name").fill("No Contact LLC");
+    await drawer(page).getByLabel("Customer name").fill("No Phone LLC");
+    await drawer(page).getByLabel("Email").fill("noPhone@example.com");
     await drawer(page).getByRole("button", { name: /add customer/i }).click();
 
-    await expect(drawer(page).getByRole("alert")).toContainText(/email or phone/i);
+    await expect(drawer(page).getByRole("alert")).toContainText(/phone is required/i);
     // Drawer stays open
     await expect(drawer(page)).toBeVisible();
   });
@@ -75,7 +76,7 @@ test.describe("admin customers", () => {
     await page.getByRole("button", { name: /add customer/i }).click();
 
     await drawer(page).getByLabel("Customer name").fill(uniqueName);
-    await drawer(page).getByLabel("Email").fill("pw@example.com");
+    await drawer(page).getByLabel(/phone/i).fill("216-555-0150");
     await drawer(page).getByLabel("Priority").fill("50");
     await drawer(page).getByRole("button", { name: /add customer/i }).click();
 
@@ -102,7 +103,7 @@ test.describe("admin customers", () => {
     await row.click();
 
     await expect(drawer(page)).toBeVisible();
-    const phoneField = drawer(page).getByLabel("Phone");
+    const phoneField = drawer(page).getByLabel(/phone/i);
     await phoneField.fill("216-555-0199");
     await drawer(page).getByRole("button", { name: /save changes/i }).click();
 

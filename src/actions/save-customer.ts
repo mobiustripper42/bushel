@@ -23,9 +23,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validate(input: CustomerInput): string | null {
   if (!input.name.trim()) return "Name is required.";
-  const email = input.email?.trim() ?? "";
   const phone = input.phone?.trim() ?? "";
-  if (!email && !phone) return "Email or phone is required.";
+  if (!phone) return "Phone is required.";
+  const email = input.email?.trim() ?? "";
   if (email && !EMAIL_RE.test(email)) return "Email format looks off.";
   if (!Number.isInteger(input.priority) || input.priority < 0) {
     return "Priority must be a whole number, zero or greater.";
