@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -22,18 +22,29 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: Props) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onCancel();
     }
     window.addEventListener("keydown", onKey);
+    // Focus the safer (cancel) action when the dialog opens; destructive
+    // confirms should never auto-focus the destructive button.
+    cancelRef.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
   return (
     <>
-      <div className="modal-scrim" onClick={onCancel} />
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div className="modal-scrim" onClick={busy ? undefined : onCancel} />
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        aria-describedby="confirm-modal-body"
+      >
         <div className="modal-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 9v4" />
@@ -42,9 +53,9 @@ export function ConfirmModal({
           </svg>
         </div>
         <h3 id="confirm-modal-title" className="modal-title">{title}</h3>
-        <div className="modal-body">{body}</div>
+        <div id="confirm-modal-body" className="modal-body">{body}</div>
         <div className="modal-actions">
-          <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button ref={cancelRef} variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
           <Button
             variant={confirmDanger ? "destructive-solid" : "primary"}
             onClick={onConfirm}

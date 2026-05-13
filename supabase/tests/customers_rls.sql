@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(16);
 
 -- Schema sanity
 select has_table('public', 'customers', 'customers table exists');
@@ -79,6 +79,25 @@ select is_empty(
   $$ select id from public.customers where token = 'rotated-token-001' $$,
   'anon cannot read customer by token (RLS still blocks)'
 );
+reset role;
+
+-- Authenticated path: rotation through RLS-permitted UPDATE and UPDATE-uniqueness.
+-- Seeds 'Authed Farm' (test-token-auth-001) and the rotated 'rotated-token-001'
+-- already exist as authenticated-side and postgres-side rows.
+set local role authenticated;
+
+select lives_ok(
+  $$ update public.customers set token = 'authed-rotated-001' where token = 'test-token-auth-001' $$,
+  'authenticated can rotate a customer token (UPDATE permitted by RLS)'
+);
+
+select throws_ok(
+  $$ update public.customers set token = 'rotated-token-001' where token = 'authed-rotated-001' $$,
+  '23505',
+  null,
+  'authenticated UPDATE rejects collision with existing token'
+);
+
 reset role;
 
 select * from finish();

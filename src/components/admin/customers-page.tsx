@@ -90,22 +90,20 @@ export function CustomersPage({ customers }: Props) {
   async function doRegen(c: CustomerRow) {
     setRegenError(null);
     setRegenBusy(true);
-    let result;
     try {
-      result = await regenerateToken(c.id);
+      const result = await regenerateToken(c.id);
+      setRegenBusy(false);
+      setConfirmRegen(null);
+      if (result.error) {
+        setRegenError(result.error);
+        return;
+      }
+      router.refresh();
     } catch (e) {
       setRegenError(e instanceof Error ? e.message : "Couldn't regenerate — try again.");
       setRegenBusy(false);
       setConfirmRegen(null);
-      router.refresh();
-      return;
     }
-    setRegenBusy(false);
-    setConfirmRegen(null);
-    if (result.error) {
-      setRegenError(result.error);
-    }
-    router.refresh();
   }
 
   async function handleCopy(c: CustomerRow) {
