@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.1] - 2026-05-13
+- PR #59: Phase 3.1 — Admin customer CRUD UI with priority + email/phone OR validation
+
 ## [0.4.0] - 2026-05-12 — Phase 2
 
 - 10 pts shipped across 3 sessions (1.79 hrs/pt)
