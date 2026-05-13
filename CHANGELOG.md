@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.2] - 2026-05-13
+- PR #64: Phase 3.2 — Customer token generation + regenerate
+
 ## [0.4.1] - 2026-05-13
 - PR #59: Phase 3.1 — Admin customer CRUD UI with priority + email/phone OR validation
 
