@@ -1,6 +1,6 @@
 import * as React from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "destructive";
+type Variant = "primary" | "secondary" | "ghost" | "destructive" | "destructive-solid";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -8,14 +8,10 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   dirty?: boolean;
 };
 
-export function Button({
-  variant = "primary",
-  size = "default",
-  dirty = false,
-  className = "",
-  type = "button",
-  ...rest
-}: ButtonProps) {
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "primary", size = "default", dirty = false, className = "", type = "button", ...rest },
+  ref,
+) {
   const classes = [
     "btn",
     `btn-${variant}`,
@@ -26,5 +22,5 @@ export function Button({
     .filter(Boolean)
     .join(" ");
 
-  return <button type={type} className={classes} {...rest} />;
-}
+  return <button ref={ref} type={type} className={classes} {...rest} />;
+});

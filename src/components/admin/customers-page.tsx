@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Switch } from "@/components/ui/switch";
 import { CustomerDrawer, type CustomerDrawerState } from "@/components/admin/customer-drawer";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { toggleSubscribed } from "@/actions/toggle-subscribed";
+import { regenerateToken } from "@/actions/regenerate-token";
 
 export type CustomerRow = {
   id: string;
@@ -55,6 +57,9 @@ export function CustomersPage({ customers }: Props) {
   const [drawer, setDrawer] = useState<CustomerDrawerState | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [regenError, setRegenError] = useState<string | null>(null);
+  const [confirmRegen, setConfirmRegen] = useState<CustomerRow | null>(null);
+  const [regenBusy, setRegenBusy] = useState(false);
   const [, startToggle] = useTransition();
 
   const subscribedCount = customers.filter((c) => c.send_weekly_link).length;
@@ -80,6 +85,25 @@ export function CustomersPage({ customers }: Props) {
       }
       router.refresh();
     });
+  }
+
+  async function doRegen(c: CustomerRow) {
+    setRegenError(null);
+    setRegenBusy(true);
+    try {
+      const result = await regenerateToken(c.id);
+      setRegenBusy(false);
+      setConfirmRegen(null);
+      if (result.error) {
+        setRegenError(result.error);
+        return;
+      }
+      router.refresh();
+    } catch (e) {
+      setRegenError(e instanceof Error ? e.message : "Couldn't regenerate — try again.");
+      setRegenBusy(false);
+      setConfirmRegen(null);
+    }
   }
 
   async function handleCopy(c: CustomerRow) {
@@ -110,6 +134,11 @@ export function CustomersPage({ customers }: Props) {
       {toggleError && (
         <div role="alert" className="drawer-error" style={{ marginBottom: 16 }}>
           {toggleError}
+        </div>
+      )}
+      {regenError && (
+        <div role="alert" className="drawer-error" style={{ marginBottom: 16 }}>
+          {regenError}
         </div>
       )}
 
@@ -177,8 +206,8 @@ export function CustomersPage({ customers }: Props) {
                   <button
                     type="button"
                     className="cust-regen"
-                    disabled
-                    title="Token regenerate ships with 3.2"
+                    onClick={() => setConfirmRegen(c)}
+                    aria-label={`Regenerate order link for ${c.name}`}
                   >
                     Regenerate
                   </button>
@@ -208,6 +237,23 @@ export function CustomersPage({ customers }: Props) {
           initial={drawer}
           onClose={() => setDrawer(null)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {confirmRegen && (
+        <ConfirmModal
+          title="Regenerate order link?"
+          body={
+            <>
+              This breaks <strong>{confirmRegen.name}</strong>&apos;s existing bookmark. They&apos;ll
+              need a new link by text or email.
+            </>
+          }
+          confirmLabel="Yes, regenerate"
+          confirmDanger
+          busy={regenBusy}
+          onConfirm={() => doRegen(confirmRegen)}
+          onCancel={() => setConfirmRegen(null)}
         />
       )}
     </main>

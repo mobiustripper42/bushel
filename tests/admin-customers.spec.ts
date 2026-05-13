@@ -112,6 +112,39 @@ test.describe("admin customers", () => {
     await expect(rowByName(page, TEST_CUSTOMERS.farmStand.name)).toContainText("216-555-0199");
   });
 
+  test("Regenerate rotates the customer token and refreshes the row", async ({ page }) => {
+    const supabase = adminClient();
+    const seedToken = TEST_CUSTOMERS.restaurant.token;
+
+    try {
+      await page.goto("/admin/customers");
+      const row = rowByName(page, TEST_CUSTOMERS.restaurant.name);
+      await expect(row).toContainText(`/c/${seedToken}`);
+
+      await row
+        .getByRole("button", { name: new RegExp(`regenerate order link for ${TEST_CUSTOMERS.restaurant.name}`, "i") })
+        .click();
+
+      const modal = page.getByRole("dialog", { name: /regenerate order link/i });
+      await expect(modal).toBeVisible();
+      await modal.getByRole("button", { name: /yes, regenerate/i }).click();
+      await expect(modal).toHaveCount(0);
+
+      // Token should change to a 6+3 base36 slug and the old token should be gone.
+      await expect(row).not.toContainText(`/c/${seedToken}`);
+      const tokenCell = row.locator(".cust-name-token");
+      const newToken = (await tokenCell.textContent())?.replace(/^\/c\//, "").trim() ?? "";
+      expect(newToken).toMatch(/^[a-z0-9]{6}-[a-z0-9]{3}$/);
+      expect(newToken).not.toBe(seedToken);
+    } finally {
+      // Restore the seed token so subsequent tests + global-setup upsert behave.
+      await supabase
+        .from("customers")
+        .update({ token: seedToken })
+        .eq("name", TEST_CUSTOMERS.restaurant.name);
+    }
+  });
+
   test("subscribed switch toggles inline without opening the drawer", async ({ page }) => {
     await page.goto("/admin/customers");
     const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
