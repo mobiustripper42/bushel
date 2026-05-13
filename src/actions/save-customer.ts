@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { generateToken } from "@/lib/tokens";
+
+const TOKEN_INSERT_RETRIES = 5;
 
 export type CustomerInput = {
   id: string | null;
@@ -33,13 +36,6 @@ function validate(input: CustomerInput): string | null {
   return null;
 }
 
-// 3.2 owns proper short-token generation + collision retry. Use the full
-// UUID here so placeholder rows aren't trivially guessable while 3.1 is
-// reachable in production.
-function placeholderToken(): string {
-  return "tmp-" + crypto.randomUUID();
-}
-
 export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerResult> {
   const err = validate(input);
   if (err) return { error: err };
@@ -68,12 +64,18 @@ export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerRe
     return { error: null, customerId: input.id };
   }
 
-  const { data, error } = await supabase
-    .from("customers")
-    .insert({ ...trimmed, token: placeholderToken(), is_active: true })
-    .select("id")
-    .single();
-  if (error) return { error: error.message };
-  revalidatePath("/admin/customers");
-  return { error: null, customerId: data.id };
+  for (let attempt = 0; attempt < TOKEN_INSERT_RETRIES; attempt++) {
+    const { data, error } = await supabase
+      .from("customers")
+      .insert({ ...trimmed, token: generateToken(), is_active: true })
+      .select("id")
+      .single();
+    if (!error) {
+      revalidatePath("/admin/customers");
+      return { error: null, customerId: data.id };
+    }
+    // 23505 = unique_violation in Postgres
+    if (error.code !== "23505") return { error: error.message };
+  }
+  return { error: "Could not generate a unique token. Try again." };
 }

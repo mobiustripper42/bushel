@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(14);
 
 -- Schema sanity
 select has_table('public', 'customers', 'customers table exists');
@@ -48,6 +48,37 @@ select lives_ok(
   'authenticated can insert into customers'
 );
 
+reset role;
+
+-- Token uniqueness on insert (duplicate token rejected)
+select throws_ok(
+  $$ insert into public.customers (name, token) values ('Dup Farm', 'test-token-postgres-001') $$,
+  '23505',
+  null,
+  'duplicate token on insert is rejected'
+);
+
+-- Token rotation: update changes the value; old token no longer matches; new token matches
+update public.customers
+   set token = 'rotated-token-001'
+ where token = 'test-token-postgres-001';
+
+select is_empty(
+  $$ select 1 from public.customers where token = 'test-token-postgres-001' $$,
+  'after rotation, old token no longer matches any row'
+);
+
+select isnt_empty(
+  $$ select 1 from public.customers where token = 'rotated-token-001' $$,
+  'after rotation, new token resolves to the customer'
+);
+
+-- Anon still cannot read after rotation (regression guard)
+set local role anon;
+select is_empty(
+  $$ select id from public.customers where token = 'rotated-token-001' $$,
+  'anon cannot read customer by token (RLS still blocks)'
+);
 reset role;
 
 select * from finish();
