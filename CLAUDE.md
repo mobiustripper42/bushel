@@ -135,6 +135,24 @@ The wrapper only catches CLI ops. The following are **not** guarded — they rel
 - Direct `psql` against the prod URL.
 - Any tool that doesn't go through the `supabase` binary.
 
+### Cross-system env-var sync (Supabase ↔ Vercel)
+
+**Switching Supabase project refs requires re-syncing Vercel env vars in lockstep.** The two systems do not auto-sync.
+
+When `.env.local`'s `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` change (project ref rotated, account split, key rotated), the Vercel **Production AND Preview** environments must be updated to match — same names, same values — and then redeployed. Vercel does not redeploy automatically on env-var change.
+
+Failure mode if missed: `createServerClient()` gets `undefined` for URL or key and the deployed app returns `HTTP 500` site-wide. Local `npm run dev` keeps working because it reads `.env.local` directly, which masks the regression until someone hits the deployed site. Session 19 (2026-05-14) lost an hour to this exact gap during the bushel/sailbook account split.
+
+Diff-check the three vars against `.env.local` after any rotation:
+
+```bash
+vercel env pull --environment=production .env.production.tmp
+vercel env pull --environment=preview    .env.preview.tmp
+diff <(grep -E "SUPABASE" .env.local | sort) <(grep -E "SUPABASE" .env.production.tmp | sort)
+```
+
+Variable names must match exactly — a typo in the Vercel-side name (e.g., `SUPABASE_ANON_KEY` instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY`) will produce the same 500 even when the value is correct.
+
 ## Commands
 ```bash
 # Development
@@ -278,9 +296,29 @@ After that, `/kill-this` PRs into `staging`, bumps are untagged on `staging`, an
 
 ### Mobile PR review (developer notes)
 - GitHub mobile app, not web.
-- Tap the preview URL first.
+- Tap the preview URL first — prefer the stable `preview.baybranchfarm.com` over the per-PR Vercel URL (see below).
 - Auto-merge enabled per PR after CI green.
 - Branch protection: require CI green; skip reviewer-count requirements for solo phase.
+
+### Stable preview URL — `preview.baybranchfarm.com`
+
+To keep the preview URL bookmarkable on a phone, a fixed subdomain points at whichever task branch's preview deployment you're currently reviewing. Reassigned per active branch.
+
+**DNS (Cloudflare, one-time):**
+- Record: `CNAME`, Name `preview`, Target `cname.vercel-dns.com`.
+- **Proxy: DNS only** (gray cloud). Orange-cloud proxying breaks Vercel's TLS chain.
+
+**Vercel domain (one-time):**
+- Project → Settings → Domains → Add `preview.baybranchfarm.com`.
+
+**Per-branch reassignment (every new task branch):**
+- Project → Settings → Domains → `preview.baybranchfarm.com` → **Edit** → Git Branch → select `task/X.Y-current-branch` → Save.
+- New preview build for that branch repoints the subdomain. ~30s.
+
+**Supabase OAuth allowlist (one-time):**
+- Supabase Dashboard → Authentication → URL Configuration → Redirect URLs → add `https://preview.baybranchfarm.com/**`.
+
+If the subdomain returns 500 right after reassignment, the new branch hasn't pushed a commit yet — Vercel only builds on new SHAs. An empty commit (`git commit --allow-empty -m "Trigger preview"`) kicks a build.
 
 ## Versioning
 
