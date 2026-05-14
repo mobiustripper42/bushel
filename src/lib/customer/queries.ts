@@ -1,3 +1,9 @@
+// Customer-side reads use the service-role admin client intentionally. The
+// token in the bbf_customer_token cookie is the authentication boundary;
+// once it resolves to a customer row, the rest of the customer-facing
+// queries bypass RLS by design. Don't "fix" these to the anon client —
+// the customer-side RLS policies key off `current_setting('app.customer_id')`
+// which we don't set, so anon reads return empty.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
@@ -29,4 +35,36 @@ export async function getLatestDeliveryPreference(
     .maybeSingle();
   if (error) throw new Error(`getLatestDeliveryPreference: ${error.message}`);
   return data?.delivery_preference ?? null;
+}
+
+// Pulls the customer's order for a specific week (typically the current NY-time
+// week), joined with its line items + product names/units. Returns null if no
+// order exists for that week. Used by /confirmed.
+export async function getCurrentWeekOrder(customerId: string, weekOf: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      id,
+      week_of,
+      fulfillment_type,
+      delivery_address,
+      delivery_preference,
+      pickup_note,
+      notes,
+      created_at,
+      order_items (
+        id,
+        qty,
+        unit_price_cents,
+        products ( name, unit )
+      )
+    `,
+    )
+    .eq("customer_id", customerId)
+    .eq("week_of", weekOf)
+    .maybeSingle();
+  if (error) throw new Error(`getCurrentWeekOrder: ${error.message}`);
+  return data ?? null;
 }

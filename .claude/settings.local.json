@@ -11,7 +11,9 @@
       "Bash(dig +short preview.baybranchfarm.com)",
       "Skill(kill-this)",
       "Bash(kill 3819251)",
-      "Bash(kill 4010112)"
+      "Bash(kill 4010112)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"node.*next\")"
     ]
   }
 }

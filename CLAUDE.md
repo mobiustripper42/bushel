@@ -104,7 +104,7 @@ Bushel runs against **two Supabase projects** under the bushel-billed org:
 **Migration discipline (with the split)** — all `supabase link`/`db push` commands need the bushel PAT, so make sure `.envrc` is loaded (direnv or `source .envrc`):
 
 1. `supabase link --project-ref nnmfubmlvnkouxxfxxlh` is the default state. Stay linked here.
-2. Local edits → `supabase db reset` against local → `supabase db push` against dev/preview → vet.
+2. Write migration → `supabase db reset` against local for a syntax sanity check → `supabase db push` against dev/preview → vet against the running dev/preview app.
 3. When dev/preview is happy and the PR has merged, push to prod:
    ```bash
    supabase link --project-ref piaobrnrmoxnfrpnpixw
@@ -112,6 +112,14 @@ Bushel runs against **two Supabase projects** under the bushel-billed org:
    supabase link --project-ref nnmfubmlvnkouxxfxxlh   # relink back, always
    ```
 4. The relink-back step is non-negotiable. A forgotten link-to-prod is how `supabase db reset` becomes a resume-update event.
+
+**Local Supabase is NOT the development backend.** `.env.local` and `npm run dev` point at the dev/preview cloud project, not `127.0.0.1:54421`. The reason is Google OAuth — registering `http://localhost:54421` as a redirect on the Google Cloud OAuth client is enough friction (and enough mental-mode-switching for the admin side that uses OAuth) that it's not worth the speed of a purely-local loop. Local Supabase is still used for:
+
+- `supabase db reset` — applies all migrations on a clean local DB to catch syntax errors before pushing to dev/preview.
+- `supabase test db` — pgTAP tests, no auth needed, fast.
+- Playwright integration tests (CI + `/kill-this`) — env-overridden to local Supabase via the test commands, isolated per run, no cloud round-trip.
+
+`.env.local` keeps the commented-out local URLs at the bottom — handy if this decision is ever reversed, but the default state is cloud.
 
 **Auth config is per-project** — Google OAuth, redirect URLs, providers all live on each project independently. Changes (new OAuth client, new redirect URL, provider toggle) must be applied to both. The dev project's "this works" doesn't carry to prod automatically.
 

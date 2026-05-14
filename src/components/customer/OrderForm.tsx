@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { placeOrder } from "@/actions/place-order";
 import type { ProductRow } from "@/lib/customer/queries";
 
 type Customer = {
@@ -205,6 +206,14 @@ export function OrderForm({
     priorDeliveryPreference ?? "",
   );
   const [notes, setNotes] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  // useTransition's isPending flips asynchronously — a fast cross-button tap
+  // (sticky-bar → rail-card) within one frame can fire the handler twice
+  // before React commits the disabled state. This ref is the synchronous
+  // latch; the server action is idempotent on the second call but the second
+  // request still hits the network unnecessarily.
+  const submittingRef = useRef(false);
 
   const itemsWithQty = useMemo(
     () => products.filter((p) => (qty[p.id] ?? 0) > 0),
@@ -223,6 +232,42 @@ export function OrderForm({
 
   const setItemQty = (id: string, n: number) =>
     setQty((q) => ({ ...q, [id]: n }));
+
+  const handleSubmit = () => {
+    if (lineCount === 0 || submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitError(null);
+    const payloadItems = itemsWithQty.map((p) => ({
+      product_id: p.id,
+      qty: qty[p.id] ?? 0,
+      unit_price_cents: p.price_cents,
+    }));
+    startTransition(async () => {
+      try {
+        const result = await placeOrder({
+          mode,
+          items: payloadItems,
+          delivery_preference: deliveryPreference,
+          pickup_note: pickupNote,
+          notes,
+        });
+        if (result?.error) {
+          setSubmitError(result.error);
+          submittingRef.current = false; // allow retry after a failed submit
+        }
+        // On success the action redirects; page unmounts, latch stays true.
+      } catch (err) {
+        // Thrown errors (network failure, action exception) used to leave the
+        // ref stuck true and silently swallow every subsequent click. Reset.
+        setSubmitError(err instanceof Error ? err.message : "Submit failed.");
+        submittingRef.current = false;
+      }
+    });
+  };
+
+  // Disable + show spinner whenever a submit is in flight, regardless of
+  // which of the three buttons the user pressed.
+  const submitDisabled = lineCount === 0 || isPending;
 
   return (
     <div className="order-page">
@@ -407,10 +452,21 @@ export function OrderForm({
               <button
                 type="button"
                 className="btn btn-primary submit-btn"
-                disabled={lineCount === 0}
+                onClick={handleSubmit}
+                disabled={submitDisabled}
+                aria-busy={isPending}
               >
-                Submit order
+                {isPending ? (
+                  <span className="btn-spinner" aria-hidden="true" />
+                ) : (
+                  "Submit order"
+                )}
               </button>
+              {submitError ? (
+                <p className="submit-error" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
               <p className="submit-fine">
                 You&rsquo;ll get a text confirmation. To change anything, text
                 Annabel at 216-202-5718.
@@ -450,9 +506,15 @@ export function OrderForm({
               <button
                 type="button"
                 className="btn btn-primary rail-submit"
-                disabled={lineCount === 0}
+                onClick={handleSubmit}
+                disabled={submitDisabled}
+                aria-busy={isPending}
               >
-                Submit order
+                {isPending ? (
+                  <span className="btn-spinner" aria-hidden="true" />
+                ) : (
+                  "Submit order"
+                )}
               </button>
               <div className="rail-fine">
                 Text Annabel to change anything · 216-202-5718
@@ -476,9 +538,15 @@ export function OrderForm({
         <button
           type="button"
           className="btn btn-primary sticky-btn"
-          disabled={lineCount === 0}
+          onClick={handleSubmit}
+          disabled={submitDisabled}
+          aria-busy={isPending}
         >
-          Review &amp; submit
+          {isPending ? (
+            <span className="btn-spinner" aria-hidden="true" />
+          ) : (
+            "Review & submit"
+          )}
         </button>
       </div>
     </div>
