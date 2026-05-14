@@ -881,7 +881,6 @@
   background: var(--paper);
   border: 1px solid var(--ink-200);
   border-radius: var(--r-md);
-  overflow: hidden;
 }
 .item-row {
   display: grid;
@@ -891,7 +890,15 @@
   padding: 12px 14px;
   border-top: 1px solid var(--ink-200);
 }
-.item-row:first-child { border-top: 0; }
+.item-row:first-child {
+  border-top: 0;
+  border-top-left-radius: var(--r-md);
+  border-top-right-radius: var(--r-md);
+}
+.item-row:last-child {
+  border-bottom-left-radius: var(--r-md);
+  border-bottom-right-radius: var(--r-md);
+}
 .item-row.is-sold-out { background: var(--leaf-50); opacity: 0.78; }
 .item-row.is-sold-out .item-name { color: var(--ink-500); }
 .item-row.is-sold-out .item-thumb { opacity: 0.55; }
@@ -932,10 +939,41 @@
 .item-meta.meta-sold-out { color: var(--rose-600); font-weight: 600; }
 
 .stepper {
+  position: relative;
   display: inline-flex; align-items: center;
   border: 1px solid var(--ink-300);
   border-radius: var(--r-pill, 999px);
   background: var(--paper);
+}
+/* Press-preview chip — shows live qty above the thumb so the held finger
+   doesn't occlude the value. Fades after PREVIEW_LINGER_MS. */
+.stepper-preview {
+  position: absolute;
+  left: 50%; bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  min-width: 44px;
+  padding: 6px 10px;
+  background: var(--ink-900);
+  color: var(--paper);
+  border-radius: var(--r-sm);
+  font-size: 1.1rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.stepper-preview::after {
+  content: "";
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink-900);
+}
+.stepper-preview.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 .stepper-btn {
   width: 32px; height: 32px;

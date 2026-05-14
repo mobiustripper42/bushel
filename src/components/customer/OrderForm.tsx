@@ -30,6 +30,16 @@ const HOLD_TICK_MS = 90;
 const HOLD_ACCEL_AFTER = 8;
 const HOLD_FAST_TICK_MS = 40;
 
+// After-press preview: thumb-friendly chip that lingers briefly after the
+// pointer lifts so a single tap is still readable.
+const PREVIEW_LINGER_MS = 600;
+
+function triggerHaptic() {
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    navigator.vibrate(10);
+  }
+}
+
 function Stepper({
   value,
   onChange,
@@ -40,10 +50,12 @@ function Stepper({
   max: number;
 }) {
   const [draft, setDraft] = useState(value.toString());
+  const [showPreview, setShowPreview] = useState(false);
   const valueRef = useRef(value);
   const maxRef = useRef(max);
   const holdTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     valueRef.current = value;
@@ -56,11 +68,22 @@ function Stepper({
 
   const clamp = (n: number) => Math.max(0, Math.min(maxRef.current, n));
 
+  const flashPreview = () => {
+    setShowPreview(true);
+    if (previewTimeout.current) clearTimeout(previewTimeout.current);
+    previewTimeout.current = setTimeout(
+      () => setShowPreview(false),
+      PREVIEW_LINGER_MS,
+    );
+  };
+
   const step = (dir: 1 | -1) => {
     const next = clamp(valueRef.current + dir);
     if (next === valueRef.current) return false;
     valueRef.current = next;
     onChange(next);
+    flashPreview();
+    triggerHaptic();
     return true;
   };
 
@@ -71,7 +94,13 @@ function Stepper({
     holdInterval.current = null;
   };
 
-  useEffect(() => () => stopHold(), []);
+  useEffect(
+    () => () => {
+      stopHold();
+      if (previewTimeout.current) clearTimeout(previewTimeout.current);
+    },
+    [],
+  );
 
   const startHold = (dir: 1 | -1) => {
     stopHold();
@@ -109,6 +138,12 @@ function Stepper({
 
   return (
     <div className="stepper" role="group" aria-label="quantity">
+      <div
+        className={"stepper-preview" + (showPreview ? " is-visible" : "")}
+        aria-hidden="true"
+      >
+        {value}
+      </div>
       <button
         type="button"
         className="stepper-btn"
