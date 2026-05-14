@@ -30,7 +30,9 @@ export async function proxy(request: NextRequest) {
     if (customer) {
       response.cookies.set(CUSTOMER_TOKEN_COOKIE, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        // Gate on actual transport, not NODE_ENV: WebKit refuses Secure cookies
+        // on HTTP localhost, which broke CI (`npm start` → NODE_ENV=production).
+        secure: request.nextUrl.protocol === "https:",
         sameSite: "lax",
         maxAge: CUSTOMER_TOKEN_COOKIE_MAX_AGE,
         path: "/",
