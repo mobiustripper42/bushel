@@ -129,7 +129,7 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 - pgTAP RLS tests via `supabase test db`
 - Local Supabase via Docker
 - Three Playwright projects: mobile (375×667), tablet (768×1024), desktop (1440×900)
-- 4 workers locally, 1 in CI, 2 retries, `forbidOnly: true` in CI
+- `workers: 1` everywhere (revised — see DEC-023 for the rationale; flake-resistance dominated theoretical parallel-speed benefit at this scale), 2 retries, `forbidOnly: true` in CI
 - `tests/helpers.ts` for shared auth/fixtures
 - `supabase/seed.sql` for pre-seeded test data
 - GitHub Actions CI runs both `playwright test` and `supabase test db`
@@ -144,7 +144,7 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 ## DEC-020 — Notifications channel: SMS-only in v1 [SUPERSEDED]
 
-**Status:** Superseded 2026-05-08 by DEC-026 (customer outbound via operator-sent `sms:` deep links) and DEC-027 (admin order-arrival alert via email, with PWA push as upgrade).
+**Status:** Superseded 2026-05-08 by DEC-026 (customer outbound via operator-sent `sms:` deep links) and DEC-027 (admin order-arrival alert via email, with PWA push as upgrade). Further amended 2026-05-10 by DEC-028 — `notification_preference` column was dropped entirely in favor of `customers.send_weekly_link boolean`.
 
 **Original decision:** Resend dropped from stack. `notification_preference` enum on `customers` retained for v2 expansion to email. Admin alerts are SMS to Annabel's number.
 

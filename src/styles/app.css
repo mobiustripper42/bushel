@@ -659,3 +659,159 @@
   display: flex; justify-content: flex-end;
   gap: 8px;
 }
+
+/* ── Customer pages: brand strip ─────────────────────────── */
+.brand-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--ink-200);
+  background: var(--paper);
+}
+.brand-mark { display: flex; align-items: center; gap: 8px; }
+.brand-leaf { color: var(--leaf-600); display: inline-flex; }
+.brand-name {
+  font-family: var(--sans);
+  font-size: 1.05rem; font-weight: 600;
+  color: var(--leaf-700);
+  white-space: nowrap;
+}
+
+/* ── Customer pages: status page shell ───────────────────── */
+.status-page {
+  background: var(--cream);
+  min-height: 100vh;
+  color: var(--ink-900);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  display: flex; flex-direction: column;
+}
+.status-shell {
+  flex: 1;
+  max-width: 540px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 36px 22px 40px;
+  display: flex; flex-direction: column;
+}
+.status-art {
+  margin: 8px auto 22px;
+  display: flex; justify-content: center;
+}
+.status-art.is-mark { margin: 8px auto 16px; }
+.status-eyebrow { margin-bottom: 10px; text-align: left; }
+.status-title {
+  font-family: var(--sans);
+  font-size: 1.85rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+  text-wrap: pretty;
+}
+.status-lede {
+  font-size: 1.02rem;
+  color: var(--ink-700);
+  margin-bottom: 26px;
+  max-width: 36ch;
+}
+
+/* ── Customer pages: meta rows ───────────────────────────── */
+.status-meta {
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-md);
+  padding: 4px 16px;
+  margin-bottom: 24px;
+}
+.status-meta-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 12px 0;
+  border-top: 1px solid var(--ink-200);
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.status-meta-row:first-child { border-top: 0; }
+.status-meta-key { font-size: 0.85rem; color: var(--ink-500); }
+.status-meta-val { font-size: 0.92rem; font-weight: 600; color: var(--ink-900); }
+
+/* ── Customer pages: actions + footer ────────────────────── */
+.status-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.status-btn { width: 100%; min-height: 48px; }
+.status-fine {
+  font-size: 0.82rem; color: var(--ink-500);
+  text-align: center; line-height: 1.55;
+  padding: 0 8px;
+}
+.status-foot {
+  text-align: center;
+  font-size: 0.78rem; color: var(--ink-500);
+  padding: 18px 22px 28px;
+}
+
+/* ── Customer pages: callout ─────────────────────────────── */
+.callout {
+  border-radius: var(--r-sm); padding: 12px 16px; font-size: 0.92rem;
+  border-left: 3px solid; display: flex; gap: 10px; align-items: flex-start;
+}
+.callout-info { background: var(--leaf-50); border-color: var(--leaf-600); color: var(--ink-900); }
+.status-callout { margin-bottom: 22px; }
+
+/* ── Customer pages: confirmed order card ────────────────── */
+.confirm-card {
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-md);
+  padding: 16px 18px 14px;
+  margin-bottom: 14px;
+}
+.confirm-card-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 12px;
+}
+.confirm-week { font-size: 0.78rem; color: var(--ink-500); font-family: var(--mono); }
+.confirm-list { list-style: none; padding: 0; margin: 0; }
+.confirm-list li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ink-200);
+}
+.confirm-list li:first-child { border-top: 0; padding-top: 0; }
+.confirm-line-name {
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  min-width: 0;
+}
+.confirm-qty { color: var(--leaf-700); font-weight: 600; font-family: var(--mono); }
+.confirm-unit { color: var(--ink-500); font-size: 0.85rem; }
+.confirm-amt { color: var(--ink-900); font-variant-numeric: tabular-nums; flex-shrink: 0; font-family: var(--mono); }
+.confirm-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-top: 12px; margin-top: 8px;
+  border-top: 1px solid var(--ink-300);
+}
+.confirm-total > span:first-child { font-weight: 600; }
+.confirm-total .mono {
+  font-family: var(--mono);
+  font-size: 1.4rem; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Customer pages: fulfillment block ───────────────────── */
+.confirm-fulfill {
+  background: var(--leaf-50);
+  border: 1px solid var(--leaf-100);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.confirm-fulfill-row {
+  display: grid; grid-template-columns: 90px 1fr; gap: 14px;
+  align-items: start;
+}
+.confirm-fulfill-key {
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--leaf-700);
+  padding-top: 2px;
+}
+.confirm-fulfill-val { font-size: 0.95rem; color: var(--ink-900); font-weight: 600; }
+.confirm-fulfill-sub { font-size: 0.85rem; color: var(--ink-700); font-weight: 400; margin-top: 2px; }

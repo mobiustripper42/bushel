@@ -42,15 +42,16 @@
 .cust-table tbody tr.cust-row.is-unsub td { background: var(--ink-100); color: var(--ink-500); }
 .cust-table tbody tr.cust-row.is-unsub .cust-name { color: var(--ink-700); }
 
-.col-c-name    { width: 22%; min-width: 180px; }
-.col-c-contact { width: 200px; }
-.col-c-addr    { width: 22%; min-width: 200px; }
-.col-c-notify  { width: 80px; }
-.col-c-link    { width: 200px; }
-.col-c-sub     { width: 90px; text-align: center; }
-.col-c-actions { width: 32px; text-align: right; padding-right: 14px; }
+.col-c-name     { width: 22%; min-width: 180px; }
+.col-c-contact  { width: 200px; }
+.col-c-addr     { width: 22%; min-width: 200px; }
+.col-c-priority { width: 80px; text-align: right; padding-right: 18px; }
+.col-c-link     { width: 200px; }
+.col-c-sub      { width: 90px; text-align: center; }
+.col-c-actions  { width: 32px; text-align: right; padding-right: 14px; }
 
 .cust-name { font-weight: 600; color: var(--ink-900); margin-bottom: 2px; }
+.cust-biz { font-size: 0.82rem; color: var(--ink-700); margin-bottom: 2px; }
 .cust-name-token { font-size: 0.75rem; color: var(--ink-500); white-space: nowrap; }
 .cust-email { color: var(--ink-900); margin-bottom: 2px; word-break: break-all; }
 .cust-phone { font-size: 0.85rem; color: var(--ink-500); white-space: nowrap; }
@@ -62,22 +63,6 @@
   overflow: hidden;
   line-height: 1.4;
 }
-
-/* Notify chip */
-.chip {
-  display: inline-flex; align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
-.chip-notify.chip-sms   { background: var(--leaf-50); color: var(--leaf-700); border-color: var(--leaf-100); }
-.chip-notify.chip-email { background: #FAF1DC; color: #8A6210; border-color: #EFD89A; }
-.chip-notify.chip-both  { background: var(--ink-100); color: var(--ink-700); border-color: var(--ink-200); }
 
 /* Copy / Regen buttons */
 .cust-copy {

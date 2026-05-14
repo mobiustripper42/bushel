@@ -74,12 +74,13 @@ B2B customers. Authenticate via tokenized URL — no Supabase Auth account (DEC-
 | Column | Type | Nullable | Default | Notes |
 |--------|------|----------|---------|-------|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
-| name | text | NOT NULL | | Contact name |
-| business_name | text | NULL | | Farm stand / restaurant name |
-| phone | text | NULL | | E.164 format; required if notification_preference = 'sms' |
-| email | text | NULL | | Reserved for v2 customer email channel (DEC-020 superseded; v1 admin alerts use a separate transactional address per DEC-027) |
-| notification_preference | text | NOT NULL | 'sms' | CHECK IN ('sms', 'email', 'none') |
-| token | text | NOT NULL | | Secure random; regeneratable (DEC-004, DEC-005) |
+| name | text | NOT NULL | | Contact / short name |
+| business_name | text | NULL | | Full legal / trading name |
+| phone | text | NOT NULL | | Required — weekly SMS deep-link target (DEC-026) |
+| email | text | NULL | | Optional; reserved for any future customer-email channel |
+| send_weekly_link | boolean | NOT NULL | true | Replaces `notification_preference` per DEC-028. False = paused. |
+| priority | integer | NOT NULL | 100 | Send-queue ordering; lower goes first (DEC-026). 100 is the neutral default. |
+| token | text | NOT NULL | | Secure random base36; regeneratable (DEC-004, DEC-005) |
 | delivery_address | text | NULL | | Fixed per customer; copied to order at placement (DEC-008) |
 | is_active | boolean | NOT NULL | true | Soft-delete |
 | created_at | timestamptz | NOT NULL | now() | |
@@ -103,6 +104,7 @@ Singleton config row (expect exactly 1). Controls live open/close state and week
 | Column | Type | Nullable | Default | Notes |
 |--------|------|----------|---------|-------|
 | id | uuid | NOT NULL | gen_random_uuid() | PK |
+| is_singleton | boolean | NOT NULL | true | UNIQUE; CHECK (is_singleton = true). Enforces single-row at the DB layer. |
 | is_open | boolean | NOT NULL | true | Authoritative live toggle. Default `true` per DEC-030 — store is open until manually closed. |
 | weekly_open_day | smallint | NULL | | 0 = Sun … 6 = Sat |
 | weekly_open_time | time | NULL | | Phase 3.6 cron flips `is_open` on schedule |
@@ -168,7 +170,9 @@ Indexes:
 
 - **`qty` integer on order_items** — whole-unit ordering only. Works if Bay Branch sells in pre-packed denominations ("1 lb bag" × N). V1.5 (DEC-032) moves `products.qty_available` to `numeric(10,2)` for multi-unit support; `order_items.qty` stays integer (whole pints, whole flats).
 - **No structured pickup windows** — DEC-029 removed `pickup_windows`. Fulfillment is free-text on the order: `pickup_note` (no prefill) and `delivery_preference` (prefilled from prior delivery order). Migration back to structured windows is reversible if customer count grows.
-- **`notification_preference` text + CHECK** — retained flexible for a v2 customer email channel (placeholder; DEC-020 superseded by DEC-026/027 — v1 customer outbound is operator-sent SMS only). Could move into `codes` when email customer-side lands; CHECK constraint is sufficient for now.
+- **`send_weekly_link boolean` (DEC-028)** — replaces the original `notification_preference text CHECK ('sms','email','none')` enum. With operator-sent SMS as the only customer channel (DEC-026), the multi-channel enum collapsed to one bit. If a future email channel is added, it gets its own column rather than reusing this one.
+- **`customers.priority` (Phase 3.0)** — added in migration `20260511190838_*`. Drives send-queue ordering (DEC-026); not used for any RLS gating.
+- **`ordering_schedule.is_singleton` (singleton enforcement)** — UNIQUE + CHECK guarantees exactly one row at the DB layer, so server actions can `update().eq("is_singleton", true)` without juggling row IDs.
 - **`codes` table, no DB FK** — `orders.fulfillment_type` and `orders.status` reference `codes` by convention, app-enforced. Avoids composite FK ugliness on `orders`.
 - **`ordering_schedule` is inert until Phase 3.6** — table shape is defined here; cron logic and open/close wiring land in Phase 3.6. Default `is_open = true` per DEC-030.
 - **Multi-unit deferred to V1.5 (DEC-032)** — `products.unit` and `products.price_cents` remain in V1; V1.5 migration moves them into a child `product_units` table and converts `qty_available` to `numeric(10,2)`.
