@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.4] - 2026-05-14
+- PR #70: Infra — Stable preview.baybranchfarm.com URL + OAuth callback bugfix
+
 ## [0.4.3] - 2026-05-14
 - PR #68: Audit drift cleanup — docs, mockup, two app-vs-DB bound fixes
 
