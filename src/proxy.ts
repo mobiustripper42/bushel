@@ -18,7 +18,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const customerMatch = request.nextUrl.pathname.match(/^\/c\/([^/]+)/);
+  // Token shape: 6+3 alphanumeric with a dash (src/lib/tokens.ts). Min length
+  // 8 also covers the longer testtoken-* fixtures; rejects scanner traffic
+  // (e.g. /c/wp-admin, /c/.env) before any DB lookup.
+  const customerMatch = request.nextUrl.pathname.match(
+    /^\/c\/([a-z0-9-]{8,})(?:[/?#]|$)/,
+  );
   if (customerMatch) {
     const token = customerMatch[1];
     const customer = await lookupCustomerByToken(token);
