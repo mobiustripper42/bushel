@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.3] - 2026-05-14
+- PR #68: Audit drift cleanup — docs, mockup, two app-vs-DB bound fixes
+
 ## [0.4.2] - 2026-05-13
 - PR #64: Phase 3.2 — Customer token generation + regenerate
 
