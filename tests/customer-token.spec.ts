@@ -1,9 +1,20 @@
 import { test, expect } from "@playwright/test";
-import { TEST_CUSTOMERS, customerOrderUrl } from "./helpers";
+import {
+  TEST_CUSTOMERS,
+  customerOrderUrl,
+  resetCustomerOrderState,
+} from "./helpers";
 
 const COOKIE = "bbf_customer_token";
 
 test.describe("/c/[token] route", () => {
+  // /c/[token] now redirects to /confirmed if an order exists for the week;
+  // these tests assert the form rendered, so reset to keep them deterministic
+  // regardless of spec ordering.
+  test.beforeEach(async () => {
+    await resetCustomerOrderState();
+  });
+
   test("valid token renders the page and sets the cookie", async ({ page, context }) => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
     await expect(page.getByRole("heading", { name: /What.s available/i })).toBeVisible();

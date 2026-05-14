@@ -1,7 +1,19 @@
 import { test, expect } from "@playwright/test";
-import { TEST_CUSTOMERS, TEST_PRODUCTS, customerOrderUrl } from "./helpers";
+import {
+  TEST_CUSTOMERS,
+  TEST_PRODUCTS,
+  customerOrderUrl,
+  resetCustomerOrderState,
+} from "./helpers";
 
 test.describe("/c/[token] order form", () => {
+  // /c/[token] now redirects to /confirmed whenever an order exists for the
+  // current week, so any prior spec that left an order behind would break
+  // every form test below. Clear the slate before each.
+  test.beforeEach(async () => {
+    await resetCustomerOrderState();
+  });
+
   test("renders header and the seeded products", async ({ page }) => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
     await expect(page.getByRole("heading", { name: /What.s available/i })).toBeVisible();

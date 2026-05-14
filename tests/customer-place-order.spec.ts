@@ -1,33 +1,20 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { weekOfMondayNY } from "@/lib/week";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
   customerOrderUrl,
+  resetCustomerOrderState,
 } from "./helpers";
 
-// We hit Supabase directly to reset the per-customer test state and to read back
-// what the action wrote. Tests would otherwise interfere with each other because
-// (customer_id, week_of) is unique on orders.
+// We hit Supabase directly to read back what the action wrote.
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-}
-
-// Wipe any order this customer placed today + restore inventory so each test
-// starts from the seed quantities. Cheaper than a full db reset between tests.
-async function resetCustomerState(customerId: string) {
-  const sb = admin();
-  await sb.from("orders").delete().eq("customer_id", customerId);
-  for (const p of Object.values(TEST_PRODUCTS)) {
-    await sb
-      .from("products")
-      .update({ qty_available: p.qty_available })
-      .eq("id", p.id);
-  }
 }
 
 async function getCustomerId(token: string): Promise<string> {
@@ -51,10 +38,7 @@ async function stepUp(page: Page, productName: string, qty: number) {
 
 test.describe("/c/[token] place order", () => {
   test.beforeEach(async () => {
-    const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
-    const restaurantId = await getCustomerId(TEST_CUSTOMERS.restaurant.token);
-    await resetCustomerState(farmStandId);
-    await resetCustomerState(restaurantId);
+    await resetCustomerOrderState();
   });
 
   test("happy path: submit creates an order + decrements inventory, lands on confirmed", async ({
@@ -81,6 +65,7 @@ test.describe("/c/[token] place order", () => {
       .from("orders")
       .select("id, needs_reconciliation, fulfillment_type")
       .eq("customer_id", farmStandId)
+      .eq("week_of", weekOfMondayNY())
       .single();
     expect(order?.needs_reconciliation).toBe(false);
     expect(order?.fulfillment_type).toBe("delivery");
@@ -122,6 +107,7 @@ test.describe("/c/[token] place order", () => {
       .from("orders")
       .select("needs_reconciliation")
       .eq("customer_id", farmStandId)
+      .eq("week_of", weekOfMondayNY())
       .single();
     expect(order?.needs_reconciliation).toBe(true);
 
@@ -133,7 +119,7 @@ test.describe("/c/[token] place order", () => {
     expect(eggs?.qty_available).toBe(-4);
   });
 
-  test("double-submit: second attempt redirects to confirmed without creating a duplicate", async ({
+  test("revisiting /c/[token] after submit redirects to /confirmed (no empty form)", async ({
     page,
   }) => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
@@ -141,26 +127,29 @@ test.describe("/c/[token] place order", () => {
     await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
-    // Navigate back to the order page and try again with different items.
+    // The link is "your weekly order" — revisiting after submit must NOT
+    // re-show the empty form. The page-level redirect handles this; without
+    // it, a curious customer would see the form again and either re-tap
+    // (the RPC's ON CONFLICT catches that) or be confused.
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
-    await stepUp(page, TEST_PRODUCTS.honey.name, 1);
-    await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+    await expect(
+      page.getByRole("heading", { name: /Order received/i }),
+    ).toBeVisible();
+    await expect(page.locator(".confirm-list")).toContainText(
+      TEST_PRODUCTS.kale.name,
+    );
 
-    // Only one orders row should exist for the week.
+    // And exactly one orders row exists for the current week — no duplicate.
+    // (Filtered to this week so the global-setup prior-order fixture
+    // doesn't inflate the count.)
     const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
     const sb = admin();
     const { data: orders } = await sb
       .from("orders")
       .select("id")
-      .eq("customer_id", farmStandId);
+      .eq("customer_id", farmStandId)
+      .eq("week_of", weekOfMondayNY());
     expect(orders).toHaveLength(1);
-
-    // The /confirmed page should reflect the FIRST order (kale, not honey),
-    // because the function returns the existing order id on the second call.
-    await expect(page.locator(".confirm-list")).toContainText(TEST_PRODUCTS.kale.name);
-    await expect(page.locator(".confirm-list")).not.toContainText(
-      TEST_PRODUCTS.honey.name,
-    );
   });
 });
