@@ -92,13 +92,42 @@ export default async function globalSetup() {
   // is_active defaults true; tests that deactivate must reset to true.
   const { error: customersError } = await adminClient.from("customers").upsert(
     [
-      { name: "Test Farm Stand", token: "testtoken-farmstand-0001",  is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: null },
-      { name: "Test Restaurant", token: "testtoken-restaurant-0001", is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: null },
+      { name: "Test Farm Stand", token: "testtoken-farmstand-0001",  is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: "100 Farm Stand Way, Lakewood, OH 44107" },
+      { name: "Test Restaurant", token: "testtoken-restaurant-0001", is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: "200 Restaurant Row, Cleveland, OH 44102" },
     ],
     { onConflict: "token" },
   );
   if (customersError)
     throw new Error(`customers upsert failed: ${customersError.message}`);
+
+  // Seed a prior delivery order for Test Farm Stand so 3.4 delivery_preference
+  // prefill is testable. week_of is in the past so it doesn't collide with the
+  // current week's order in 3.5+ tests. unique (customer_id, week_of) → upsert.
+  const { data: farmStandRow, error: lookupError } = await adminClient
+    .from("customers")
+    .select("id")
+    .eq("token", "testtoken-farmstand-0001")
+    .single();
+  if (lookupError || !farmStandRow)
+    throw new Error(`farm stand lookup failed: ${lookupError?.message ?? "no row"}`);
+
+  const { error: priorOrderError } = await adminClient.from("orders").upsert(
+    [
+      {
+        customer_id: farmStandRow.id,
+        week_of: "2026-04-27",
+        fulfillment_type: "delivery",
+        delivery_address: "100 Farm Stand Way, Lakewood, OH 44107",
+        delivery_preference: "Back door, gate code 4321",
+        status: "delivered",
+        notes: null,
+        pickup_note: null,
+      },
+    ],
+    { onConflict: "customer_id,week_of" },
+  );
+  if (priorOrderError)
+    throw new Error(`prior order upsert failed: ${priorOrderError.message}`);
 
   // Sign in to get a real, server-verified session
   const anonClient = createClient(supabaseUrl, anonKey, {

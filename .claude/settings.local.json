@@ -9,7 +9,9 @@
       "Bash(vercel whoami *)",
       "Bash(dig +short preview.baybranchfarm.com CNAME)",
       "Bash(dig +short preview.baybranchfarm.com)",
-      "Skill(kill-this)"
+      "Skill(kill-this)",
+      "Bash(kill 3819251)",
+      "Bash(kill 4010112)"
     ]
   }
 }
