@@ -67,6 +67,9 @@ jobs:
             -e PLAYWRIGHT_BASE_URL=http://localhost:3001 \
             -e NOTIFICATIONS_ENABLED=false \
             -e CI=true \
+            -e NEXT_PUBLIC_SUPABASE_URL \
+            -e NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            -e SUPABASE_SERVICE_ROLE_KEY \
             mcr.microsoft.com/playwright:v1.59.1-noble \
             npx playwright test
 
