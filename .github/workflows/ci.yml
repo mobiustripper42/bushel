@@ -10,10 +10,13 @@ jobs:
     timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.59.1-noble
-      # host-gateway → reach Supabase containers (started as siblings on host docker).
+      # --network host → share the runner's network namespace, so the supabase CLI's
+      #   own 127.0.0.1:54xxx readiness checks (and Next.js's later lookups) both
+      #   reach the sibling Supabase containers directly. Without this the CLI hangs
+      #   on "Starting database... connection refused" — its checks hardcode 127.0.0.1.
       # docker.sock mount → let the supabase CLI talk to the host daemon from inside.
       options: >-
-        --add-host=host.docker.internal:host-gateway
+        --network host
         -v /var/run/docker.sock:/var/run/docker.sock
 
     steps:
@@ -52,13 +55,9 @@ jobs:
           [[ -z "$API_URL" ]] && echo "ERROR: API_URL empty — supabase status failed" && exit 1
           [[ -z "$ANON_KEY" ]] && echo "ERROR: ANON_KEY empty — supabase status failed" && exit 1
           [[ -z "$SERVICE_ROLE_KEY" ]] && echo "ERROR: SERVICE_ROLE_KEY empty — supabase status failed" && exit 1
-          # Supabase containers bind to host ports; this job runs inside the Playwright
-          # container, where 127.0.0.1/localhost is the container's loopback. Rewrite to
-          # the host-gateway alias set up in the container options. CLI may emit either
-          # spelling depending on version — rewrite both.
-          API_URL_INTERNAL="${API_URL//127.0.0.1/host.docker.internal}"
-          API_URL_INTERNAL="${API_URL_INTERNAL//localhost/host.docker.internal}"
-          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL_INTERNAL" >> $GITHUB_ENV
+          # Container is on --network host, so 127.0.0.1 IS the host's loopback.
+          # API_URL is fine as-emitted; no rewrite needed.
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
 
