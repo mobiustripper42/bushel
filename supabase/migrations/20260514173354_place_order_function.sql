@@ -21,27 +21,23 @@ create or replace function public.place_order(
 )
 returns uuid
 language plpgsql
+security invoker
+set search_path = public, pg_temp
 as $$
 declare
   v_order_id     uuid;
   v_item         jsonb;
   v_negative     boolean;
-  v_existing_id  uuid;
 begin
   if jsonb_typeof(p_items) is distinct from 'array' or jsonb_array_length(p_items) = 0 then
     raise exception 'place_order: p_items must be a non-empty json array';
   end if;
 
-  -- Double-submit handling: if an order already exists for this customer + week,
-  -- return its id without doing anything else. Caller redirects to /confirmed.
-  select id into v_existing_id
-  from public.orders
-  where customer_id = p_customer_id and week_of = p_week_of;
-
-  if v_existing_id is not null then
-    return v_existing_id;
-  end if;
-
+  -- Atomic double-submit handling. Two concurrent calls with the same
+  -- (customer_id, week_of) both reach this insert; the loser silently
+  -- no-ops via ON CONFLICT, then we fall through to fetch the winner's id.
+  -- A naive select-then-insert has a TOCTOU window that propagates a
+  -- unique_violation to the caller on a fast double-tap.
   insert into public.orders (
     customer_id, week_of, fulfillment_type,
     delivery_address, delivery_preference, pickup_note,
@@ -52,7 +48,17 @@ begin
     p_delivery_address, p_delivery_preference, p_pickup_note,
     p_notes, 'new', false
   )
+  on conflict (customer_id, week_of) do nothing
   returning id into v_order_id;
+
+  if v_order_id is null then
+    -- Conflict: an order already exists for this customer + week. Return
+    -- its id so the caller can redirect to /confirmed unchanged.
+    select id into v_order_id
+    from public.orders
+    where customer_id = p_customer_id and week_of = p_week_of;
+    return v_order_id;
+  end if;
 
   for v_item in select * from jsonb_array_elements(p_items)
   loop

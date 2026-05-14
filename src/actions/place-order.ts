@@ -7,6 +7,7 @@ import {
   CUSTOMER_TOKEN_COOKIE,
   lookupCustomerByToken,
 } from "@/lib/customer/session";
+import type { Json } from "@/lib/supabase/types";
 import { weekOfMondayNY } from "@/lib/week";
 
 export type PlaceOrderItem = {
@@ -48,7 +49,7 @@ export async function placeOrder(
       payload.mode === "delivery" ? payload.delivery_preference.trim() : "",
     p_pickup_note: payload.mode === "pickup" ? payload.pickup_note.trim() : "",
     p_notes: payload.notes.trim(),
-    p_items: payload.items as unknown as never,
+    p_items: payload.items as unknown as Json,
   });
 
   if (error) return { error: error.message };

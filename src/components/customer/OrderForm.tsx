@@ -208,6 +208,12 @@ export function OrderForm({
   const [notes, setNotes] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // useTransition's isPending flips asynchronously — a fast cross-button tap
+  // (sticky-bar → rail-card) within one frame can fire the handler twice
+  // before React commits the disabled state. This ref is the synchronous
+  // latch; the server action is idempotent on the second call but the second
+  // request still hits the network unnecessarily.
+  const submittingRef = useRef(false);
 
   const itemsWithQty = useMemo(
     () => products.filter((p) => (qty[p.id] ?? 0) > 0),
@@ -228,7 +234,8 @@ export function OrderForm({
     setQty((q) => ({ ...q, [id]: n }));
 
   const handleSubmit = () => {
-    if (lineCount === 0 || isPending) return;
+    if (lineCount === 0 || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitError(null);
     const payloadItems = itemsWithQty.map((p) => ({
       product_id: p.id,
@@ -243,8 +250,11 @@ export function OrderForm({
         pickup_note: pickupNote,
         notes,
       });
-      if (result?.error) setSubmitError(result.error);
-      // On success the action redirects; we never return here.
+      if (result?.error) {
+        setSubmitError(result.error);
+        submittingRef.current = false; // allow retry after a failed submit
+      }
+      // On success the action redirects; page unmounts, latch stays true.
     });
   };
 

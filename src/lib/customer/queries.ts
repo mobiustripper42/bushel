@@ -1,3 +1,9 @@
+// Customer-side reads use the service-role admin client intentionally. The
+// token in the bbf_customer_token cookie is the authentication boundary;
+// once it resolves to a customer row, the rest of the customer-facing
+// queries bypass RLS by design. Don't "fix" these to the anon client —
+// the customer-side RLS policies key off `current_setting('app.customer_id')`
+// which we don't set, so anon reads return empty.
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 

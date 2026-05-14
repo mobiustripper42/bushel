@@ -31,8 +31,14 @@ export function weekOfMondayNY(now: Date = new Date()): string {
 
   // weekday: Sun, Mon, Tue, Wed, Thu, Fri, Sat
   const dayIdx = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
-  // ISO-style: Monday is the anchor. Sunday rolls back 6 days.
-  const offset = dayIdx === 0 ? 6 : dayIdx - 1;
+  // Bushel's order cadence opens Sun/Mon → fulfills Wed/Thu. Sunday is the
+  // OPENING of the new order week, so it maps to *tomorrow's* Monday
+  // (offset = -1, i.e. add a day). Mon–Sat roll back to this week's Monday.
+  // Don't change this without considering the unique (customer_id, week_of)
+  // constraint — a misaligned Sunday silently buckets an order into last
+  // week, and the second-submit guard in place_order() will redirect the
+  // customer to last week's /confirmed without ever inserting their new order.
+  const offset = dayIdx === 0 ? -1 : dayIdx - 1;
 
   const anchor = new Date(Date.UTC(y, m - 1, d));
   anchor.setUTCDate(anchor.getUTCDate() - offset);
