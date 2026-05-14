@@ -47,7 +47,7 @@ Roles:
 | `docs/BRAND.md` | Voice, type, color |
 | `docs/VELOCITY_AND_POKER_GUIDE.md` | Estimation methodology |
 | `docs/CHEATSHEET.md` | One-page printable skill reference |
-| `sessions/*.md` | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md` |
+| `sessions/*.md` (on orphan `sessions` branch via `.sessions-worktree/`) | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md`. Atomic after `/its-dead` closes (DEC-013); orphan branch decouples session log from any code branch (DEC-014). |
 | `.claude/seeds-version` | Schema version this project was last installed at. Used by `/pull-seeds` to gate template syncs. |
 | `.claude/project-type` | Project type — `webapp` or `tool`. Used by `@sync-config` to gate template files that don't apply to this project's type. Optional. |
 
@@ -72,8 +72,8 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 5. **Write the test** — Playwright integration test + pgTAP if RLS-touching. Test-first when behavior is changing (DEC-023).
 6. **Run targeted tests** — `npx playwright test tests/foo.spec.ts --project=desktop` (and mobile/webkit for customer-side). `supabase test db` if RLS-touching. Do NOT run full suite — that's the user's call.
 7. **Mobile screenshot** — confirm 375px viewport passes for customer-side
-8. **Open PR** — `/kill-this` commits, pushes, opens PR with `closes #<issue>`. Preview URL lands in description.
-9. **Review & ship** — tap preview URL, address `@code-review` findings, run full suite if RLS-touching, merge.
+8. **Ship the task** — `/kill-this` commits, pushes, opens PR with `closes #<issue>`, appends a `## Task <N>` block to the session file (on the orphan `sessions` branch). Run per task; multiple per session.
+9. **Pick up another task or close out** — start step 1 with a new branch, or run `/its-dead` once at the end of the Claude window. Merge PRs whenever — order doesn't matter (DEC-013).
 
 **No test, no push.**
 
@@ -240,13 +240,13 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 
 | Skill | When | What |
 |-------|------|------|
-| `/its-alive` | Session start | Open per-session file, capture transcript path, read context, recommend task |
-| `/pause-this` | Mid-session break | Build check, commit WIP, note pause |
+| `/its-alive` | Session start | Ensure `.sessions-worktree/` exists, open per-session file on orphan `sessions` branch, capture transcript, read context, recommend task |
+| `/pause-this` | Mid-session break | Build check, commit WIP on task branch, note pause in session file (sessions branch) |
 | `/restart-this` | Resume from pause | Reload context, continue same session |
-| `/kill-this` | Session end (part 1) | Build check, commit, push branch, open PR, code review, draft body |
-| `/its-dead` | Session end (part 2) | Calc duration + points, finalize session file, branch cleanup, patch-bump on merged PR |
+| `/kill-this` | **Per task** (DEC-013) | Build check, commit code on task branch, open PR, append `## Task <N>` block to session file. Run N times per session — one per task. No time math. |
+| `/its-dead` | Session end (once per window) | Stamp `ended:`, tally points, display wall_clock to screen, close session file. No time math, no version bump (those moved to `/retro`). Merge PRs whenever. |
 | `/start-phase` | Phase boundary (start) | Materialize phase as Issues with `phase:N`, `points:X` labels |
-| `/retro` | Phase boundary (end) | Close phase, reconcile drift, compute velocity, write retro, minor-bump |
+| `/retro` | Phase boundary (end) | Compute per-session wall/dev/review from `started`/`ended`/transcript/PR timestamps. Aggregate phase velocity. Mark `[x]`, write retro, patch-bump per merged PR + minor-bump at close. |
 | `/bump-major` | Breaking change | Manually bump major version. CHANGELOG.md entry + tag (on main) or deferred tag (on staging). Dev projects only |
 | `/promote-staging` | Ship staging to prod | ff-merge `staging` → `main`, tag the release with current `package.json` version, push both. Staging-flow projects only |
 | `/push-seeds` | After workflow improvements | Backport project-side improvements to the seeds templates via @sync-config |
@@ -284,8 +284,8 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 ### Staging vs no-staging
 
 Bushel currently has no `origin/staging`, so it ships PRs straight to `main`:
-- `/kill-this` opens PRs into `main`.
-- `/its-dead` patch-bumps on `main` and tags `vX.Y.Z` immediately.
+- `/kill-this` opens PRs into `main` per task.
+- `/retro` patch-bumps + tags on `main` at phase boundary (no per-PR bump from `/its-dead` post-DEC-013).
 - `/retro` minor-bumps on `main` and tags `vX.0.0` immediately.
 
 Adopting staging later: cut from `main` once and skills auto-detect.
@@ -323,11 +323,11 @@ If the subdomain returns 500 or 404 right after reassignment, the new branch has
 
 ## Versioning
 
-Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. Currently `0.1.0` — first release path. `/its-dead` patch-bumps from there.
+Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. `/retro` is now the sole place version bumps happen (DEC-013 moved patch bumps out of `/its-dead`).
 
-**Three triggers:**
-- **Patch:** `/its-dead` after every PR merge. CHANGELOG entry derived from PR title.
-- **Minor:** `/retro` at phase close. CHANGELOG entry summarizes the phase.
+**Three triggers (all run at `/retro` per DEC-013):**
+- **Patch:** `/retro` Step 8.2 — one bump + CHANGELOG entry per PR merged in the phase window. Title pulled from GitHub.
+- **Minor:** `/retro` Step 8.3 — at phase close after all patches. CHANGELOG entry summarizes the phase.
 - **Major:** `/bump-major` manual. User supplies the breaking-change rationale.
 
 **Tag rule:** tags only ever applied on `main`. In staging-flow projects (which bushel currently isn't — see above), bumps on `staging` are untagged; the tag lands when `/promote-staging` ff-merges.
@@ -348,7 +348,7 @@ import { VersionTag } from "@/components/VersionTag";
 
 ### CHANGELOG.md
 
-Auto-maintained by `/its-dead`, `/retro`, and `/bump-major`. Don't edit by hand mid-flow — the skills always prepend after the `# Changelog` header. The first bump creates the file if absent.
+Auto-maintained by `/retro` and `/bump-major` (DEC-013 — `/its-dead` no longer touches it). Don't edit by hand mid-flow — the skills always prepend after the `# Changelog` header. The first bump creates the file if absent.
 
 ## Workflow Notes
 - **Diagnostic commands** (build, lint, type, test): run directly.
