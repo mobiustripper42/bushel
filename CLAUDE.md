@@ -101,12 +101,12 @@ Bushel runs against **two Supabase projects** under the bushel-billed org:
 
 **Why split:** Annabel uses production daily for real customers/inventory. Dev work — migrations, schema changes, fixture data — happens against the dev/preview project so a botched migration or a `db reset` can't take prod with it.
 
-**Migration discipline (with the split):**
+**Migration discipline (with the split)** — all `supabase link`/`db push` commands need the bushel PAT, so make sure `.envrc` is loaded (direnv or `source .envrc`):
+
 1. `supabase link --project-ref nnmfubmlvnkouxxfxxlh` is the default state. Stay linked here.
 2. Local edits → `supabase db reset` against local → `supabase db push` against dev/preview → vet.
 3. When dev/preview is happy and the PR has merged, push to prod:
    ```bash
-   source .envrc
    supabase link --project-ref piaobrnrmoxnfrpnpixw
    supabase db push
    supabase link --project-ref nnmfubmlvnkouxxfxxlh   # relink back, always
@@ -115,7 +115,7 @@ Bushel runs against **two Supabase projects** under the bushel-billed org:
 
 **Auth config is per-project** — Google OAuth, redirect URLs, providers all live on each project independently. Changes (new OAuth client, new redirect URL, provider toggle) must be applied to both. The dev project's "this works" doesn't carry to prod automatically.
 
-A `scripts/safe-supabase.sh` wrapper exists in the repo as an optional guard against destructive ops on prod refs, but it's not active (no `.claude/prod-supabase-refs` populated). The defense right now is the discipline above: link to dev by default, link to prod only for the seconds it takes to push, relink to dev.
+There is no active guard against destructive ops on prod — the defense is the discipline above: link to dev by default, link to prod only for the seconds it takes to push, relink to dev.
 
 ### Supabase CLI auth (mill-dev)
 
