@@ -1,67 +1,81 @@
-/* Admin · Customers */
+/* Admin · Customers
+   Updated 2026-05-13 — column model shifted from `notify` (SMS/email/both) to
+   `priority` per DEC-026 (SMS pivot) + DEC-028 (notification_preference → send_weekly_link)
+   + Phase 3.0 priority column. Drawer drops the notification-preference radios
+   and adds business_name + priority. */
 
 const { useState } = React;
 
 const SEED_CUSTOMERS = [
   {
-    id: "c01", name: "West Side Market — Bay Stand",
+    id: "c01", name: "West Side Market",
+    business_name: "West Side Market — Bay Stand LLC",
     email: "annabel@bayBranchfarm.com", phone: "216-202-5718",
     address: "1979 W 25th St, Cleveland, OH 44113",
-    notify: "both", subscribed: true,
+    priority: 1, subscribed: true,
     token: "k4f8x2-w7s",
   },
   {
     id: "c02", name: "Lakewood Farmer's Market",
+    business_name: "Lakewood Farmers Market Inc.",
     email: "manager@lakewoodfarmersmarket.org", phone: "216-555-0142",
     address: "14532 Detroit Ave, Lakewood, OH 44107",
-    notify: "sms", subscribed: true,
+    priority: 10, subscribed: true,
     token: "p2k9m1-lkw",
   },
   {
-    id: "c03", name: "Heinen's — Rocky River",
+    id: "c03", name: "Heinen's Rocky River",
+    business_name: "Heinen's Fine Foods",
     email: "produce@heinens.com", phone: "440-555-0188",
     address: "20137 Center Ridge Rd, Rocky River, OH 44116",
-    notify: "email", subscribed: true,
+    priority: 20, subscribed: true,
     token: "t8j3n2-hrr",
   },
   {
     id: "c04", name: "Spice Kitchen + Bar",
+    business_name: "Spice Hospitality Group",
     email: "ben.bebenroth@spicekitchen.com", phone: "216-555-0245",
     address: "5800 Detroit Ave, Cleveland, OH 44102",
-    notify: "both", subscribed: true,
+    priority: 100, subscribed: true,
     token: "r5v8q1-skb",
   },
   {
     id: "c05", name: "Bar Cento",
+    business_name: null,
     email: "kitchen@barcento.com", phone: "216-555-0192",
     address: "1948 W 25th St, Cleveland, OH 44113",
-    notify: "sms", subscribed: true,
+    priority: 100, subscribed: true,
     token: "m9z4w7-bct",
   },
   {
     id: "c06", name: "The Plum Café",
+    business_name: "Plum Restaurant LLC",
     email: "brett@theplumcafe.com", phone: "216-555-0167",
     address: "4133 Lorain Ave, Cleveland, OH 44113",
-    notify: "both", subscribed: true,
+    priority: 100, subscribed: true,
     token: "h6f2y3-plm",
   },
   {
     id: "c07", name: "Saucy Brew Works",
+    business_name: null,
     email: "chef@saucybrewworks.com", phone: "216-555-0273",
     address: "2885 Detroit Ave, Cleveland, OH 44113",
-    notify: "email", subscribed: false,
+    priority: 200, subscribed: false,
     token: "d4k1n8-sbw",
   },
 ];
 
 function CustomersPage() {
   const [rows, setRows] = useState(SEED_CUSTOMERS);
-  const [drawer, setDrawer] = useState(null); // null | "new" | customer object
+  const [drawer, setDrawer] = useState(null); // null | customer object (id: null = new)
   const [confirmRegen, setConfirmRegen] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
   const openEdit = (c) => setDrawer(c);
-  const openNew  = () => setDrawer({ id: null, name: "", email: "", phone: "", address: "", notify: "both", subscribed: true, token: "" });
+  const openNew  = () => setDrawer({
+    id: null, name: "", business_name: "", email: "", phone: "",
+    address: "", priority: "100", subscribed: true, token: "",
+  });
 
   const saveDrawer = (data) => {
     if (data.id) {
@@ -80,7 +94,7 @@ function CustomersPage() {
     setRows(rs => rs.map(r => r.id === id ? { ...r, subscribed: !r.subscribed } : r));
 
   const doCopy = (c) => {
-    navigator.clipboard?.writeText(`https://bushel.bay-branch.farm/c/${c.token}`);
+    navigator.clipboard?.writeText(`https://order.baybranchfarm.com/c/${c.token}`);
     setCopiedId(c.id);
     setTimeout(() => setCopiedId(null), 1400);
   };
@@ -97,7 +111,7 @@ function CustomersPage() {
           <h1 className="admin-page-title">Customers</h1>
         </div>
         <div className="admin-page-actions">
-          <button type="button" className="btn btn-secondary">Export CSV</button>
+          <button type="button" className="btn btn-secondary" disabled title="Coming later">Export CSV</button>
           <button type="button" className="btn btn-primary" onClick={openNew}>+ Add customer</button>
         </div>
       </div>
@@ -109,7 +123,7 @@ function CustomersPage() {
               <th className="col-c-name">Name</th>
               <th className="col-c-contact">Contact</th>
               <th className="col-c-addr">Address</th>
-              <th className="col-c-notify">Notify</th>
+              <th className="col-c-priority">Priority</th>
               <th className="col-c-link">Order link</th>
               <th className="col-c-sub">Subscribed</th>
               <th className="col-c-actions"></th>
@@ -120,6 +134,7 @@ function CustomersPage() {
               <tr key={c.id} className={"cust-row" + (!c.subscribed ? " is-unsub" : "")} onClick={() => openEdit(c)}>
                 <td className="col-c-name">
                   <div className="cust-name">{c.name}</div>
+                  {c.business_name && <div className="cust-biz">{c.business_name}</div>}
                   <div className="cust-name-token mono">/c/{c.token}</div>
                 </td>
                 <td className="col-c-contact">
@@ -129,11 +144,7 @@ function CustomersPage() {
                 <td className="col-c-addr">
                   <div className="cust-addr" title={c.address}>{c.address}</div>
                 </td>
-                <td className="col-c-notify">
-                  <span className={"chip chip-notify chip-" + c.notify}>
-                    {c.notify === "sms" ? "SMS" : c.notify === "email" ? "Email" : "Both"}
-                  </span>
-                </td>
+                <td className="col-c-priority mono">{c.priority}</td>
                 <td className="col-c-link" onClick={e => e.stopPropagation()}>
                   <button
                     type="button"
@@ -201,39 +212,36 @@ function CustomerDrawer({ customer, onSave, onDelete, onClose }) {
         </header>
 
         <div className="drawer-body">
-          <Field label="Customer name" hint="How you refer to them — usually the business name.">
+          <Field label="Customer name" hint="How you refer to them. Often a short version of the business.">
             <input type="text" value={c.name} onChange={e => set({ name: e.target.value })} placeholder="e.g. West Side Market"/>
+          </Field>
+
+          <Field label="Business name" hint="Full legal or trading name. Optional.">
+            <input type="text" value={c.business_name || ""} onChange={e => set({ business_name: e.target.value })} placeholder="West Side Market — Bay Stand LLC"/>
           </Field>
 
           <div className="field-row">
             <Field label="Email">
               <input type="email" value={c.email} onChange={e => set({ email: e.target.value })} placeholder="orders@…"/>
             </Field>
-            <Field label="Phone">
+            <Field label="Phone (required)">
               <input type="tel" value={c.phone} onChange={e => set({ phone: e.target.value })} placeholder="216-555-0100"/>
             </Field>
           </div>
+          <div className="field-help">Phone is required — that's how weekly SMS links go out. Email is optional.</div>
 
           <Field label="Delivery address" hint="Used on order confirmations and the delivery list.">
             <textarea rows={3} value={c.address} onChange={e => set({ address: e.target.value })} placeholder="Street, city, zip"/>
           </Field>
 
-          <Field label="Notification preference">
-            <div className="radio-group">
-              {[
-                { v: "sms",   l: "SMS only",   s: "Best for restaurant kitchens." },
-                { v: "email", l: "Email only", s: "If they prefer paper trail." },
-                { v: "both",  l: "SMS + Email", s: "Sends both — recommended." },
-              ].map(opt => (
-                <label key={opt.v} className={"radio-card" + (c.notify === opt.v ? " is-on" : "")}>
-                  <input type="radio" name="notify" checked={c.notify === opt.v} onChange={() => set({ notify: opt.v })}/>
-                  <div>
-                    <div className="radio-card-label">{opt.l}</div>
-                    <div className="radio-card-sub">{opt.s}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
+          <Field label="Priority" hint="Send-queue order. Lower goes first; 100 is the neutral default.">
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={c.priority}
+              onChange={e => set({ priority: e.target.value })}
+            />
           </Field>
 
           <Field label="Subscribed" hint="When off, they won't receive weekly order links.">

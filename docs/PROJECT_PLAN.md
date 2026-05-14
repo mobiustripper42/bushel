@@ -6,10 +6,11 @@ Sun/Mon → Wed/Thu cadence.
 
 See also:
 - `docs/review/spec-for-annabel.html` — high-level review doc for the product owner (post-pivot)
-- `docs/SPEC.md` — original product spec (TODO: port from HTML)
-- `docs/DECISIONS.md` — architectural decisions (DEC-001…DEC-027)
-- `docs/USER_STORIES.md` — flows A/B/C, B2B-reframed (TODO)
-- `docs/BRAND.md` — voice, type, color (TODO)
+- `docs/SPEC.md` — product spec (first-pass port from HTML; pending review)
+- `docs/DECISIONS.md` — architectural decisions (DEC-001…DEC-032)
+- `docs/SCHEMA.md` — finalized table shapes
+- `docs/USER_STORIES.md` — flows by role, B2B-reframed (first pass; pending review)
+- `docs/BRAND.md` — voice, type, color
 
 ---
 
@@ -68,7 +69,7 @@ Goal: deployable empty Next.js app at `order.baybranchfarm.com` with Supabase, P
 | # | Task | Pts | Status |
 |---|---|---|---|
 | 1.1a | Schema design (sketched in plan; finalize tweaks) | 3 | [x] [#16](https://github.com/mobiustripper42/bushel/issues/16) |
-| 1.1b | Schema migrations + indexes (`products`, `customers`, `orders` w/ `needs_reconciliation`, `order_items`, `pickup_windows`, `ordering_schedule`) | 5 | [x] [#17](https://github.com/mobiustripper42/bushel/issues/17) |
+| 1.1b | Schema migrations + indexes (`products`, `customers`, `orders` w/ `needs_reconciliation`, `order_items`, ~~`pickup_windows`~~ [dropped in 2.0b per DEC-029], `ordering_schedule`) | 5 | [x] [#17](https://github.com/mobiustripper42/bushel/issues/17) |
 | 1.2 | RLS policies + pgTAP tests; service-role-as-gate, RLS-as-backstop | 3 | [x] [#18](https://github.com/mobiustripper42/bushel/issues/18) |
 | 1.3 | Admin route group; Google OAuth flow; admin guard middleware | 3 | [x] [#19](https://github.com/mobiustripper42/bushel/issues/19) |
 | 1.4 | Empty admin shell with nav; auth-required Playwright spec | 2 | [x] [#20](https://github.com/mobiustripper42/bushel/issues/20) |

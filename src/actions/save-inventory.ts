@@ -35,11 +35,13 @@ function validateRow(row: InventoryRowInput, index: number): string | null {
   if (!ALLOWED_CATEGORIES.includes(row.category as Category)) {
     return `Row ${index + 1}: invalid category.`;
   }
-  if (!Number.isFinite(row.price_cents) || row.price_cents < 0) {
-    return `Row ${index + 1}: price must be zero or greater.`;
+  if (!Number.isFinite(row.price_cents) || row.price_cents <= 0) {
+    return `Row ${index + 1}: price must be greater than zero.`;
   }
-  if (!Number.isInteger(row.qty_available) || row.qty_available < 0) {
-    return `Row ${index + 1}: qty must be a non-negative whole number.`;
+  // qty allows negatives — DEC-012 optimistic oversell. Admin must be able
+  // to record an oversold state by direct entry, not only via order placement.
+  if (!Number.isInteger(row.qty_available)) {
+    return `Row ${index + 1}: qty must be a whole number.`;
   }
   return null;
 }

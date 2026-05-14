@@ -37,18 +37,19 @@ Roles:
 
 | File | Purpose |
 |------|---------|
-| `docs/SPEC.md` | What we're building — scope, V1 vs V2 vs V3 |
-| `docs/DECISIONS.md` | Architectural decisions (DEC-001…DEC-027) |
-| `docs/USER_STORIES.md` | What each role does (TODO: B2B-reframe) |
+| `docs/SPEC.md` | What we're building — scope, V1 vs V1.5 vs V2 |
+| `docs/DECISIONS.md` | Architectural decisions (DEC-001…DEC-032) |
+| `docs/SCHEMA.md` | Finalized table shapes; gates migrations + RLS |
+| `docs/USER_STORIES.md` | What each role does (B2B-reframed; pending review) |
 | `docs/PROJECT_PLAN.md` | Phases, scope, velocity. **Phase-boundary doc** — read at planning, written at retro. Current-phase tasks live in GitHub Issues. |
 | `docs/RETROSPECTIVES.md` | Phase-end retrospectives — written by `/retro` |
-| `docs/AGENTS.md` | Agent and skill specs |
-| `docs/BRAND.md` | Voice, type, color (TODO: fill at start of Phase 0.7) |
+| `docs/AGENTS.md` | Agent and skill specs (canonical). The repo-root `AGENTS.md` is a Next.js-agent rules stub for IDE tooling — not the project agent doc. |
+| `docs/BRAND.md` | Voice, type, color |
 | `docs/VELOCITY_AND_POKER_GUIDE.md` | Estimation methodology |
 | `docs/CHEATSHEET.md` | One-page printable skill reference |
 | `sessions/*.md` | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md` |
 | `.claude/seeds-version` | Schema version this project was last installed at. Used by `/pull-seeds` to gate template syncs. |
-| `.claude/project-type` | Project type — `webapp` or `tool`. Used by `@sync-config` to gate template files that don't apply to this project's type (DEC-011). Optional. |
+| `.claude/project-type` | Project type — `webapp` or `tool`. Used by `@sync-config` to gate template files that don't apply to this project's type. Optional. |
 
 ## Core Data Model (target — see Phase 1.1)
 
@@ -105,7 +106,7 @@ Without the token: `Your account does not have the necessary privileges` — tha
 
 Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
 
-### Production write protection (DEC-009)
+### Production write protection
 
 Two-layer defense against accidentally running destructive Supabase CLI ops on production:
 
@@ -127,7 +128,7 @@ Optional shell alias for transparent protection:
 alias supabase='./scripts/safe-supabase.sh'
 ```
 
-The `.claude/prod-supabase-refs` file accepts one ref per line; blank lines and `#` comments are ignored. Per-project rather than global so multi-project dev boxes don't cross-contaminate.
+The `.claude/prod-supabase-refs` file accepts one ref per line; blank lines and `#` comments are ignored. Per-project rather than global so multi-project dev boxes don't cross-contaminate. **If the file is absent, the wrapper passes through with no protection** — the gitignore on the file means it won't exist on a fresh clone; create it before relying on the guard.
 
 The wrapper only catches CLI ops. The following are **not** guarded — they rely on the discipline:
 - `--db-url postgres://...prod...` flags on `db push` / `db remote commit` skip the linked-project entirely.
@@ -244,6 +245,8 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 | @code-review | Sonnet | After every commit (wired into `/kill-this`) | Catch issues early |
 | @pm | Sonnet | Start/end of sessions via skills | Track progress, flag risks |
 | @ui-reviewer | Sonnet | After UI work, phase boundaries | Design quality |
+| @sync-config | Sonnet | `/push-seeds` and `/pull-seeds` | Classifies template-vs-project diffs, gates structural backports |
+| @tape-reader | Sonnet | `/read-the-tape` | Audits session JSONL for workflow anti-patterns |
 
 ## Model Selection
 
@@ -260,7 +263,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - Never two open PRs with migrations on the same table — merge one first.
 - **Stacking PRs is preferred** when tasks depend on each other. Branch the next task off the previous task branch (`git checkout -b task/X.Y-next task/X.Y-prev`), not off main. Only wait for the previous PR to merge when there's a migration conflict on the same table.
 
-### Staging vs no-staging (DEC-008)
+### Staging vs no-staging
 
 Bushel currently has no `origin/staging`, so it ships PRs straight to `main`:
 - `/kill-this` opens PRs into `main`.
@@ -279,7 +282,7 @@ After that, `/kill-this` PRs into `staging`, bumps are untagged on `staging`, an
 - Auto-merge enabled per PR after CI green.
 - Branch protection: require CI green; skip reviewer-count requirements for solo phase.
 
-## Versioning (DEC-007)
+## Versioning
 
 Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. Currently `0.1.0` — first release path. `/its-dead` patch-bumps from there.
 
@@ -296,7 +299,7 @@ Build-time version display at `src/components/VersionTag.tsx`. Reads `process.en
 
 Wiring:
 - `next.config.ts` forwards `npm_package_version` → `NEXT_PUBLIC_APP_VERSION`. Critical — without `NEXT_PUBLIC_`, client trees silently render `v0.0.0`.
-- Currently rendered in the placeholder home page footer at `src/app/page.tsx`. **Move to login screen + global footer when those land.** Per `dev/claude/CLAUDE.md §Versioning` in seeds.
+- Currently rendered in the placeholder home page footer at `src/app/page.tsx`. Login screen now exists at `src/app/login/page.tsx`; **moving the tag to the login screen + a global footer is a Phase 6.1 polish task.**
 - Vercel sets `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` automatically. Local `npm run dev` outside Vercel omits the commit hash — that's intentional.
 
 ```tsx
