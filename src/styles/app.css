@@ -854,8 +854,8 @@
   margin: 0 0 4px;
   text-align: center;
 }
-.page-head-week { justify-self: start; margin-bottom: 0; }
-.page-greet {
+.order-page .page-head .page-head-week { justify-self: start; margin-bottom: 0; }
+.order-page .page-head .page-greet {
   justify-self: end;
   font-size: 1rem; color: var(--ink-700); margin: 0;
 }

@@ -71,7 +71,7 @@ function Stepper({
     holdInterval.current = null;
   };
 
-  useEffect(() => stopHold, []);
+  useEffect(() => () => stopHold(), []);
 
   const startHold = (dir: 1 | -1) => {
     stopHold();
@@ -83,8 +83,10 @@ function Stepper({
           return;
         }
         ticks += 1;
-        if (ticks === HOLD_ACCEL_AFTER) {
-          if (holdInterval.current) clearInterval(holdInterval.current);
+        // Defense in depth: only swap to fast cadence if the slow interval
+        // is still ours (stopHold elsewhere would have nulled it).
+        if (ticks === HOLD_ACCEL_AFTER && holdInterval.current) {
+          clearInterval(holdInterval.current);
           holdInterval.current = setInterval(tick, HOLD_FAST_TICK_MS);
         }
       };
@@ -125,6 +127,8 @@ function Stepper({
         inputMode="numeric"
         pattern="[0-9]*"
         aria-label="quantity value"
+        min={0}
+        max={max}
         value={draft}
         onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
         onFocus={(e) => e.currentTarget.select()}
