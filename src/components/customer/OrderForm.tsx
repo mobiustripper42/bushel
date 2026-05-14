@@ -243,18 +243,25 @@ export function OrderForm({
       unit_price_cents: p.price_cents,
     }));
     startTransition(async () => {
-      const result = await placeOrder({
-        mode,
-        items: payloadItems,
-        delivery_preference: deliveryPreference,
-        pickup_note: pickupNote,
-        notes,
-      });
-      if (result?.error) {
-        setSubmitError(result.error);
-        submittingRef.current = false; // allow retry after a failed submit
+      try {
+        const result = await placeOrder({
+          mode,
+          items: payloadItems,
+          delivery_preference: deliveryPreference,
+          pickup_note: pickupNote,
+          notes,
+        });
+        if (result?.error) {
+          setSubmitError(result.error);
+          submittingRef.current = false; // allow retry after a failed submit
+        }
+        // On success the action redirects; page unmounts, latch stays true.
+      } catch (err) {
+        // Thrown errors (network failure, action exception) used to leave the
+        // ref stuck true and silently swallow every subsequent click. Reset.
+        setSubmitError(err instanceof Error ? err.message : "Submit failed.");
+        submittingRef.current = false;
       }
-      // On success the action redirects; page unmounts, latch stays true.
     });
   };
 
