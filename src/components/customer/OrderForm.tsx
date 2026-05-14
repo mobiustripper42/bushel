@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { placeOrder } from "@/actions/place-order";
 import type { ProductRow } from "@/lib/customer/queries";
 
 type Customer = {
@@ -205,6 +206,8 @@ export function OrderForm({
     priorDeliveryPreference ?? "",
   );
   const [notes, setNotes] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const itemsWithQty = useMemo(
     () => products.filter((p) => (qty[p.id] ?? 0) > 0),
@@ -223,6 +226,31 @@ export function OrderForm({
 
   const setItemQty = (id: string, n: number) =>
     setQty((q) => ({ ...q, [id]: n }));
+
+  const handleSubmit = () => {
+    if (lineCount === 0 || isPending) return;
+    setSubmitError(null);
+    const payloadItems = itemsWithQty.map((p) => ({
+      product_id: p.id,
+      qty: qty[p.id] ?? 0,
+      unit_price_cents: p.price_cents,
+    }));
+    startTransition(async () => {
+      const result = await placeOrder({
+        mode,
+        items: payloadItems,
+        delivery_preference: deliveryPreference,
+        pickup_note: pickupNote,
+        notes,
+      });
+      if (result?.error) setSubmitError(result.error);
+      // On success the action redirects; we never return here.
+    });
+  };
+
+  // Disable + show spinner whenever a submit is in flight, regardless of
+  // which of the three buttons the user pressed.
+  const submitDisabled = lineCount === 0 || isPending;
 
   return (
     <div className="order-page">
@@ -407,10 +435,21 @@ export function OrderForm({
               <button
                 type="button"
                 className="btn btn-primary submit-btn"
-                disabled={lineCount === 0}
+                onClick={handleSubmit}
+                disabled={submitDisabled}
+                aria-busy={isPending}
               >
-                Submit order
+                {isPending ? (
+                  <span className="btn-spinner" aria-hidden="true" />
+                ) : (
+                  "Submit order"
+                )}
               </button>
+              {submitError ? (
+                <p className="submit-error" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
               <p className="submit-fine">
                 You&rsquo;ll get a text confirmation. To change anything, text
                 Annabel at 216-202-5718.
@@ -450,9 +489,15 @@ export function OrderForm({
               <button
                 type="button"
                 className="btn btn-primary rail-submit"
-                disabled={lineCount === 0}
+                onClick={handleSubmit}
+                disabled={submitDisabled}
+                aria-busy={isPending}
               >
-                Submit order
+                {isPending ? (
+                  <span className="btn-spinner" aria-hidden="true" />
+                ) : (
+                  "Submit order"
+                )}
               </button>
               <div className="rail-fine">
                 Text Annabel to change anything · 216-202-5718
@@ -476,9 +521,15 @@ export function OrderForm({
         <button
           type="button"
           className="btn btn-primary sticky-btn"
-          disabled={lineCount === 0}
+          onClick={handleSubmit}
+          disabled={submitDisabled}
+          aria-busy={isPending}
         >
-          Review &amp; submit
+          {isPending ? (
+            <span className="btn-spinner" aria-hidden="true" />
+          ) : (
+            "Review & submit"
+          )}
         </button>
       </div>
     </div>

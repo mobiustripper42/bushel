@@ -299,6 +299,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      place_order: {
+        Args: {
+          p_customer_id: string
+          p_delivery_address: string
+          p_delivery_preference: string
+          p_fulfillment_type: string
+          p_items: Json
+          p_notes: string
+          p_pickup_note: string
+          p_week_of: string
+        }
+        Returns: string
+      }
       prepopulate_inventory_from_last_week: {
         Args: never
         Returns: {

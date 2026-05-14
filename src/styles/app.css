@@ -36,6 +36,19 @@
 .btn-destructive-solid:hover:not(:disabled) { background: #931f15; border-color: #931f15; }
 .btn-sm { padding: 6px 12px; font-size: 0.85rem; min-height: 32px; }
 
+/* In-button spinner. Shown during a pending submit; the button stays disabled
+   so a second click can't fire. The 16px circle borrows currentColor so it
+   inverts cleanly on primary, secondary, and ghost variants. */
+.btn-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+
 /* dirty-state primary — gold dot in upper right */
 .btn-primary.is-dirty { background: var(--leaf-600); position: relative; }
 .btn-primary.is-dirty::before {
@@ -1081,6 +1094,15 @@
 .summary-sub { font-size: 0.85rem; color: var(--ink-500); }
 .submit-btn { width: 100%; }
 .submit-fine { margin-top: 10px; font-size: 0.78rem; color: var(--ink-500); }
+.submit-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--rose-600);
+  background: rgba(178, 59, 46, 0.06);
+  border: 1px solid rgba(178, 59, 46, 0.25);
+  border-radius: var(--r-sm);
+}
 
 .page-cols { display: block; }
 .page-rail { display: none; }

@@ -30,3 +30,35 @@ export async function getLatestDeliveryPreference(
   if (error) throw new Error(`getLatestDeliveryPreference: ${error.message}`);
   return data?.delivery_preference ?? null;
 }
+
+// Pulls the customer's order for a specific week (typically the current NY-time
+// week), joined with its line items + product names/units. Returns null if no
+// order exists for that week. Used by /confirmed.
+export async function getCurrentWeekOrder(customerId: string, weekOf: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      id,
+      week_of,
+      fulfillment_type,
+      delivery_address,
+      delivery_preference,
+      pickup_note,
+      notes,
+      created_at,
+      order_items (
+        id,
+        qty,
+        unit_price_cents,
+        products ( name, unit )
+      )
+    `,
+    )
+    .eq("customer_id", customerId)
+    .eq("week_of", weekOf)
+    .maybeSingle();
+  if (error) throw new Error(`getCurrentWeekOrder: ${error.message}`);
+  return data ?? null;
+}

@@ -1,25 +1,63 @@
+import Link from "next/link";
 import { StatusShell } from "@/components/customer/StatusShell";
+import { getCurrentWeekOrder } from "@/lib/customer/queries";
+import { lookupCustomerByToken } from "@/lib/customer/session";
+import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
 
-// TODO Phase 4: look up order by token + orderId and render real data
-const PLACEHOLDER_ORDER = {
-  ref: "0503-04",
-  customer: "Maya",
-  week: "week of may 3",
-  items: [
-    { name: "Heirloom tomatoes", qty: 4, unit: "lb", price: 5.5 },
-    { name: "Dino kale", qty: 6, unit: "bunch", price: 4.5 },
-    { name: "Red beets", qty: 2, unit: "lb", price: 3.25 },
-    { name: "Genovese basil", qty: 3, unit: "bunch", price: 3.5 },
-  ],
-  delivery: {
-    window: "Wed, May 6 · between 8am – noon",
-    address: "16100 Detroit Ave, Lakewood",
-  },
-};
+function formatPrice(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
 
-export default function ConfirmedPage() {
-  const order = PLACEHOLDER_ORDER;
-  const total = order.items.reduce((s, i) => s + i.qty * i.price, 0);
+function shortRef(orderId: string): string {
+  // Take the leading segment of the uuid — stable, short enough to read aloud
+  // without revealing anything sensitive.
+  return orderId.slice(0, 8).toUpperCase();
+}
+
+export default async function ConfirmedPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  const customer = await lookupCustomerByToken(token);
+
+  if (!customer) {
+    return (
+      <StatusShell>
+        <h1 className="status-title">This link isn&rsquo;t active.</h1>
+        <p className="status-lede">
+          Text Annabel for a new ordering link · 216-202-5718.
+        </p>
+      </StatusShell>
+    );
+  }
+
+  const order = await getCurrentWeekOrder(customer.id, weekOfMondayNY());
+
+  if (!order) {
+    // Cold-navigation case: someone hit /confirmed without an order this week.
+    return (
+      <StatusShell>
+        <h1 className="status-title">No order on file for this week.</h1>
+        <p className="status-lede">
+          Place an order to get started.
+        </p>
+        <div className="status-actions">
+          <Link href={`/c/${token}`} className="btn btn-primary status-btn">
+            Open this week&rsquo;s list
+          </Link>
+        </div>
+      </StatusShell>
+    );
+  }
+
+  const items = order.order_items ?? [];
+  const total = items.reduce(
+    (sum, item) => sum + item.qty * item.unit_price_cents,
+    0,
+  );
+  const greeting = customer.business_name ?? customer.name;
 
   return (
     <StatusShell>
@@ -31,8 +69,10 @@ export default function ConfirmedPage() {
         </svg>
       </div>
 
-      <div className="status-eyebrow eyebrow">order received · #{order.ref}</div>
-      <h1 className="status-title">Order received, {order.customer}.</h1>
+      <div className="status-eyebrow eyebrow">
+        order received · #{shortRef(order.id)}
+      </div>
+      <h1 className="status-title">Order received, {greeting}.</h1>
       <p className="status-lede">
         Thanks. Annabel will text you Wednesday morning with delivery details.
       </p>
@@ -40,35 +80,73 @@ export default function ConfirmedPage() {
       <div className="confirm-card">
         <div className="confirm-card-head">
           <div className="eyebrow">summary</div>
-          <span className="confirm-week">{order.week}</span>
+          <span className="confirm-week">{weekOfLabel().toLowerCase()}</span>
         </div>
         <ul className="confirm-list">
-          {order.items.map((item) => (
-            <li key={item.name}>
-              <span className="confirm-line-name">
-                <span className="confirm-qty">{item.qty}×</span>
-                <span>{item.name}</span>
-                <span className="confirm-unit"> · {item.unit}</span>
-              </span>
-              <span className="confirm-amt">${(item.qty * item.price).toFixed(2)}</span>
-            </li>
-          ))}
+          {items.map((item) => {
+            const product = item.products;
+            const name = product?.name ?? "(item)";
+            const unit = product?.unit ?? "";
+            return (
+              <li key={item.id}>
+                <span className="confirm-line-name">
+                  <span className="confirm-qty">{item.qty}×</span>
+                  <span>{name}</span>
+                  {unit ? <span className="confirm-unit"> · {unit}</span> : null}
+                </span>
+                <span className="confirm-amt">
+                  ${formatPrice(item.qty * item.unit_price_cents)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
         <div className="confirm-total">
           <span>Total</span>
-          <span className="mono">${total.toFixed(2)}</span>
+          <span className="mono">${formatPrice(total)}</span>
         </div>
       </div>
 
       <div className="confirm-fulfill">
         <div className="confirm-fulfill-row">
-          <div className="confirm-fulfill-key">Delivery</div>
+          <div className="confirm-fulfill-key">
+            {order.fulfillment_type === "pickup" ? "Pickup" : "Delivery"}
+          </div>
           <div>
-            <div className="confirm-fulfill-val">{order.delivery.window}</div>
-            <div className="confirm-fulfill-sub">{order.delivery.address}</div>
+            {order.fulfillment_type === "pickup" ? (
+              <>
+                <div className="confirm-fulfill-val">
+                  {order.pickup_note?.trim() || "Pickup at the farm"}
+                </div>
+                <div className="confirm-fulfill-sub">3612 W 114th St, Cleveland</div>
+              </>
+            ) : (
+              <>
+                <div className="confirm-fulfill-val">
+                  {order.delivery_preference?.trim() ||
+                    "Wednesday morning, 8am–noon"}
+                </div>
+                {order.delivery_address ? (
+                  <div className="confirm-fulfill-sub">
+                    {order.delivery_address}
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {order.notes?.trim() ? (
+        <div className="callout callout-info status-callout">
+          <div>
+            <strong>Your note to Annabel</strong>
+            <div style={{ marginTop: 4, color: "var(--ink-700)" }}>
+              {order.notes.trim()}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="callout callout-info status-callout">
         <div>
