@@ -30,9 +30,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium webkit
-
       - name: Set Supabase env vars
         run: |
           eval $(supabase status --output env)
@@ -56,11 +53,29 @@ jobs:
       - name: Wait for app
         run: timeout 30 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 1; done'
 
-      - name: Run Playwright tests
-        run: npx playwright test
-        env:
-          PLAYWRIGHT_BASE_URL: http://localhost:3001
-          NOTIFICATIONS_ENABLED: "false"
+      - name: Run Playwright tests (in container)
+        # Path D: keep the job on the host runner (so supabase + npm + build all
+        # work natively against host docker without DiD pain), but run the test
+        # step inside the Playwright image so we skip the ~6 min `--with-deps`
+        # apt install. We control this `docker run` ourselves, so --network host
+        # works (GHA only conflicts with `container:` jobs).
+        run: |
+          docker run --rm \
+            --network host \
+            -v "$PWD:/app" \
+            -w /app \
+            -e PLAYWRIGHT_BASE_URL=http://localhost:3001 \
+            -e NOTIFICATIONS_ENABLED=false \
+            -e CI=true \
+            -e NEXT_PUBLIC_SUPABASE_URL \
+            -e NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            -e SUPABASE_SERVICE_ROLE_KEY \
+            mcr.microsoft.com/playwright:v1.59.1-noble \
+            npx playwright test
+
+      - name: Fix report ownership (container writes as root)
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" playwright-report || true
 
       - uses: actions/upload-artifact@v4
         if: failure()
