@@ -18,11 +18,31 @@ test.describe("/c/[token] order form", () => {
     const kaleRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
     await kaleRow.getByRole("button", { name: "increase" }).click();
     await kaleRow.getByRole("button", { name: "increase" }).click();
-    await expect(kaleRow.locator(".stepper-val")).toHaveText("2");
+    await expect(kaleRow.locator(".stepper-val")).toHaveValue("2");
 
     // Sticky bar + submit-block totals reflect 2 × $3.00 = $6.00
     await expect(page.locator(".sticky-total").first()).toContainText("6.00");
     await expect(page.locator(".summary-total")).toContainText("6.00");
+  });
+
+  test("stepper value is typeable; clamps to qty_available on blur", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    const kaleRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+    const input = kaleRow.locator(".stepper-val");
+
+    await input.click();
+    await input.press("ControlOrMeta+A");
+    await input.pressSequentially("7");
+    await input.blur();
+    await expect(input).toHaveValue("7");
+    await expect(page.locator(".summary-total")).toContainText("21.00");
+
+    // Type a value above qty_available (10) → clamps on blur
+    await input.click();
+    await input.press("ControlOrMeta+A");
+    await input.pressSequentially("99");
+    await input.blur();
+    await expect(input).toHaveValue(String(TEST_PRODUCTS.kale.qty_available));
   });
 
   test("submit button disabled with no items, enabled after stepping up", async ({ page }) => {

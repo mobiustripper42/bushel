@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProductRow } from "@/lib/customer/queries";
 
 type Customer = {
@@ -22,6 +22,14 @@ function formatPrice(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+// Press-and-hold tuning: pause before repeating, then a steady cadence that
+// accelerates after a few ticks so wholesale qty (24, 50…) is reachable
+// without 50 taps. Manual feel — not exercised by tests.
+const HOLD_DELAY_MS = 400;
+const HOLD_TICK_MS = 90;
+const HOLD_ACCEL_AFTER = 8;
+const HOLD_FAST_TICK_MS = 40;
+
 function Stepper({
   value,
   onChange,
@@ -31,24 +39,111 @@ function Stepper({
   onChange: (n: number) => void;
   max: number;
 }) {
+  const [draft, setDraft] = useState(value.toString());
+  const valueRef = useRef(value);
+  const maxRef = useRef(max);
+  const holdTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    valueRef.current = value;
+    setDraft(value.toString());
+  }, [value]);
+
+  useEffect(() => {
+    maxRef.current = max;
+  }, [max]);
+
+  const clamp = (n: number) => Math.max(0, Math.min(maxRef.current, n));
+
+  const step = (dir: 1 | -1) => {
+    const next = clamp(valueRef.current + dir);
+    if (next === valueRef.current) return false;
+    valueRef.current = next;
+    onChange(next);
+    return true;
+  };
+
+  const stopHold = () => {
+    if (holdTimeout.current) clearTimeout(holdTimeout.current);
+    if (holdInterval.current) clearInterval(holdInterval.current);
+    holdTimeout.current = null;
+    holdInterval.current = null;
+  };
+
+  useEffect(() => stopHold, []);
+
+  const startHold = (dir: 1 | -1) => {
+    stopHold();
+    holdTimeout.current = setTimeout(() => {
+      let ticks = 0;
+      const tick = () => {
+        if (!step(dir)) {
+          stopHold();
+          return;
+        }
+        ticks += 1;
+        if (ticks === HOLD_ACCEL_AFTER) {
+          if (holdInterval.current) clearInterval(holdInterval.current);
+          holdInterval.current = setInterval(tick, HOLD_FAST_TICK_MS);
+        }
+      };
+      holdInterval.current = setInterval(tick, HOLD_TICK_MS);
+    }, HOLD_DELAY_MS);
+  };
+
+  const commitDraft = () => {
+    const parsed = parseInt(draft, 10);
+    const next = clamp(Number.isNaN(parsed) ? 0 : parsed);
+    setDraft(next.toString());
+    if (next !== valueRef.current) {
+      valueRef.current = next;
+      onChange(next);
+    }
+  };
+
   const canDec = value > 0;
   const canInc = value < max;
+
   return (
     <div className="stepper" role="group" aria-label="quantity">
       <button
         type="button"
         className="stepper-btn"
-        onClick={() => canDec && onChange(value - 1)}
+        onClick={() => step(-1)}
+        onPointerDown={() => canDec && startHold(-1)}
+        onPointerUp={stopHold}
+        onPointerLeave={stopHold}
+        onPointerCancel={stopHold}
         disabled={!canDec}
         aria-label="decrease"
       >
         −
       </button>
-      <div className="stepper-val">{value}</div>
+      <input
+        className="stepper-val"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        aria-label="quantity value"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={commitDraft}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+        }}
+      />
       <button
         type="button"
         className="stepper-btn"
-        onClick={() => canInc && onChange(value + 1)}
+        onClick={() => step(1)}
+        onPointerDown={() => canInc && startHold(1)}
+        onPointerUp={stopHold}
+        onPointerLeave={stopHold}
+        onPointerCancel={stopHold}
         disabled={!canInc}
         aria-label="increase"
       >
@@ -105,8 +200,8 @@ export function OrderForm({
 
       <div className="page-shell">
         <header className="page-head">
-          <div className="eyebrow">this week · {weekLabel}</div>
           <h1 className="page-title">What&rsquo;s available</h1>
+          <div className="eyebrow page-head-week">this week · {weekLabel}</div>
           <p className="page-greet">
             Hi, <span className="customer-name">{customer.name}</span>.
           </p>
