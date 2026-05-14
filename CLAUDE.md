@@ -90,6 +90,33 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 - After schema changes: `npx supabase gen types typescript --local > src/lib/supabase/types.ts`
 - Before creating: `gh pr list` to check overlapping migrations; merge in-flight first or rename to later timestamp.
 
+### Two Supabase projects (dev/preview + prod)
+
+Bushel runs against **two Supabase projects** under the bushel-billed org:
+
+| Role | Project ref | Used by |
+|------|------------|---------|
+| dev/preview | `nnmfubmlvnkouxxfxxlh` | `.env.local`, Vercel Development + Preview environments, local Playwright runs |
+| production | `piaobrnrmoxnfrpnpixw` | Vercel Production environment only — `order.baybranchfarm.com` |
+
+**Why split:** Annabel uses production daily for real customers/inventory. Dev work — migrations, schema changes, fixture data — happens against the dev/preview project so a botched migration or a `db reset` can't take prod with it.
+
+**Migration discipline (with the split):**
+1. `supabase link --project-ref nnmfubmlvnkouxxfxxlh` is the default state. Stay linked here.
+2. Local edits → `supabase db reset` against local → `supabase db push` against dev/preview → vet.
+3. When dev/preview is happy and the PR has merged, push to prod:
+   ```bash
+   source .envrc
+   supabase link --project-ref piaobrnrmoxnfrpnpixw
+   supabase db push
+   supabase link --project-ref nnmfubmlvnkouxxfxxlh   # relink back, always
+   ```
+4. The relink-back step is non-negotiable. A forgotten link-to-prod is how `supabase db reset` becomes a resume-update event.
+
+**Auth config is per-project** — Google OAuth, redirect URLs, providers all live on each project independently. Changes (new OAuth client, new redirect URL, provider toggle) must be applied to both. The dev project's "this works" doesn't carry to prod automatically.
+
+A `scripts/safe-supabase.sh` wrapper exists in the repo as an optional guard against destructive ops on prod refs, but it's not active (no `.claude/prod-supabase-refs` populated). The defense right now is the discipline above: link to dev by default, link to prod only for the seconds it takes to push, relink to dev.
+
 ### Supabase CLI auth (mill-dev)
 
 **TL;DR — anytime you need to push migrations or hit remote Supabase, run:**
@@ -106,52 +133,32 @@ Without the token: `Your account does not have the necessary privileges` — tha
 
 Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
 
-### Production write protection
-
-Two-layer defense against accidentally running destructive Supabase CLI ops on production:
-
-1. **Discipline:** never `supabase link` to a prod project ref from a dev box. Production deploys read `SUPABASE_URL` and the service-role key from Vercel env vars — there is no reason for a local link to prod. Link only to staging or local.
-2. **Wrapper script (`scripts/safe-supabase.sh`):** reads the linked ref from `supabase/.temp/project-ref` and refuses to pass through `db reset`, `db push`, `db remote *`, `migration up`, or `migration repair` if the linked ref appears in `.claude/prod-supabase-refs`. Pass-through for everything else. The matcher walks adjacent argument pairs, so leading global flags (`--debug`, `--workdir`, etc.) don't bypass the guard.
-
-Setup (one-time):
-
-```
-chmod +x scripts/safe-supabase.sh
-mkdir -p .claude
-echo "<your-prod-project-ref>" > .claude/prod-supabase-refs
-echo ".claude/prod-supabase-refs" >> .gitignore
-```
-
-Optional shell alias for transparent protection:
-
-```
-alias supabase='./scripts/safe-supabase.sh'
-```
-
-The `.claude/prod-supabase-refs` file accepts one ref per line; blank lines and `#` comments are ignored. Per-project rather than global so multi-project dev boxes don't cross-contaminate. **If the file is absent, the wrapper passes through with no protection** — the gitignore on the file means it won't exist on a fresh clone; create it before relying on the guard.
-
-The wrapper only catches CLI ops. The following are **not** guarded — they rely on the discipline:
-- `--db-url postgres://...prod...` flags on `db push` / `db remote commit` skip the linked-project entirely.
-- Direct `psql` against the prod URL.
-- Any tool that doesn't go through the `supabase` binary.
-
 ### Cross-system env-var sync (Supabase ↔ Vercel)
 
-**Switching Supabase project refs requires re-syncing Vercel env vars in lockstep.** The two systems do not auto-sync.
+**Vercel env vars and Supabase project refs do not auto-sync.** Bushel runs two Supabase projects (see above); Vercel Production points at the prod project, Vercel Preview/Development + `.env.local` point at dev/preview. The three vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) appear **twice** in Vercel — once per environment scope — with intentionally different values.
 
-When `.env.local`'s `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` change (project ref rotated, account split, key rotated), the Vercel **Production AND Preview** environments must be updated to match — same names, same values — and then redeployed. Vercel does not redeploy automatically on env-var change.
+When you rotate keys, switch project refs, or otherwise touch these vars, both scopes must stay coherent:
+- Vercel **Production** → matches prod project's URL + keys.
+- Vercel **Preview + Development** → matches dev/preview project's URL + keys, which is what `.env.local` has.
 
-Failure mode if missed: `createServerClient()` gets `undefined` for URL or key and the deployed app returns `HTTP 500` site-wide. Local `npm run dev` keeps working because it reads `.env.local` directly, which masks the regression until someone hits the deployed site. Session 19 (2026-05-14) lost an hour to this exact gap during the bushel/sailbook account split.
+Vercel does not redeploy on env-var change. After updating, trigger a redeploy of `main` (Deployments → ⋯ → Redeploy) or push any commit.
 
-Diff-check the three vars against `.env.local` after any rotation:
+Failure modes:
+- **Undefined values:** `createServerClient()` gets `undefined` for URL or key → `HTTP 500` site-wide. Local `npm run dev` keeps working because it reads `.env.local` directly, masking the regression until someone hits the deployed site. Session 19 (2026-05-14) lost an hour to this during the bushel/sailbook account split.
+- **Swapped projects:** Prod points at the dev DB or vice versa. Symptoms: prod login works but shows test fixtures, or Annabel's real data appears on a preview URL. Diff-check before assuming everything is wired correctly.
+- **Name typo:** A Vercel-side name like `SUPABASE_ANON_KEY` instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY` produces the same 500 even when the value is correct.
+
+Diff-check ritual after any rotation:
 
 ```bash
 vercel env pull --environment=production .env.production.tmp
 vercel env pull --environment=preview    .env.preview.tmp
-diff <(grep -E "SUPABASE" .env.local | sort) <(grep -E "SUPABASE" .env.production.tmp | sort)
+# Preview should match .env.local:
+diff <(grep -E "SUPABASE" .env.local            | sort) \
+     <(grep -E "SUPABASE" .env.preview.tmp      | sort)
+# Production should NOT match .env.local — it should reference the prod project ref:
+grep "SUPABASE_URL" .env.production.tmp   # expect piaobrnrmoxnfrpnpixw.supabase.co
 ```
-
-Variable names must match exactly — a typo in the Vercel-side name (e.g., `SUPABASE_ANON_KEY` instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY`) will produce the same 500 even when the value is correct.
 
 ## Commands
 ```bash
