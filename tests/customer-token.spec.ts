@@ -6,7 +6,7 @@ const COOKIE = "bbf_customer_token";
 test.describe("/c/[token] route", () => {
   test("valid token renders the page and sets the cookie", async ({ page, context }) => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
-    await expect(page.getByText(/Ordering.s closed/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /What.s available/i })).toBeVisible();
 
     const cookie = (await context.cookies()).find((c) => c.name === COOKIE);
     expect(cookie?.value).toBe(TEST_CUSTOMERS.farmStand.token);
