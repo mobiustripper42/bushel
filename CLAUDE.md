@@ -319,7 +319,7 @@ To keep the preview URL bookmarkable on a phone, a fixed subdomain points at whi
 - Supabase Dashboard → Authentication → URL Configuration → Redirect URLs → add `https://preview.baybranchfarm.com/**`.
 - **Double-star, not single-star.** `/*` matches one path segment only (so `/auth/callback` fails to match); `/**` matches any path. A single-star slip costs an hour of "auth almost works" debugging — Supabase silently falls back to Site URL on a non-match, and the user lands on `/?code=...` with the callback route never running. Session 19 (2026-05-14) burned this exact hour.
 
-If the subdomain returns 500 right after reassignment, the new branch hasn't pushed a commit yet — Vercel only builds on new SHAs. An empty commit (`git commit --allow-empty -m "Trigger preview"`) kicks a build.
+If the subdomain returns 500 or 404 right after reassignment, the new branch hasn't pushed a commit yet — Vercel only builds on new SHAs (404 = no deployment exists for that branch; 500 = deployment exists but is broken, usually a different bug). An empty commit (`git commit --allow-empty -m "Trigger preview"`) kicks a build.
 
 ## Versioning
 

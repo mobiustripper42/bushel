@@ -3,8 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/supabase/types";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const origin = `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`;
+  const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/";
 
