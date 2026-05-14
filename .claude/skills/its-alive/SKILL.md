@@ -20,6 +20,10 @@ Run `git fetch origin` to refresh remote state. Capture `BRANCH=$(git branch --s
 - `main`: `git pull --ff-only origin main`. On divergence, show `git log --oneline origin/main..HEAD` and `git log --oneline HEAD..origin/main`, then ask: **"(a) rebase, (b) reset to origin/main, (c) abort?"** Wait for the choice.
 - Anything else (manual non-standard branch): if `git status --porcelain` is dirty, stop and ask the user to commit/stash. If clean, ask the user **"Stay on `$BRANCH` or switch to `main`?"** Wait for the choice.
 
+### Step 0.4 — Rebind preview subdomain
+
+When `$BRANCH` matches `task/*` or `claude/*`, run `bash scripts/preview-rebind.sh`. The script is idempotent and soft-fails (exit 0) when there's no token, no preview yet, or no work to do — never block the skill on its output. Surface the one-line output verbatim in the briefing. Skip silently on `main`.
+
 ### Step 0.5 — Orphan branch + unmerged PR scan
 
 Before stamping time, check for leftover work from prior sessions. The CC platform creates a new `claude/*` branch per session, so previous sessions' branches and PRs stay alive on the remote until explicitly merged or deleted.

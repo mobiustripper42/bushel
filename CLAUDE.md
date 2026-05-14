@@ -327,8 +327,10 @@ To keep the preview URL bookmarkable on a phone, a fixed subdomain points at whi
 - Project → Settings → Domains → Add `preview.baybranchfarm.com`.
 
 **Per-branch reassignment (every new task branch):**
-- Project → Settings → Domains → `preview.baybranchfarm.com` → **Edit** → Git Branch → select `task/X.Y-current-branch` → Save.
-- New preview build for that branch repoints the subdomain. ~30s.
+- `/its-alive` runs `bash scripts/preview-rebind.sh` automatically when the session starts on a `task/*` or `claude/*` branch. The script looks up the latest READY Vercel preview deployment for the current branch and re-aliases `preview.baybranchfarm.com` to it. Idempotent; soft-fails when there's nothing to rebind.
+- For a fresh task branch cut mid-session (the micro-workflow Step 3), the script does NOT auto-fire — out of scope for #69. Either run it manually after the first push to the new branch (`bash scripts/preview-rebind.sh`) or fall back to the Vercel dashboard click. Mid-session auto-fire is a follow-up; tracker if/when needed.
+- Requires `VERCEL_TOKEN` in `.envrc` (Personal Access Token, Account Settings → Tokens, scope to the `mobiustripper` team). Without it the script skips and falls back to the manual click below.
+- **Fallback (Vercel dashboard):** Project → Settings → Domains → `preview.baybranchfarm.com` → **Edit** → Git Branch → select `task/X.Y-current-branch` → Save. New preview build for that branch repoints the subdomain. ~30s.
 
 **Supabase OAuth allowlist (one-time):**
 - Supabase Dashboard → Authentication → URL Configuration → Redirect URLs → add `https://preview.baybranchfarm.com/**`.
