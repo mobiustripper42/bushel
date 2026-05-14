@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.5] - 2026-05-14
+- PR #72: Phase 3.3 — /c/[token] route validates token, sets cookie, 404s on invalid
+- PR #73: Phase 3.4 — Customer inventory page + order form (no submission)
+- PR #74: Phase 3.4.1 — Header grid + editable stepper with press-and-hold
+
 ## [0.4.4] - 2026-05-14
 - PR #70: Infra — Stable preview.baybranchfarm.com URL + OAuth callback bugfix
 
