@@ -10,15 +10,28 @@ jobs:
     timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.59.1-noble
-      options: --add-host=host.docker.internal:host-gateway
+      # host-gateway → reach Supabase containers (started as siblings on host docker).
+      # docker.sock mount → let the supabase CLI talk to the host daemon from inside.
+      options: >-
+        --add-host=host.docker.internal:host-gateway
+        -v /var/run/docker.sock:/var/run/docker.sock
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      # Playwright noble image ships Node 22 already; no setup-node needed.
+      # (setup-node's cache: npm also misbehaves on container HOME paths.)
+
+      - name: Install Docker CLI
+        # The Playwright image is Node + browsers + apt deps, no docker client.
+        # Supabase CLI shells out to `docker` to start its stack, so install the
+        # static binary. ~10s, vs 30–60s for `apt-get install docker.io`.
+        run: |
+          DOCKER_VERSION="27.3.1"
+          curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
+            | tar -xz -C /tmp
+          install /tmp/docker/docker /usr/local/bin/docker
+          docker --version
 
       - uses: supabase/setup-cli@v1
         with:
@@ -40,9 +53,11 @@ jobs:
           [[ -z "$ANON_KEY" ]] && echo "ERROR: ANON_KEY empty — supabase status failed" && exit 1
           [[ -z "$SERVICE_ROLE_KEY" ]] && echo "ERROR: SERVICE_ROLE_KEY empty — supabase status failed" && exit 1
           # Supabase containers bind to host ports; this job runs inside the Playwright
-          # container, where 127.0.0.1 is the container's loopback. Rewrite to the
-          # host-gateway alias set up in the container options.
+          # container, where 127.0.0.1/localhost is the container's loopback. Rewrite to
+          # the host-gateway alias set up in the container options. CLI may emit either
+          # spelling depending on version — rewrite both.
           API_URL_INTERNAL="${API_URL//127.0.0.1/host.docker.internal}"
+          API_URL_INTERNAL="${API_URL_INTERNAL//localhost/host.docker.internal}"
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL_INTERNAL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
