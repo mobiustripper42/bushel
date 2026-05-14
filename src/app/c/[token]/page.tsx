@@ -1,8 +1,18 @@
+import { notFound } from "next/navigation";
 import { StatusShell } from "@/components/customer/StatusShell";
+import { lookupCustomerByToken } from "@/lib/customer/session";
 
-// TODO Phase 3: look up token — show InvalidPage if expired, OrderPage if open
-// For now: ordering is always closed (correct for Phase 0)
-export default function CustomerTokenPage() {
+// Phase 3.3: token validated here; cookie set by middleware. Phase 3.4 will
+// replace the closed-state placeholder with the real order form.
+export default async function CustomerTokenPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  const customer = await lookupCustomerByToken(token);
+  if (!customer) notFound();
+
   return (
     <StatusShell>
       <div className="status-art" aria-hidden="true">
