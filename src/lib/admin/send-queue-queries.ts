@@ -128,6 +128,11 @@ async function getOrderBoundQueue(
         token: string;
         priority: number;
       };
+      // Narrow fulfillment_type at the boundary; anything outside the union
+      // falls back to "pickup" (the conservative default) rather than the
+      // delivery branch picking up garbage.
+      const fulfillmentType: "pickup" | "delivery" =
+        o.fulfillment_type === "delivery" ? "delivery" : "pickup";
       return {
         customerId: c.id,
         customerName: c.name,
@@ -135,7 +140,7 @@ async function getOrderBoundQueue(
         token: c.token,
         priority: c.priority,
         sentAt: sendMap.get(c.id) ?? null,
-        fulfillmentType: o.fulfillment_type as "pickup" | "delivery",
+        fulfillmentType,
         pickupNote: o.pickup_note,
         deliveryPreference: o.delivery_preference,
       };
@@ -171,7 +176,29 @@ export async function getIntroNote(): Promise<string> {
 // nav badge. Only weekly_update has a badge; order_confirmation and
 // pickup_reminder are surfaced through the page's mode tabs instead, to
 // keep the nav uncluttered when multiple modes have unsent customers.
+// Runs on every admin page render via the layout, so we avoid the full
+// queue load: count subscribers, subtract sent rows for the week.
 export async function getWeeklyUpdateUnsentCount(): Promise<number> {
-  const queue = await getWeeklyUpdateQueue();
-  return queue.filter((r) => r.sentAt === null).length;
+  const supabase = createAdminClient();
+  const weekOf = weekOfMondayNY();
+
+  const [subscribers, sent] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true)
+      .eq("send_weekly_link", true),
+    supabase
+      .from("customer_sends")
+      .select("customer_id", { count: "exact", head: true })
+      .eq("week_of", weekOf)
+      .eq("mode", "weekly_update"),
+  ]);
+
+  if (subscribers.error)
+    throw new Error(`getWeeklyUpdateUnsentCount(subscribers): ${subscribers.error.message}`);
+  if (sent.error)
+    throw new Error(`getWeeklyUpdateUnsentCount(sent): ${sent.error.message}`);
+
+  return Math.max(0, (subscribers.count ?? 0) - (sent.count ?? 0));
 }

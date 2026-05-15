@@ -15,9 +15,12 @@ export async function recordSend(
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
 
+  // Belt-and-suspenders: RLS admin-all is the gate today, but a future
+  // policy loosening shouldn't accidentally allow anonymous writes here.
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
 
   const { error } = await supabase.from("customer_sends").upsert(
     {
@@ -25,7 +28,7 @@ export async function recordSend(
       week_of: weekOf,
       mode,
       sent_at: new Date().toISOString(),
-      sent_by_user_id: user?.id ?? null,
+      sent_by_user_id: user.id,
     },
     { onConflict: "customer_id,week_of,mode" },
   );

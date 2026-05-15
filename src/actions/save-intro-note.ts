@@ -9,10 +9,15 @@ import { createClient } from "@/lib/supabase/server";
 export async function saveIntroNote(text: string): Promise<{ error: string | null }> {
   const supabase = await createClient();
 
+  // .select().single() surfaces "no row matched" as an error — without it,
+  // a missing singleton (migration drift, wrong env) would return success
+  // while nothing changed.
   const { error } = await supabase
     .from("ordering_schedule")
     .update({ intro_note: text, updated_at: new Date().toISOString() })
-    .eq("is_singleton", true);
+    .eq("is_singleton", true)
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
 

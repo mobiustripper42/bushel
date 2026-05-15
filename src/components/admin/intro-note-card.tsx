@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { saveIntroNote } from "@/actions/save-intro-note";
 
@@ -16,11 +16,15 @@ export function IntroNoteCard({ initialValue }: IntroNoteCardProps) {
 
   const dirty = value !== saved;
 
-  // Sync if a server-side change updates initialValue (eg. another tab saves)
+  // Sync if a server-side change updates initialValue (e.g. another tab
+  // saves, or revalidatePath after our own save). We only overwrite local
+  // edits when the user hasn't typed anything new — `saved` is captured in
+  // a ref so the effect can be tied to `initialValue` alone.
+  const savedRef = useRef(saved);
+  savedRef.current = saved;
   useEffect(() => {
     setSaved(initialValue);
-    setValue((v) => (v === saved ? initialValue : v));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setValue((v) => (v === savedRef.current ? initialValue : v));
   }, [initialValue]);
 
   function handleSave() {
