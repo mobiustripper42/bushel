@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.14] - 2026-05-15
+- PR #86: Phase 3 polish: pgTAP coverage for DEC-029 + DEC-030 columns (closes #67)
 ## [0.4.13] - 2026-05-15
 - PR #85: Phase 6 polish: BBF leaf favicon sourced from apex (closes #79)
 ## [0.4.12] - 2026-05-15
