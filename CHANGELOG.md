@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.9] - 2026-05-15
+- PR #78: Phase 3.5: optimistic order placement (closes #50)
 ## [0.4.8] - 2026-05-15
 - PR #77: CI: run job inside Playwright container (closes #65)
 ## [0.4.7] - 2026-05-15
