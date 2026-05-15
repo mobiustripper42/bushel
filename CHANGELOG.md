@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.0] - 2026-05-15 — Phase 3
+- 36 pts labeled (56 session-counted) shipped across 9 sessions (0.35 h/pt active)
+- See `docs/RETROSPECTIVES.md` for the full retro
 ## [0.4.14] - 2026-05-15
 - PR #86: Phase 3 polish: pgTAP coverage for DEC-029 + DEC-030 columns (closes #67)
 ## [0.4.13] - 2026-05-15
