@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.12] - 2026-05-15
+- PR #84: Phase 3 polish: admin shell top bar + sidebar footer + nav badges (closes #66)
 ## [0.4.11] - 2026-05-15
 - PR #83: Phase 3.7: closed state + all-sold-out empty state (closes #52)
 ## [0.4.10] - 2026-05-15
