@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.11] - 2026-05-15
+- PR #83: Phase 3.7: closed state + all-sold-out empty state (closes #52)
 ## [0.4.10] - 2026-05-15
 - PR #81: Phase 3.6: manual open/close toggle + weekly schedule + cron (closes #51)
 ## [0.4.9] - 2026-05-15
