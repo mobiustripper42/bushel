@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.6] - 2026-05-15
+- PR #75: DEC-013 + DEC-014: per-task /kill-this, time math at retro, sessions on orphan branch
 ## [0.4.5] - 2026-05-14
 - PR #72: Phase 3.3 — /c/[token] route validates token, sets cookie, 404s on invalid
 - PR #73: Phase 3.4 — Customer inventory page + order form (no submission)
