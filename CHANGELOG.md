@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.8] - 2026-05-15
+- PR #77: CI: run job inside Playwright container (closes #65)
 ## [0.4.7] - 2026-05-15
 - PR #76: Document two-project Supabase split (dev/preview + prod)
 ## [0.4.6] - 2026-05-15
