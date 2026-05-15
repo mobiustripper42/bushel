@@ -75,4 +75,17 @@ test.describe("normalizePhone", () => {
   test("empty input → empty output (no throw)", () => {
     expect(normalizePhone("")).toBe("");
   });
+
+  test("leading whitespace before + is tolerated", () => {
+    expect(normalizePhone(" +1 216-202-5718")).toBe("+12162025718");
+    expect(normalizePhone("\t+12162025718")).toBe("+12162025718");
+  });
+
+  test("extension digits glue onto the main number (pinned behavior, V1)", () => {
+    // We strip all non-digit chars wholesale, so `x123` becomes `123` and
+    // concatenates to produce a wrong number. Annabel does not enter
+    // extensions today; if she ever does, this test documents the gotcha
+    // and we add ext-aware parsing then.
+    expect(normalizePhone("216-202-5718 x123")).toBe("2162025718123");
+  });
 });
