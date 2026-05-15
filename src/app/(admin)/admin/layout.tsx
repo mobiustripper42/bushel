@@ -6,39 +6,7 @@ import {
   getNewOrdersCount,
   getOrderingOpen,
 } from "@/lib/admin/queries";
-
-const MONTHS_LONG = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-] as const;
-const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-] as const;
-
-// Sunday-anchored display strings for the shell chrome. The customer-side
-// uses Monday for week_of bucketing (cadence math); the shell chrome shows
-// the broader "this week" feel, Sun–Sat, which is friendlier for a glance.
-function shellWeekStrings(now: Date = new Date()): {
-  topbar: string;
-  range: string;
-} {
-  const utc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const sunday = new Date(utc);
-  sunday.setUTCDate(sunday.getUTCDate() - sunday.getUTCDay());
-  const saturday = new Date(sunday);
-  saturday.setUTCDate(saturday.getUTCDate() + 6);
-
-  const topbar = `${DAYS_SHORT[sunday.getUTCDay()]}, ${MONTHS_SHORT[sunday.getUTCMonth()]} ${sunday.getUTCDate()}`;
-
-  const sameMonth = sunday.getUTCMonth() === saturday.getUTCMonth();
-  const range = sameMonth
-    ? `${MONTHS_SHORT[sunday.getUTCMonth()]} ${sunday.getUTCDate()} – ${saturday.getUTCDate()}`
-    : `${MONTHS_SHORT[sunday.getUTCMonth()]} ${sunday.getUTCDate()} – ${MONTHS_SHORT[saturday.getUTCMonth()]} ${saturday.getUTCDate()}`;
-
-  return { topbar, range };
-}
+import { shellWeekStringsNY } from "@/lib/week";
 
 const NAV_ITEMS = [
   {
@@ -106,10 +74,10 @@ export default async function AdminShellLayout({
     getOrderingOpen(),
   ]);
 
-  const week = shellWeekStrings();
+  const week = shellWeekStringsNY();
 
   const badgeFor = (href: string): string | undefined => {
-    if (href === "/admin/inventory") return `${inventoryCount} listed`;
+    if (href === "/admin/inventory" && inventoryCount > 0) return `${inventoryCount} listed`;
     if (href === "/admin/orders" && newOrdersCount > 0) return `${newOrdersCount} new`;
     return undefined;
   };

@@ -25,6 +25,10 @@ export async function getNewOrdersCount(): Promise<number> {
   return count ?? 0;
 }
 
+// ordering_schedule is a singleton (DEC-030 seeds one row; an is_singleton
+// unique-check constraint enforces it). .single() is intentional — if the
+// row ever goes missing, the admin shell 500s loudly, which is the right
+// signal vs silently defaulting to "open."
 export async function getOrderingOpen(): Promise<boolean> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

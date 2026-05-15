@@ -44,3 +44,33 @@ export function weekOfMondayNY(now: Date = new Date()): string {
   anchor.setUTCDate(anchor.getUTCDate() - offset);
   return anchor.toISOString().slice(0, 10);
 }
+
+// Shell chrome strings, Sunday-anchored, NY-time. Same tz discipline as
+// weekOfMondayNY — late-Saturday-NY (Sunday UTC) would otherwise jump the
+// admin shell into next week several hours early.
+//
+// Returns:
+//   topbar: "Sun, May 3"          (for the top-bar "Week of" pill)
+//   range:  "May 3 – May 9"        (for the sidebar "This week" row)
+export function shellWeekStringsNY(now: Date = new Date()): {
+  topbar: string;
+  range: string;
+} {
+  // Monday of the current NY week (YYYY-MM-DD), then back up one day to Sunday.
+  const monday = weekOfMondayNY(now);
+  const [y, m, d] = monday.split("-").map((n) => parseInt(n, 10));
+  const sunday = new Date(Date.UTC(y, m - 1, d));
+  sunday.setUTCDate(sunday.getUTCDate() - 1);
+  const saturday = new Date(sunday);
+  saturday.setUTCDate(saturday.getUTCDate() + 6);
+
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const topbar = `${days[sunday.getUTCDay()]}, ${MONTHS[sunday.getUTCMonth()]} ${sunday.getUTCDate()}`;
+
+  const sameMonth = sunday.getUTCMonth() === saturday.getUTCMonth();
+  const range = sameMonth
+    ? `${MONTHS[sunday.getUTCMonth()]} ${sunday.getUTCDate()} – ${saturday.getUTCDate()}`
+    : `${MONTHS[sunday.getUTCMonth()]} ${sunday.getUTCDate()} – ${MONTHS[saturday.getUTCMonth()]} ${saturday.getUTCDate()}`;
+
+  return { topbar, range };
+}
