@@ -22,16 +22,16 @@ export async function getAvailableProducts(): Promise<ProductRow[]> {
 
 // Reads the ordering_schedule singleton. Customer page uses this to decide
 // between the open form, the manual-closed shell, and the all-sold-out shell
-// (DEC-031). Defaults to open on missing row so a broken seed never locks
-// out customers.
+// (DEC-031). DEC-030 guarantees a single row exists — .single() lets a
+// missing row surface as a real error rather than silently defaulting.
 export async function getOrderingScheduleStatus(): Promise<{ is_open: boolean }> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("ordering_schedule")
     .select("is_open")
-    .maybeSingle();
+    .single();
   if (error) throw new Error(`getOrderingScheduleStatus: ${error.message}`);
-  return { is_open: data?.is_open ?? true };
+  return { is_open: data.is_open };
 }
 
 export async function getLatestDeliveryPreference(

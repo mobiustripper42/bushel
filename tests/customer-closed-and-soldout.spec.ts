@@ -7,6 +7,7 @@ import {
   restoreProductQty,
   setAllProductsSoldOut,
   setOrderingOpen,
+  setProductQty,
 } from "./helpers";
 
 // Phase 3.7 / DEC-031 — closed-state + all-sold-out empty state + per-item
@@ -57,17 +58,9 @@ test.describe("/c/[token] state — closed + all sold out (DEC-031)", () => {
   });
 
   test("per-item sold out: one product qty=0 greys that row but leaves the form", async ({ page }) => {
-    // Drop kale to 0 directly — other items stay seeded.
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-    await sb
-      .from("products")
-      .update({ qty_available: 0 })
-      .eq("id", TEST_PRODUCTS.kale.id);
+    // kale is in TEST_PRODUCTS, so resetCustomerOrderState in afterEach
+    // restores it. No snapshot needed.
+    await setProductQty(TEST_PRODUCTS.kale.id, 0);
 
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
 

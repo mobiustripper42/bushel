@@ -95,6 +95,11 @@ export async function setOrderingOpen(open: boolean): Promise<void> {
 // products beyond TEST_PRODUCTS (real seed data), so zeroing only the test
 // rows leaves the page able to render any non-test row. Snapshot returned so
 // the spec can restore.
+//
+// TOCTOU caveat: snapshot SELECT and zero-out UPDATE are two statements. A
+// concurrent insert between them would be zeroed but not in the snapshot,
+// so cleanup misses it. Acceptable in the solo phase; revisit if multiple
+// devs run tests against the same dev DB in parallel.
 export type ProductQtySnapshot = Array<{ id: string; qty_available: number }>;
 export async function setAllProductsSoldOut(): Promise<ProductQtySnapshot> {
   const sb = adminClient();
@@ -119,4 +124,12 @@ export async function restoreProductQty(snapshot: ProductQtySnapshot): Promise<v
       .update({ qty_available: row.qty_available })
       .eq("id", row.id);
   }
+}
+
+// Sets a single product's qty_available. Tests that mutate one product (e.g.
+// per-item sold-out) call this; cleanup is via resetCustomerOrderState in
+// afterEach, which only knows about TEST_PRODUCTS — pass an id in that set.
+export async function setProductQty(id: string, qty: number): Promise<void> {
+  const sb = adminClient();
+  await sb.from("products").update({ qty_available: qty }).eq("id", id);
 }
