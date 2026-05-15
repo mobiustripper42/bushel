@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.7] - 2026-05-15
+- PR #76: Document two-project Supabase split (dev/preview + prod)
 ## [0.4.6] - 2026-05-15
 - PR #75: DEC-013 + DEC-014: per-task /kill-this, time math at retro, sessions on orphan branch
 ## [0.4.5] - 2026-05-14
