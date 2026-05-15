@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.4.13] - 2026-05-15
+- PR #85: Phase 6 polish: BBF leaf favicon sourced from apex (closes #79)
 ## [0.4.12] - 2026-05-15
 - PR #84: Phase 3 polish: admin shell top bar + sidebar footer + nav badges (closes #66)
 ## [0.4.11] - 2026-05-15
