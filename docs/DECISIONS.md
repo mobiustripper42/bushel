@@ -243,7 +243,9 @@ Locked during planning + poker. New decisions append. Superseded notes stay.
 
 ---
 
-## DEC-027 — Admin order-arrival alert: email primary, PWA push as upgrade
+## DEC-027 — Admin order-arrival alert: email primary, PWA push as upgrade [SUPERSEDED]
+
+**Status:** Superseded 2026-05-15 by DEC-033 — admin alert pivoted from transactional email to Telegram bot push. PWA-push-as-upgrade framing is preserved in DEC-033. Original text retained below for context.
 
 **Decision:** When a customer submits an order, Bushel sends a transactional email to the operator's address. Email push notifications on her phone deliver the buzz. Provider TBD (Resend or similar) — single recipient, low volume, no marketing.
 
@@ -366,6 +368,38 @@ Address pre-fill is unchanged (snapshot from `customers.delivery_address` per DE
 **Known V1 kludge:** for products that genuinely need multiple units in V1 (Annabel will identify these), create them as separate products: "Cherry tomatoes (lb)" and "Cherry tomatoes (pint)" with separately-managed `qty_available`. Annabel reconciles harvest-to-inventory split mentally. Tolerable for ~3 products for ~weeks. If the count is higher, this DEC's V1/V1.5 split should be revisited and multi-unit pulled forward into V1.
 
 **Trigger to validate now:** Annabel-facing question — *"How many of the products you sell need to be sold in different units to different customers?"* If answer is 2–3, V1.5 framing holds. If "most of them," pull forward into V1.
+
+---
+
+## DEC-033 — Admin order-arrival alert: Telegram bot (supersedes DEC-027 email-first)
+
+**Decision:** When a customer submits an order, Bushel POSTs a plain-text message to Annabel's Telegram via the Telegram Bot API. Single recipient (her personal chat_id with the dedicated bot). Server-side `fetch` to `https://api.telegram.org/bot<TOKEN>/sendMessage`. Best-effort: any failure is logged and swallowed so order placement never blocks on a notification miss.
+
+PWA push notification remains the stretch upgrade per DEC-027's framing.
+
+**Why (preferred over DEC-027's email path):**
+- Lower perceived latency. Telegram push lands on the lock screen in 1–3 seconds; email push is typically seconds but sometimes a minute, and the alert hides inside the inbox.
+- No DNS or sender-domain verification. Resend would have required CNAME records on a domain we control + a verified from-address; Telegram requires a one-time `/newbot` exchange in the app.
+- No SDK dep. One `fetch` POST to a single REST endpoint vs. pulling in the Resend SDK.
+- No transactional-email service to onboard or pay. Telegram bot API is free with no published volume cap relevant to our scale.
+- Operator already has the Telegram app open on her Android device for other purposes.
+
+**Trade-offs accepted:**
+- Operator dependency: if Annabel ever drops Telegram, the alert path breaks. (Mitigation: alert wrapper logs every miss; she'd notice within hours that confirmations stopped arriving and we'd switch providers.)
+- Bot token is a long-lived secret; rotation requires `/newbot` again or BotFather's `/revoke`. Same rotation discipline as any other API key.
+- No delivery receipts. We get a 200 from the Telegram API and trust it landed. Same as email.
+
+**Pre-launch one-time setup (Annabel + dev, ~5 min):**
+1. Annabel opens Telegram → messages `@BotFather` → `/newbot` → picks a name + username → BotFather returns a bot token.
+2. Annabel sends any message to the new bot (Telegram won't deliver until she initiates).
+3. Dev: `curl "https://api.telegram.org/bot<TOKEN>/getUpdates"` → reads `result[0].message.chat.id`.
+4. Vercel Production env vars: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_CHAT_ID`. Optionally `NOTIFICATIONS_ENABLED=false` in any env where alerts should be silenced (test, staging if added).
+
+**Failure mode:** if either env var is unset, `sendAdminOrderAlert` no-ops and logs `[admin-alert] skipped (not configured)`. Order placement proceeds normally. The log line in production is the canary for misconfiguration.
+
+**Stretch upgrade still on the table:** PWA push. If reliable on Annabel's Android once the admin shell is installed, push can run primary with Telegram as fallback — same pattern DEC-027 sketched for email.
+
+**Supersedes:** DEC-027 (the "email primary" portion). DEC-027's PWA-push-as-upgrade framing is preserved.
 
 ---
 

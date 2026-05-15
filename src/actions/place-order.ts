@@ -1,12 +1,13 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   CUSTOMER_TOKEN_COOKIE,
   lookupCustomerByToken,
 } from "@/lib/customer/session";
+import { sendAdminOrderAlert } from "@/lib/notifications/admin-telegram";
 import type { Json } from "@/lib/supabase/types";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -54,5 +55,33 @@ export async function placeOrder(
 
   if (error) return { error: error.message };
 
+  // Best-effort admin alert (DEC-033). Failure is swallowed inside the
+  // wrapper — order placement never blocks on a notification miss. We
+  // await so the serverless function doesn't terminate before the POST
+  // completes; ~200ms of customer-perceptible latency on submit.
+  const total = payload.items.reduce(
+    (sum, it) => sum + it.qty * it.unit_price_cents,
+    0,
+  );
+  const adminOrdersUrl = `${await adminBaseUrl()}/admin/orders`;
+  await sendAdminOrderAlert({
+    customerName: customer.name,
+    weekOf: weekOfMondayNY(),
+    lineItemCount: payload.items.length,
+    totalCents: total,
+    adminOrdersUrl,
+  });
+
   redirect(`/c/${token}/confirmed`);
+}
+
+// Derives the admin base URL from request headers (host + protocol). Falls
+// back to prod when called outside a request context.
+async function adminBaseUrl(): Promise<string> {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  if (host) return `${proto}://${host}`;
+  return "https://order.baybranchfarm.com";
 }
