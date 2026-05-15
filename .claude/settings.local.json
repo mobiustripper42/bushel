@@ -13,7 +13,29 @@
       "Bash(kill 3819251)",
       "Bash(kill 4010112)",
       "Bash(pkill -f \"next dev\")",
-      "Bash(pkill -f \"node.*next\")"
+      "Bash(pkill -f \"node.*next\")",
+      "Bash(unset VERCEL_TOKEN)",
+      "Bash(bash scripts/preview-rebind.sh)",
+      "Bash(vercel ls *)",
+      "Bash(VERCEL_TOKEN=$\\(node -e 'console.log\\(JSON.parse\\(require\\(\"fs\"\\).readFileSync\\(process.env.HOME + \"/.local/share/com.vercel.cli/auth.json\",\"utf8\"\\)\\).token\\)'\\) bash scripts/preview-rebind.sh)",
+      "Bash(vercel project *)",
+      "Bash(awk -F'::' '{print $2}')",
+      "Bash(claude *)",
+      "Read(//home/eric/.claude/**)",
+      "Bash(pkill -f \"next start\")",
+      "Bash(timeout 30 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 1; done')",
+      "Bash(NOTIFICATIONS_ENABLED=false nohup npm start -- -p 3001)",
+      "Bash(python3 -c \"import json,sys; m=json.load\\(sys.stdin\\); chunks=m.get\\('pages',{}\\).get\\('/_app',[]\\) + m.get\\('rootMainFiles',[]\\); [print\\(c\\) for c in chunks if '00_' in c]\")",
+      "Bash(pkill -f \"next\")",
+      "Bash(timeout 20 bash -c 'until curl -sf http://localhost:3001 > /dev/null 2>&1; do sleep 1; done')",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-settings.spec.ts --project=desktop)",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(i['number'], '-', i['title'], '-', [l['name'] for l in i['labels']]\\) for i in data]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\(list\\(d.keys\\(\\)\\)[:8]\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('timestamp:', d.get\\('timestamp'\\)\\)\")",
+      "Bash(lsof -ti:3001)",
+      "Bash(lsof -ti:3001 | xargs -r kill -9)",
+      "Bash(lsof -ti:3001 | xargs kill -9)"
     ]
   }
 }
