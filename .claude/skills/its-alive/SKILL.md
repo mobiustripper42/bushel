@@ -96,11 +96,13 @@ TIME_PART=$(date -u +%H%M)
 
 ## Step 2 — Resolve dev identity
 
-```
-DEV=$(cat ~/.claude/devname 2>/dev/null || echo "$USER")
-```
+Use the **Read** tool on `~/.claude/devname`. If it succeeds, `DEV` = the trimmed file contents.
 
-If both are empty, prompt the user and offer to write `~/.claude/devname`.
+If Read errors (file doesn't exist), fall back via Bash: `echo "$USER"`. Trim and assign to `DEV`.
+
+If both are empty, prompt the user for their dev handle and offer to write `~/.claude/devname` via the **Write** tool.
+
+(Read + a single clean `echo` keeps the harness validator silent — no `||`, no `2>/dev/null`, no command substitution chain.)
 
 ## Step 3 — Derive the slug
 
@@ -122,15 +124,13 @@ Sanitize: lowercase, replace any non-`[a-z0-9.-]` with `-`, collapse repeats.
 
 ## Step 4 — Determine session number
 
-```
-SESSION_NUM=$(($(ls .sessions-worktree/sessions/*.md 2>/dev/null | wc -l) + 1))
-```
+Use the **Glob** tool with `path: .sessions-worktree/sessions` and `pattern: *.md` to list current session files. Filter out `README.md` from the result. Call the remaining count `NEW_COUNT`.
 
-Add legacy offset if `session-log.md` (on main) exists with prior sessions:
-```
-LEGACY_MAX=$(grep -oE "^## Session [0-9]+" session-log.md 2>/dev/null | grep -oE "[0-9]+" | sort -n | tail -1)
-SESSION_NUM=$((${LEGACY_MAX:-0} + $(ls .sessions-worktree/sessions/*.md 2>/dev/null | grep -v README | wc -l) + 1))
-```
+Use the **Grep** tool on `session-log.md` (legacy archive on `main`) with `pattern: "^## Session [0-9]+"` and `output_mode: content`. If matches come back, parse the integer from each line and take the maximum — call it `LEGACY_MAX`. If `session-log.md` is absent or returns no matches, `LEGACY_MAX = 0`.
+
+`SESSION_NUM = LEGACY_MAX + NEW_COUNT + 1`. Compute in head — no bash needed.
+
+(Glob + Grep replaces a chained `ls | wc -l` + `grep | grep | sort | tail` pipeline — same validator-silence reason as Step 5.)
 
 ## Step 5 — Capture the transcript path
 
