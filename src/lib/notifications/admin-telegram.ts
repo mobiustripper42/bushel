@@ -16,7 +16,10 @@ function isEnabled(): boolean {
 
 export async function sendAdminOrderAlert(input: AdminOrderAlertInput): Promise<void> {
   if (!isEnabled()) {
-    console.log(
+    // console.debug so dev/preview/test envs (where env vars are unset)
+    // don't spam Vercel logs on every order. Real misconfiguration on a
+    // configured env surfaces via the .ok check below.
+    console.debug(
       `[admin-alert] skipped (not configured) — ${input.customerName}, ${input.lineItemCount} items`,
     );
     return;

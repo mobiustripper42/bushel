@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -59,29 +59,28 @@ export async function placeOrder(
   // wrapper — order placement never blocks on a notification miss. We
   // await so the serverless function doesn't terminate before the POST
   // completes; ~200ms of customer-perceptible latency on submit.
+  //
+  // TODO(DEC-033): once place_order RPC ever applies pricing rules
+  // (discounts, rounding), read the total from the inserted order row
+  // instead of recomputing from the payload here.
   const total = payload.items.reduce(
     (sum, it) => sum + it.qty * it.unit_price_cents,
     0,
   );
-  const adminOrdersUrl = `${await adminBaseUrl()}/admin/orders`;
   await sendAdminOrderAlert({
     customerName: customer.name,
     weekOf: weekOfMondayNY(),
     lineItemCount: payload.items.length,
     totalCents: total,
-    adminOrdersUrl,
+    adminOrdersUrl: `${adminBaseUrl()}/admin/orders`,
   });
 
   redirect(`/c/${token}/confirmed`);
 }
 
-// Derives the admin base URL from request headers (host + protocol). Falls
-// back to prod when called outside a request context.
-async function adminBaseUrl(): Promise<string> {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  const h = await headers();
-  const host = h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  if (host) return `${proto}://${host}`;
-  return "https://order.baybranchfarm.com";
+// Admin link in the Telegram alert must always point at prod (where Annabel
+// works), not at whatever host the customer placed the order from. Preview
+// deployments shouldn't deep-link Annabel into preview data.
+function adminBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://order.baybranchfarm.com";
 }
