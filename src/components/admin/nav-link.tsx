@@ -7,57 +7,22 @@ interface NavLinkProps {
   href: string;
   label: string;
   icon: React.ReactNode;
+  badge?: string;
 }
 
-export function NavLink({ href, label, icon }: NavLinkProps) {
+export function NavLink({ href, label, icon, badge }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href || pathname.startsWith(href + "/");
 
   return (
     <Link
       href={href}
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 12px",
-        borderRadius: "var(--r-sm)",
-        color: isActive ? "var(--paper)" : "rgba(251,250,245,0.78)",
-        background: isActive ? "rgba(251,250,245,0.10)" : "transparent",
-        fontSize: "0.93rem",
-        fontWeight: 500,
-        textDecoration: "none",
-        transition: "background 0.12s, color 0.12s",
-      }}
+      className={"admin-nav-item" + (isActive ? " is-active" : "")}
       aria-current={isActive ? "page" : undefined}
     >
-      {isActive && (
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            left: -18,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 3,
-            height: 22,
-            background: "var(--leaf-100)",
-            borderRadius: "0 3px 3px 0",
-          }}
-        />
-      )}
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          color: isActive ? "var(--leaf-100)" : "rgba(251,250,245,0.6)",
-          flexShrink: 0,
-        }}
-      >
-        {icon}
-      </span>
-      <span style={{ flex: 1 }}>{label}</span>
+      <span className="admin-nav-icon" aria-hidden="true">{icon}</span>
+      <span className="admin-nav-label">{label}</span>
+      {badge ? <span className="admin-nav-badge">{badge}</span> : null}
     </Link>
   );
 }
