@@ -115,10 +115,10 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 4.1 | `sms:` deep-link builder utility (URL-encode body + token, iOS/Android verified) | 2 | TBD |
-| 4.2 | Send-queue page: weekly update + order confirmation + pickup reminder modes; priority-ordered customer list (DEC-026); per-customer Send button + mark-as-sent state | 5 | TBD |
-| 4.3 | Order-arrival admin email alert: transactional send on order create; provider config (Resend or similar) | 2 | TBD |
-| 4.4 | Playwright spec: deep-link generation, customer ordering, mark-as-sent flow | 2 | TBD |
+| 4.1 | `sms:` deep-link builder utility (URL-encode body + token, iOS/Android verified) | 2 | [#87](https://github.com/mobiustripper42/bushel/issues/87) |
+| 4.2 | Send-queue page: weekly update + order confirmation + pickup reminder modes; priority-ordered customer list (DEC-026); per-customer Send button + mark-as-sent state | 5 | [#88](https://github.com/mobiustripper42/bushel/issues/88) |
+| 4.3 | Order-arrival admin email alert: transactional send on order create; provider config (Resend or similar) | 2 | [#89](https://github.com/mobiustripper42/bushel/issues/89) |
+| 4.4 | Playwright spec: deep-link generation, customer ordering, mark-as-sent flow | 2 | [#90](https://github.com/mobiustripper42/bushel/issues/90) |
 
 **Stretch:** PWA push for the order-arrival alert (DEC-027 upgrade path). Wire if Android push proves reliable; otherwise email is the v1 path.
 
