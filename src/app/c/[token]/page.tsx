@@ -1,9 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import { AllSoldOutShell } from "@/components/customer/AllSoldOutShell";
+import { ClosedShell } from "@/components/customer/ClosedShell";
 import { OrderForm } from "@/components/customer/OrderForm";
 import {
   getAvailableProducts,
   getCurrentWeekOrder,
   getLatestDeliveryPreference,
+  getOrderingScheduleStatus,
 } from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
 import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
@@ -25,16 +28,31 @@ export default async function CustomerTokenPage({
   const existingOrder = await getCurrentWeekOrder(customer.id, weekOfMondayNY());
   if (existingOrder) redirect(`/c/${token}/confirmed`);
 
-  const [products, priorDeliveryPreference] = await Promise.all([
+  const [products, priorDeliveryPreference, schedule] = await Promise.all([
     getAvailableProducts(),
     getLatestDeliveryPreference(customer.id),
+    getOrderingScheduleStatus(),
   ]);
+
+  const greetingName = customer.business_name ?? customer.name;
+
+  // DEC-031: four customer-side states keyed off ordering_schedule.is_open
+  // and product inventory. Server-side `is_open` is a soft UI hint only;
+  // submission enforcement remains DEC-012's job.
+  if (!schedule.is_open) {
+    return <ClosedShell customerName={greetingName} />;
+  }
+
+  const anyOrderable = products.some((p) => p.qty_available > 0);
+  if (!anyOrderable) {
+    return <AllSoldOutShell customerName={greetingName} />;
+  }
 
   return (
     <OrderForm
       customer={{
         id: customer.id,
-        name: customer.business_name ?? customer.name,
+        name: greetingName,
         delivery_address: customer.delivery_address,
       }}
       products={products}
