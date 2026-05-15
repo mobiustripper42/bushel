@@ -6,6 +6,7 @@ import {
   getNewOrdersCount,
   getOrderingOpen,
 } from "@/lib/admin/queries";
+import { getWeeklyUpdateUnsentCount } from "@/lib/admin/send-queue-queries";
 import { shellWeekStringsNY } from "@/lib/week";
 
 const NAV_ITEMS = [
@@ -68,10 +69,11 @@ export default async function AdminShellLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [inventoryCount, newOrdersCount, isOpen] = await Promise.all([
+  const [inventoryCount, newOrdersCount, isOpen, weeklyUnsentCount] = await Promise.all([
     getInventoryCount(),
     getNewOrdersCount(),
     getOrderingOpen(),
+    getWeeklyUpdateUnsentCount(),
   ]);
 
   const week = shellWeekStringsNY();
@@ -79,6 +81,7 @@ export default async function AdminShellLayout({
   const badgeFor = (href: string): string | undefined => {
     if (href === "/admin/inventory" && inventoryCount > 0) return `${inventoryCount} listed`;
     if (href === "/admin/orders" && newOrdersCount > 0) return `${newOrdersCount} new`;
+    if (href === "/admin/send" && weeklyUnsentCount > 0) return `${weeklyUnsentCount} to send`;
     return undefined;
   };
 

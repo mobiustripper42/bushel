@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(50);
 
 -- ============================================================
 -- Schema sanity: RLS enabled on all tables
@@ -28,6 +28,10 @@ select is(
   (select relrowsecurity from pg_class where oid = 'public.order_items'::regclass),
   true, 'RLS enabled on order_items'
 );
+select is(
+  (select relrowsecurity from pg_class where oid = 'public.customer_sends'::regclass),
+  true, 'RLS enabled on customer_sends'
+);
 
 -- ============================================================
 -- Schema sanity: Phase 2.0a columns
@@ -52,6 +56,14 @@ select col_type_is('public', 'orders', 'pickup_note', 'text', 'orders.pickup_not
 select has_column('public', 'orders', 'delivery_preference', 'orders.delivery_preference column exists (DEC-029)');
 select col_type_is('public', 'orders', 'delivery_preference', 'text', 'orders.delivery_preference is text');
 select col_default_is('public', 'ordering_schedule', 'is_open', 'true', 'ordering_schedule.is_open defaults to true (DEC-030)');
+
+-- ============================================================
+-- Schema sanity: Phase 4.2 send-queue (DEC-026)
+-- ============================================================
+select has_column('public', 'ordering_schedule', 'intro_note', 'ordering_schedule.intro_note column exists (DEC-026)');
+select col_type_is('public', 'ordering_schedule', 'intro_note', 'text', 'ordering_schedule.intro_note is text');
+select has_table('public', 'customer_sends', 'customer_sends table exists (DEC-026)');
+select has_column('public', 'customer_sends', 'sent_at', 'customer_sends.sent_at column exists');
 
 -- ============================================================
 -- Seed test data (postgres role bypasses RLS)
@@ -234,6 +246,34 @@ select is(
   (select count(*)::int from public.order_items),
   2,
   'authenticated can read all order_items'
+);
+reset role;
+
+-- ============================================================
+-- customer_sends — admin-only (DEC-026 send-queue state)
+-- ============================================================
+set local role anon;
+select is_empty(
+  $$ select * from public.customer_sends $$,
+  'anon cannot read customer_sends'
+);
+select throws_ok(
+  $$ insert into public.customer_sends (customer_id, week_of, mode)
+     values ('aaaaaaaa-0000-0000-0000-000000000001', '2026-05-11', 'weekly_update') $$,
+  '42501', null, 'anon cannot insert customer_sends'
+);
+reset role;
+
+set local role authenticated;
+select lives_ok(
+  $$ insert into public.customer_sends (customer_id, week_of, mode)
+     values ('aaaaaaaa-0000-0000-0000-000000000001', '2026-05-11', 'weekly_update') $$,
+  'authenticated can insert customer_sends (valid mode)'
+);
+select throws_ok(
+  $$ insert into public.customer_sends (customer_id, week_of, mode)
+     values ('aaaaaaaa-0000-0000-0000-000000000002', '2026-05-11', 'invalid_mode') $$,
+  '23514', null, 'customer_sends.mode CHECK rejects invalid mode'
 );
 reset role;
 

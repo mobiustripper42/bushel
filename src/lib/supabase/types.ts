@@ -55,6 +55,38 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_sends: {
+        Row: {
+          customer_id: string
+          mode: string
+          sent_at: string
+          sent_by_user_id: string | null
+          week_of: string
+        }
+        Insert: {
+          customer_id: string
+          mode: string
+          sent_at?: string
+          sent_by_user_id?: string | null
+          week_of: string
+        }
+        Update: {
+          customer_id?: string
+          mode?: string
+          sent_at?: string
+          sent_by_user_id?: string | null
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_sends_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           business_name: string | null
@@ -146,6 +178,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          intro_note: string | null
           is_open: boolean
           is_singleton: boolean
           override_closes_at: string | null
@@ -158,6 +191,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          intro_note?: string | null
           is_open?: boolean
           is_singleton?: boolean
           override_closes_at?: string | null
@@ -170,6 +204,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          intro_note?: string | null
           is_open?: boolean
           is_singleton?: boolean
           override_closes_at?: string | null
