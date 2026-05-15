@@ -27,6 +27,7 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 | 5 (Phase 0) | 17 (issues) + 3 (0.1 pre-issue) = 20 | 11.28 | 0.66 |
 | 3 (Phase 1) | 16 | 18.0 | 1.13 |
 | 3 (Phase 2) | 10 (labeled) + #27 admin-shell carry-over | 17.87 | 1.79 |
+| 9 (Phase 3) | 56 (29 plan + 7 polish + 20 non-labeled) | 49.25 wall / 19.42 active / 8.67 dev | 0.88 wall / 0.35 active / 0.15 dev |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
@@ -94,15 +95,17 @@ Customer management, tokenized URL access, and the public ordering experience. C
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 3.0 | Customer `priority` column migration + types regenerated | 2 | [#45](https://github.com/mobiustripper42/bushel/issues/45) |
-| 3.1 | Manual customer CRUD UI (admin); priority field; email/phone OR validation | 3 | [#46](https://github.com/mobiustripper42/bushel/issues/46) |
-| 3.2 | Token generation, durable per-customer URL, regenerate button + thorough testing | 5 | [#47](https://github.com/mobiustripper42/bushel/issues/47) |
-| 3.3 | `/c/[token]` route validates token, sets cookie, identifies customer; thorough session testing | 3 | [#48](https://github.com/mobiustripper42/bushel/issues/48) |
-| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, free-text pickup-note OR delivery-preference per DEC-029, optional customer-notes textarea) | 5 | [#49](https://github.com/mobiustripper42/bushel/issues/49) |
-| 3.5 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | [#50](https://github.com/mobiustripper42/bushel/issues/50) |
-| 3.6 | Manual open/close toggle (default open per DEC-030); optional scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math kicks in only when schedule columns are set | 5 | [#51](https://github.com/mobiustripper42/bushel/issues/51) |
-| 3.7 | Closed state + per-item sold-out (disabled row at qty=0) + all-sold-out empty state (DEC-031); Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | [#52](https://github.com/mobiustripper42/bushel/issues/52) |
-| 3.8 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 3 | 5 | [#53](https://github.com/mobiustripper42/bushel/issues/53) |
+| 3.0 | Customer `priority` column migration + types regenerated | 2 | [x] [#45](https://github.com/mobiustripper42/bushel/issues/45) |
+| 3.1 | Manual customer CRUD UI (admin); priority field; email/phone OR validation | 3 | [x] [#46](https://github.com/mobiustripper42/bushel/issues/46) |
+| 3.2 | Token generation, durable per-customer URL, regenerate button + thorough testing | 5 | [x] [#47](https://github.com/mobiustripper42/bushel/issues/47) |
+| 3.3 | `/c/[token]` route validates token, sets cookie, identifies customer; thorough session testing | 3 | [x] [#48](https://github.com/mobiustripper42/bushel/issues/48) |
+| 3.4 | Customer inventory page; order form (running total, qty steppers, delivery/pickup toggle, address pre-fill, free-text pickup-note OR delivery-preference per DEC-029, optional customer-notes textarea) | 5 | [x] [#49](https://github.com/mobiustripper42/bushel/issues/49) |
+| 3.5 | Optimistic order placement: insert + decrement (allow negative), set `needs_reconciliation` flag if oversold | 3 | [x] [#50](https://github.com/mobiustripper42/bushel/issues/50) |
+| 3.6 | Manual open/close toggle (default open per DEC-030); optional scheduled cutoff + "open for N hours" override; Vercel Cron + TZ math kicks in only when schedule columns are set | 5 | [x] [#51](https://github.com/mobiustripper42/bushel/issues/51) |
+| 3.7 | Closed state + per-item sold-out (disabled row at qty=0) + all-sold-out empty state (DEC-031); Playwright specs (golden, closed-mid-order race, oversold-flags-for-admin) | 3 | [x] [#52](https://github.com/mobiustripper42/bushel/issues/52) |
+| 3.8 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag, ship-or-skip at end of Phase 3 | 5 | Moved to Phase 6 [#53](https://github.com/mobiustripper42/bushel/issues/53) |
+| polish | Admin shell top bar + sidebar footer + nav badges | 5 | [x] [#66](https://github.com/mobiustripper42/bushel/issues/66) <!-- Added during P3 retro --> |
+| polish | pgTAP coverage for DEC-029 + DEC-030 columns | 2 | [x] [#67](https://github.com/mobiustripper42/bushel/issues/67) <!-- Added during P3 retro --> |
 
 ---
 

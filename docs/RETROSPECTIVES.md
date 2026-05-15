@@ -1,5 +1,57 @@
 # Retrospectives
 
+## Phase 3 — 2026-05-15
+
+**Sessions:** 9 (S15–S23)
+**Points:** 36 labeled (29 plan + 7 polish) shipped; 56 counted in session files (includes 20pt non-labeled mid-phase work)
+**Wall clock:** 49.25h
+**Active time (wall − breaks):** 19.42h ← honest headline
+**Dev time (per DEC-013 math):** 8.67h
+**Review time (per DEC-013 math):** 10.75h
+**Velocities:**
+- Wall: 0.88 h/pt
+- Active: **0.35 h/pt** ← use this for Phase 6 forecasting
+- Dev: 0.15 h/pt ← DEC-013 method artifact under multi-task sessions; do not trust as headline
+**Issues:** 11 created, 10 closed (#45–#52 + #66, #67), 1 moved (#53 → Phase 6); 3 unrelated open issues (#69, #63, #61) also relabeled to Phase 6
+
+### Per-session breakdown
+| Session | Date       | Wall | Dev | Review | Breaks | Points | PRs |
+|---------|------------|------|-----|--------|--------|--------|-----|
+| 15      | 2026-05-12 | 0.92 | 0.92 | 0.00 | 0.00 | 5      | —   |
+| 16      | 2026-05-12 | 14.17 | 0.75 | 1.50 | 11.92 | 3      | #59 |
+| 17      | 2026-05-13 | 0.42 | 0.42 | 0.08 | 0.00 | 5      | #64 |
+| 18      | 2026-05-13 | 4.25 | 2.67 | 1.58 | 0.00 | 0      | #68 *(transcript-unavailable)* |
+| 19      | 2026-05-14 | 1.42 | 1.33 | 0.08 | 0.00 | 3      | #70 |
+| 20      | 2026-05-14 | 10.33 | 0.50 | 2.50 | 7.33 | 8      | #72, #73, #74 |
+| 21      | 2026-05-14 | 5.50 | 0.83 | 2.58 | 2.08 | 11     | #76, #77, #78 |
+| 22      | 2026-05-14 | 2.83 | 0.75 | 1.33 | 0.75 | 10     | #80, #81 |
+| 23      | 2026-05-15 | 9.42 | 0.50 | 1.08 | 7.75 | 11     | #83, #84, #85, #86 |
+
+### What worked
+- Issues in GitHub are a great place for status. Keeper. (Backed by data: every session opened with a clear AC; rebuild count went from 2-of-3 in Phase 2 to zero this phase.)
+
+### What didn't
+- Still getting workflow dialed, some pain.
+
+### Changes for next phase
+- Try to stick to tasks in phase. Add new issues to Phase 6 then evaluate.
+
+### Scope changes
+- **Added mid-phase:** #66 (admin shell polish, 5pt) and #67 (pgTAP DEC-029/030 coverage, 2pt) — driven by session 18 audit finding shipped layout drifted from `design/admin-shell.jsx` mockup and schema-shape pgTAP coverage was missing.
+- **Moved to Phase 6:** #53 (Phase 3.8 realtime, 5pt) — original "ship-or-skip" exit clause; user elected defer.
+- **Also relabeled to Phase 6** (not from Phase 3, just clearing the backlog of label-less open issues at phase boundary): #69 (preview-rebind infra), #63 (admin auth guard), #61 (deactivated-customers UI).
+
+### PM read
+Fifty-six points in 19.4 active hours is credible but only if you read "active" honestly. The dev-time number (8.67h, 0.15 h/pt) matches sailbook's best-ever and shouldn't be trusted — it's the artifact, not the velocity. The 0.35 h/pt active read is the real one, and it's an enormous step down from Phase 2's 1.79 and Phase 1's 1.13. Two things drove it: the design-folder discipline actually held this phase (no rebuilds), and stacking 3–4 tasks per session amortized the context-load overhead that killed earlier phases. Session 23 shipping 11 points in one window is the new shape.
+
+The DEC-013 math artifact will skew forecasting if left alone. Skill spec assumes one PR per session, so for sessions 20/21/22/23 the "first PR open" moment converts the remaining task work into review_time. Result: dev_time looks 2–3x faster than it is, review_time looks 2–3x slower, and any phase that mixes single-task and multi-task sessions will have incoherent per-session numbers. Recommendation: until the math is fixed in the skill, quote 0.35 h/pt active as the Phase 3 headline and footnote the 0.15 dev as "method artifact." Phase 6 forecasting should use 0.35, not 0.15.
+
+On the user's three answers. "Issues in GitHub are a keeper" — agreed, the data backs it; every session opened with a clear AC and the rebuild count went from 2-of-3 features in Phase 2 to zero this phase. "Still getting workflow dialed, some pain" is the answer worth pressing on — the pain in the session files is specific, not vague: stale `next start` workers on port 3001 burned cycles in sessions 22 and 23 ("second time burned this"), stale `.next` cache hid a favicon ship in session 23, and the cross-button submit race in session 21 was the kind of bug that only surfaces under multi-task velocity. "Read more carefully" is not the lesson. The lesson is: when sessions stack 3+ tasks, the gotchas-per-task ratio rises and the kill-the-server / clear-the-cache muscle memory has to come with it. Worth a one-page CHEATSHEET addition, not another resolution to focus.
+
+Forward note for Phase 6. You planned 10 points; #53, #69, #63, #61 push it to 17+ before a single new task is opened. At 0.35 h/pt that's ~6 hours of active work — fine. But "stick to tasks in phase and add new issues to Phase 6 then evaluate" only works if Phase 6 closes; right now it's collecting everything that didn't fit. Either bound it at the front (pick which of the four carry-overs are actually V1-blocking, defer the rest to V1.5) or accept that Phase 6 is the catch-all and rename it. Naming it honestly is cheaper than letting it slowly become a second 3.8.
+
+---
+
 ## Phase 2 — 2026-05-12
 
 **Duration:** 17.87h across 3 sessions (13, 14, 15)
