@@ -1,5 +1,5 @@
 begin;
-select plan(36);
+select plan(41);
 
 -- ============================================================
 -- Schema sanity: RLS enabled on all tables
@@ -43,6 +43,15 @@ select col_has_default('public', 'customers', 'send_weekly_link', 'customers.sen
 select has_column('public', 'customers', 'priority', 'customers.priority column exists');
 select col_not_null('public', 'customers', 'priority', 'customers.priority is not null');
 select col_default_is('public', 'customers', 'priority', '100', 'customers.priority defaults to 100');
+
+-- ============================================================
+-- Schema sanity: Phase 2.0b fulfillment columns (DEC-029 + DEC-030)
+-- ============================================================
+select has_column('public', 'orders', 'pickup_note', 'orders.pickup_note column exists (DEC-029)');
+select col_type_is('public', 'orders', 'pickup_note', 'text', 'orders.pickup_note is text');
+select has_column('public', 'orders', 'delivery_preference', 'orders.delivery_preference column exists (DEC-029)');
+select col_type_is('public', 'orders', 'delivery_preference', 'text', 'orders.delivery_preference is text');
+select col_default_is('public', 'ordering_schedule', 'is_open', 'true', 'ordering_schedule.is_open defaults to true (DEC-030)');
 
 -- ============================================================
 -- Seed test data (postgres role bypasses RLS)
