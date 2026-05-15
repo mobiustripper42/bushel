@@ -1432,3 +1432,187 @@
   border-color: var(--ink-200);
   cursor: not-allowed;
 }
+
+/* ── Admin shell (Phase 3 polish — #66) ──────────────────── */
+.admin-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  background: var(--cream);
+  color: var(--ink-900);
+}
+
+.admin-side {
+  background: var(--ink-900);
+  color: var(--paper);
+  padding: 22px 18px 18px;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100dvh;
+  overflow-y: auto;
+}
+.admin-side-mark {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--paper);
+  padding: 0 6px;
+  margin-bottom: 4px;
+}
+.admin-side-mark svg { color: var(--leaf-100); flex-shrink: 0; }
+.admin-side-mark .admin-side-brand {
+  font-family: var(--font-display, var(--serif));
+  font-size: 1.05rem; font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.admin-side-eyebrow {
+  font-size: 0.66rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: rgba(251,250,245,0.5);
+  padding: 0 6px;
+  margin-bottom: 24px;
+}
+
+.admin-nav {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.admin-nav-item {
+  position: relative;
+  display: flex; align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  color: rgba(251,250,245,0.78);
+  font-size: 0.93rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+}
+.admin-nav-item:hover {
+  background: rgba(251,250,245,0.06);
+  color: var(--paper);
+}
+.admin-nav-item.is-active {
+  background: rgba(251,250,245,0.10);
+  color: var(--paper);
+}
+.admin-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 22px;
+  background: var(--leaf-100);
+  border-radius: 0 3px 3px 0;
+}
+.admin-nav-icon {
+  display: flex; align-items: center;
+  color: rgba(251,250,245,0.6);
+  flex-shrink: 0;
+}
+.admin-nav-item.is-active .admin-nav-icon,
+.admin-nav-item:hover .admin-nav-icon { color: var(--leaf-100); }
+.admin-nav-label { flex: 1; }
+.admin-nav-badge {
+  font-size: 0.7rem; font-weight: 500;
+  font-family: var(--mono);
+  background: rgba(251,250,245,0.08);
+  color: rgba(251,250,245,0.75);
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.admin-side-foot {
+  border-top: 1px solid rgba(251,250,245,0.08);
+  padding-top: 14px;
+  margin-top: 14px;
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.admin-side-foot-row {
+  display: flex; flex-direction: column;
+  padding: 0 6px;
+}
+.admin-side-foot-key {
+  font-size: 0.66rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(251,250,245,0.45);
+  margin-bottom: 2px;
+}
+.admin-side-foot-val {
+  font-size: 0.85rem;
+  color: rgba(251,250,245,0.85);
+  display: flex; align-items: center; gap: 8px;
+}
+
+.admin-main {
+  display: flex; flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.admin-top {
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink-200);
+  padding: 0 32px;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 5;
+}
+.admin-crumb {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.88rem;
+  color: var(--ink-500);
+}
+.admin-crumb-sep { color: var(--ink-300); }
+.admin-crumb-active {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+.admin-top-right {
+  display: flex; align-items: center; gap: 18px;
+}
+.admin-week {
+  text-align: right;
+  padding-right: 18px;
+  border-right: 1px solid var(--ink-200);
+}
+.admin-week-key {
+  font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--ink-500);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.admin-week-val {
+  font-size: 0.9rem; font-weight: 600;
+  color: var(--ink-900);
+  font-family: var(--serif);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+
+.admin-signout {
+  background: transparent;
+  border: 1px solid var(--ink-200);
+  color: var(--ink-700);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  font-size: 0.85rem; font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.admin-signout:hover {
+  background: var(--leaf-50);
+  border-color: var(--leaf-100);
+  color: var(--leaf-700);
+}
