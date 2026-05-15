@@ -18,10 +18,13 @@ test.describe("admin inventory", () => {
   test("renders header, meta pills, and product table", async ({ page }) => {
     await page.goto("/admin/inventory");
     await expect(page.getByRole("heading", { name: /inventory/i })).toBeVisible();
-    await expect(page.getByText(/week of/i)).toBeVisible();
+    // Scope page-specific copy to .page-head / .meta-row — Phase 3 admin shell
+    // (#66) added a top bar with its own "Week of" and a sidebar footer with
+    // its own "Open for orders" pill, which collide under page-wide getByText.
+    await expect(page.locator(".page-head").getByText(/week of/i)).toBeVisible();
     await expect(page.getByText(/this week's list/i)).toBeVisible();
-    await expect(page.getByText("Open for orders")).toBeVisible();
-    await expect(page.getByText("Cutoff")).toBeVisible();
+    await expect(page.locator(".meta-row").getByText("Open for orders")).toBeVisible();
+    await expect(page.locator(".meta-row").getByText("Cutoff")).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
     await expect(rowByName(page, TEST_PRODUCTS.kale.name)).toBeVisible();
     await expect(rowByName(page, TEST_PRODUCTS.eggs.name)).toBeVisible();
