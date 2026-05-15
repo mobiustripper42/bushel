@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { saveSchedule } from "@/actions/save-schedule";
 import { toggleOrdering, type ToggleOrderingAction } from "@/actions/toggle-ordering";
 
@@ -28,6 +29,7 @@ export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
     schedule.weekly_close_day != null &&
     schedule.weekly_close_time != null;
 
+  const [isOpen, setIsOpen] = useState(schedule.is_open);
   const [useSchedule, setUseSchedule] = useState(hasWeekly);
   const [openDay, setOpenDay] = useState(schedule.weekly_open_day ?? 0);
   const [openTime, setOpenTime] = useState(schedule.weekly_open_time ?? "08:00");
@@ -37,9 +39,10 @@ export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
   const [isToggling, startToggle] = useTransition();
+  const router = useRouter();
 
   const stateInfo = useMemo(() => {
-    if (!schedule.is_open) {
+    if (!isOpen) {
       return {
         kind: "closed" as const,
         title: "Ordering is closed",
@@ -60,13 +63,18 @@ export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
       title: `Ordering is OPEN until ${DAYS[closeDay]} ${formatTime(closeTime)}`,
       sub: `Auto-opens ${DAYS[openDay]} ${formatTime(openTime)} every week.`,
     };
-  }, [schedule.is_open, useSchedule, openDay, openTime, closeDay, closeTime]);
+  }, [isOpen, useSchedule, openDay, openTime, closeDay, closeTime]);
 
   const markDirty = useCallback(() => setHasChanges(true), []);
 
   function handleToggle(action: ToggleOrderingAction) {
     startToggle(async () => {
-      await toggleOrdering(action);
+      const err = await toggleOrdering(action);
+      if (!err) {
+        if (action === "open") setIsOpen(true);
+        else if (action === "close") setIsOpen(false);
+        router.refresh();
+      }
     });
   }
 
@@ -187,7 +195,7 @@ export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
               </div>
             </div>
             <div className="set-state-actions">
-              {!schedule.is_open && (
+              {!isOpen && (
                 <button
                   type="button"
                   className="set-override-btn is-primary"
@@ -197,7 +205,7 @@ export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
                   Open now
                 </button>
               )}
-              {schedule.is_open && (
+              {isOpen && (
                 <button
                   type="button"
                   className="set-override-btn is-warn"

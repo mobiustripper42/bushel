@@ -5,19 +5,23 @@ export const metadata = { title: "Settings — Bay Branch Farm" };
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("ordering_schedule")
     .select("is_open, weekly_open_day, weekly_open_time, weekly_close_day, weekly_close_time")
     .eq("is_singleton", true)
     .single();
 
-  const schedule = data ?? {
-    is_open: true,
-    weekly_open_day: null,
-    weekly_open_time: null,
-    weekly_close_day: null,
-    weekly_close_time: null,
-  };
+  if (error || !data) {
+    return (
+      <div style={{ padding: "32px" }}>
+        <p style={{ color: "var(--rose-600)" }}>
+          Could not load settings: {error?.message ?? "no schedule row found"}
+        </p>
+      </div>
+    );
+  }
+
+  const schedule = data;
 
   return (
     <div style={{ padding: "32px", maxWidth: 860, margin: "0 auto" }}>

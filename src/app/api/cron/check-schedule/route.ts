@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
 type ScheduleUpdate = Database["public"]["Tables"]["ordering_schedule"]["Update"];
@@ -15,12 +15,16 @@ type ScheduleUpdate = Database["public"]["Tables"]["ordering_schedule"]["Update"
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.error("CRON_SECRET not set — cron endpoint disabled");
+    return NextResponse.json({ error: "Not configured" }, { status: 500 });
+  }
   const auth = request.headers.get("authorization");
-  if (!secret || auth !== `Bearer ${secret}`) {
+  if (auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("ordering_schedule")
     .select("is_open, weekly_open_day, weekly_open_time, weekly_close_day, weekly_close_time, override_closes_at")
