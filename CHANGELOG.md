@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.3] - 2026-05-16
+- PR #103: Fix notifications-flow CI flake — sign-out invalidates shared session (#102)
+
 ## [0.6.2] - 2026-05-16
 - PR #101: Phase 5.1 — admin orders list + status UI + reconciliation pin
 
