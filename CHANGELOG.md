@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.7.0] - 2026-05-16 — Phase 5
+- 11 pts shipped in 1 session (0.35 h/pt active)
+- See `docs/RETROSPECTIVES.md` for the full retro
+
 ## [0.6.5] - 2026-05-16
 - PR #105: Phase 5.3 — Playwright cross-task spec: customer → admin → export
 
