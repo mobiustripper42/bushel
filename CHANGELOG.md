@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.6] - 2026-05-16
+- PR #96: Phase 4.4 — Notifications cross-task spec (re-PR to main after stacked-PR misfire)
+
 ## [0.5.5] - 2026-05-16
 - PR #95: Phase 4.4 — Notifications cross-task Playwright spec (#90) — merged to parent branch (stacked-PR misfire); see #96 for actual main-branch landing
 
