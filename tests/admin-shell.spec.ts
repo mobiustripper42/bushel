@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { ADMIN_STORAGE_STATE } from "./helpers";
+import { writeAdminStorageState } from "./global-setup";
 
 test.describe("admin shell — unauthenticated", () => {
   test("unauthenticated /admin redirects to /login", async ({ page }) => {
@@ -76,6 +77,15 @@ test.describe("admin shell — authenticated", () => {
 // token server-side (scope: global), which would corrupt retries of sibling tests.
 test.describe("admin shell — sign-out", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
+
+  // Re-write ADMIN_STORAGE_STATE after the sign-out test runs. Empirically,
+  // even with scope:"local" the post-signOut JWT is rejected by @supabase/ssr's
+  // getUser() on a fresh context that loads the same cookies — so later specs
+  // (notifications-flow) get bounced to /login. Re-signing in writes a fresh
+  // session to disk so subsequent contexts authenticate cleanly.
+  test.afterAll(async () => {
+    await writeAdminStorageState();
+  });
 
   test("sign-out redirects to /login", async ({ page }) => {
     await page.goto("/admin");

@@ -3,8 +3,54 @@ import { createClient } from "@supabase/supabase-js";
 import { mkdir } from "fs/promises";
 
 export const TEST_ADMIN_EMAIL = "test-admin@bushel.test";
-const TEST_ADMIN_PASSWORD = "BushelTest1!";
+export const TEST_ADMIN_PASSWORD = "BushelTest1!";
 const MAX_CHUNK_SIZE = 3180;
+
+// Re-export the storage-state path so other tests/helpers can rebuild it.
+export const ADMIN_STORAGE_STATE_PATH = "playwright/.auth/admin.json";
+
+// Sign in the test admin and write a fresh storageState file. Extracted from
+// globalSetup so the admin-shell sign-out test can refresh the shared state
+// after it invalidates the session, keeping later specs (notifications-flow)
+// authenticated. @supabase/ssr's getUser() on subsequent contexts otherwise
+// rejects the post-signOut JWT even with scope:"local" — empirically observed.
+export async function writeAdminStorageState(): Promise<void> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
+
+  const anonClient = createClient(supabaseUrl, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error } = await anonClient.auth.signInWithPassword({
+    email: TEST_ADMIN_EMAIL,
+    password: TEST_ADMIN_PASSWORD,
+  });
+  if (error || !data.session) {
+    throw new Error(`writeAdminStorageState sign-in failed: ${error?.message ?? "no session"}`);
+  }
+
+  const sessionCookies = sessionToCookies(data.session, storageKeyFromUrl(supabaseUrl));
+  const hostname = new URL(baseURL).hostname;
+  const secure = baseURL.startsWith("https://");
+
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ baseURL });
+  await context.addCookies(
+    sessionCookies.map(({ name, value }) => ({
+      name,
+      value,
+      domain: hostname,
+      path: "/",
+      httpOnly: false,
+      secure,
+      sameSite: "Lax" as const,
+    })),
+  );
+  await mkdir("playwright/.auth", { recursive: true });
+  await context.storageState({ path: ADMIN_STORAGE_STATE_PATH });
+  await browser.close();
+}
 
 // @supabase/ssr v0.10+ derives the storage key from the project hostname:
 // sb-<hostname[0]>-auth-token (e.g. sb-nnmfubmlvnkouxxfxxlh-auth-token for remote,

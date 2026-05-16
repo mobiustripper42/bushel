@@ -43,7 +43,10 @@
       "Bash(awk '{print $1, $2, $3}')",
       "Bash(source .envrc && *)",
       "Bash(kill $(lsof -ti:3001) 2>/dev/null)",
-      "Bash(kill $(lsof -ti:3001))"
+      "Bash(kill $(lsof -ti:3001))",
+      "Bash(xargs -r kill -9)",
+      "Bash(NOTIFICATIONS_ENABLED=false npm start *)",
+      "Bash(pkill -f \"playwright test\")"
     ]
   }
 }
