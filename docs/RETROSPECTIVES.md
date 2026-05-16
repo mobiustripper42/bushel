@@ -1,5 +1,54 @@
 # Retrospectives
 
+## Phase 5 — 2026-05-16
+
+**Sessions:** 1 (S25)
+**Points:** 11 / 8 (138% — includes unplanned bug fix #102/PR #103)
+**Wall clock:** 9.17h
+**Active time (wall − breaks):** 3.84h ← honest headline
+**Dev time (per DEC-013 math):** 0.65h¹
+**Review time (per DEC-013 math):** 3.20h
+**Velocities:**
+- Wall: 0.83 h/pt
+- **Active: 0.35 h/pt** ← matches Phase 3 baseline
+- Dev: 0.06 h/pt ← DEC-013 method artifact (4 PRs in one session); do not trust as headline
+**Issues:** 3 planned + 1 unplanned bug = 4 closed (#97, #98, #99, #102); 0 moved.
+
+¹ Same DEC-013 single-PR math artifact as Phase 4. Four PRs in one session attribute most coding to "review_time"; the honest forecast number is the active-time velocity (0.35 h/pt).
+
+### Per-session breakdown
+| Session | Date       | Wall | Dev  | Review | Breaks | Points | PRs                  |
+|---------|------------|------|------|--------|--------|--------|----------------------|
+| 25      | 2026-05-16 | 9.17 | 0.65¹| 3.20   | 5.33   | 11     | 101, 103, 104, 105   |
+
+### What worked
+- No scope creep, just small design changes.
+
+### What didn't
+- Nothing to really comment on.
+
+### Changes for next phase
+- I'm going to spend more time on review.
+
+### Scope changes
+- **Unplanned bug fix shipped mid-phase:** #102 (CI flake red since PR #96) → PR #103 (3 pts). Root cause was `sign-out` server action using `scope: "global"`, invalidating the shared Playwright `storageState` JWT for all specs after `admin-shell`. CI green again. Worth the diversion — 173/188 pass rate had drifted to "merge through red" pattern.
+- **5.2 Wave column shape iterated three times during PR review:** guessed header → real Wave header (8 cols with Invoice Number) → drop Invoice Number (Wave assigns) → drop header row entirely (Wave imports it as phantom invoice). Each iteration cascaded into 5.3's assertions and forced a rebase + force-push of #105.
+- **Phase 6 mobile-admin scope grew again:** 6.5 (`/admin/orders` mobile) added during 5.1 PR review when user realized Annabel uses her phone for operations. Saved as project memory `phase_6_mobile_admin_scope.md`. Net Phase 6 carry-over from Phase 4 retro + this phase: 6.4 send mobile, 6.5 orders mobile, 6.6 admin shell responsive, 6.7 desktop SMS relay, DEC-034 amending DEC-019.
+- **Stacked PR base-branch merges don't auto-close issues.** PRs #104 and #105 targeted other PR branches (not `main`) so GitHub didn't trigger `closes #N` resolution. Issues #98 and #99 had to be closed manually at retro. Pattern worth codifying: either retarget stacked children to `main` before merging the parent, or accept manual close at retro.
+
+### PM read
+Phase 5 shipped 11 points in 3.84 active hours — 0.35 h/pt active, dead even with Phase 3's number and slightly slower than Phase 4's 0.27. That's the right read: Phase 4's headline was always going to regress to the mean once a phase included a real mid-flight design pivot (the Wave column reshape) and an unplanned-but-shipped bug fix (#103). The wall-clock number (0.83 h/pt) is the cleanest of any phase to date — long breaks but no marathon. One-day phase from issue-materialization to last merge is the new shape; worth noticing without treating it as the floor.
+
+Scope held on the planned tasks (3 in, 3 out), but the "no scope creep" framing undersells what actually happened. 5.2 was respec'd three times during PR review — guessed Wave header → real header → drop invoice column → drop header row entirely. Each iteration cascaded into 5.3's assertions and forced a rebase. That's not scope creep, agreed — it's external-contract discovery, which is a different failure mode and arguably cheaper to absorb mid-PR than mid-Phase. The lesson is in the session file already ("when the AC names an external system contract, ask for the contract before writing the transformer"). Worth promoting that beyond a per-session snag — it's the same shape as the Wave header guess, the Telegram-vs-email pivot, and any future Stripe / QBO integration. Stop guessing contracts when a stakeholder can answer in one message.
+
+The unplanned #103 was the real win and the velocity math will never reward it. CI has been red on every PR since #96 — three sessions of "merge through red" before someone diagnosed it, and the actual root cause (sign-out default scope: global invalidating shared storageState) was a subtle Supabase-SSR interaction nobody would have predicted from the symptom. The diagnostic lesson is the keeper: `console.log(page.url())` first when a test fails on a missing element. Thirty minutes of wrong-direction debugging before that single print statement cracked it. That's a CHEATSHEET line.
+
+On "I'm going to spend more time on review" — this is the answer worth pressing. Phase 5's pattern wasn't under-review, it was design-iteration-in-chat-instead-of-in-PR. The Wave column reshape happened in the conversation; by the time PR #104 was up, the headers were already on their third version. "More review" only buys something if it catches things the chat didn't — currently chat is catching the substantive issues (column shape, mobile-admin gap, role-of-orders-page) and PR review is catching cleanups (12-char invoice IDs, ARIA-role honesty, Download type imports). If the goal is to catch more substance in PR review, the lever is reading the diff against the AC before approving — not just the code review agent's findings. If the goal is fewer late-cycle design pivots, the lever is the AC-as-contract discipline above, applied at planning. Both are fine targets; "more review" without picking one will just become longer reviews.
+
+Forward note for Phase 6. The mobile-admin scope (6.4/6.5/6.6/6.7 + DEC-034) has now been incrementally amended three times across Phase 4 retro, mid-Phase 5 (6.5 added during 5.1 review), and the Phase 5 session file. At Phase 5's 0.35 h/pt active, 17–25 carry-over points is 6–9 hours of work — still cheap. The risk isn't the work, it's that Phase 6 is now genuinely the catch-all the Phase 3 retro warned about and the Phase 4 retro repeated. Before `/start-phase 6`, bound it explicitly: which of the carry-overs (helpers extraction from 5.3, auth-on-server-action gap, mobile-admin sweep, the four Phase 3 strays #53/#69/#63/#61) are V1-launch-blocking and which are V1.5. Otherwise the same conversation lands a third time at the next retro.
+
+---
+
 ## Phase 4 — 2026-05-16
 
 **Sessions:** 1 (S24)

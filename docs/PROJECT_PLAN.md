@@ -29,10 +29,11 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 | 3 (Phase 2) | 10 (labeled) + #27 admin-shell carry-over | 17.87 | 1.79 |
 | 9 (Phase 3) | 56 (29 plan + 7 polish + 20 non-labeled) | 49.25 wall / 19.42 active / 8.67 dev | 0.88 wall / 0.35 active / 0.15 dev |
 | 1 (Phase 4) | 11 (labeled, 100% delivery) | 13.7 wall / 3.0 active / 0.3 dev¹ | 1.24 wall / 0.27 active / 0.024 dev¹ |
+| 1 (Phase 5) | 11 (8 labeled + 3 unplanned bug fix #102/PR #103) | 9.17 wall / 3.84 active / 0.65 dev¹ | 0.83 wall / 0.35 active / 0.06 dev¹ |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
-¹ Phase 4 dev_time/dev-velocity numbers are artifacts of DEC-013's single-PR formula. Five PRs in one session attributes most coding to "review_time"; the honest forecast number is the active-time velocity (0.27 h/pt). Issue worth resolving at seeds-template level — multi-PR session math is unsolved.
+¹ Phase 4 + Phase 5 dev_time/dev-velocity numbers are artifacts of DEC-013's single-PR formula. Multiple PRs in one session attribute most coding to "review_time"; the honest forecast number is the active-time velocity (0.27–0.35 h/pt). Issue worth resolving at seeds-template level — multi-PR session math is unsolved.
 
 ---
 
@@ -131,9 +132,9 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 5.1 | Order list (column sort + week filter); status update UI; `needs_reconciliation` rows highlighted regardless of sort | 3 | [#97](https://github.com/mobiustripper42/bushel/issues/97) |
-| 5.2 | Export to Wave: CSV download + copy-to-clipboard (TSV) | 3 | [#98](https://github.com/mobiustripper42/bushel/issues/98) |
-| 5.3 | Playwright spec: status transitions + export (clipboard read) | 2 | [#99](https://github.com/mobiustripper42/bushel/issues/99) |
+| 5.1 | Order list (column sort + week filter); status update UI; `needs_reconciliation` rows highlighted regardless of sort | 3 | [x] [#97](https://github.com/mobiustripper42/bushel/issues/97) |
+| 5.2 | Export to Wave: CSV download + copy-to-clipboard (TSV) | 3 | [x] [#98](https://github.com/mobiustripper42/bushel/issues/98) |
+| 5.3 | Playwright spec: status transitions + export (clipboard read) | 2 | [x] [#99](https://github.com/mobiustripper42/bushel/issues/99) |
 
 ---
 
