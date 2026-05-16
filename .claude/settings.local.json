@@ -35,7 +35,15 @@
       "Bash(python3 -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('timestamp:', d.get\\('timestamp'\\)\\)\")",
       "Bash(lsof -ti:3001)",
       "Bash(lsof -ti:3001 | xargs -r kill -9)",
-      "Bash(lsof -ti:3001 | xargs kill -9)"
+      "Bash(lsof -ti:3001 | xargs kill -9)",
+      "Bash([ -f \"$TRANSCRIPT\" ])",
+      "Read(//tmp/**)",
+      "Bash(python3 -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\(list\\(d.keys\\(\\)\\)\\)\")",
+      "Bash(python3 *)",
+      "Bash(awk '{print $1, $2, $3}')",
+      "Bash(source .envrc && *)",
+      "Bash(kill $(lsof -ti:3001) 2>/dev/null)",
+      "Bash(kill $(lsof -ti:3001))"
     ]
   }
 }

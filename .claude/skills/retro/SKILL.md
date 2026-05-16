@@ -157,7 +157,7 @@ Show the commentary verbatim:
 
 ## Step 6 — Append to RETROSPECTIVES.md
 
-If `docs/RETROSPECTIVES.md` doesn't exist, create it with `# Retrospectives\n\n`. Append:
+Read `docs/RETROSPECTIVES.md` first (Edit requires a prior Read). If it doesn't exist, create it with Write and the header `# Retrospectives\n\n`. Otherwise Edit the file by replacing the `# Retrospectives\n\n` header with `# Retrospectives\n\n## Phase <N> — <YYYY-MM-DD>\n\n...full block...\n\n` so the new phase lands at the top. Block template:
 
 ```
 ## Phase <N> — <YYYY-MM-DD>
