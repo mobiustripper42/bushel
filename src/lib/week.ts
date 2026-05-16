@@ -45,6 +45,16 @@ export function weekOfMondayNY(now: Date = new Date()): string {
   return anchor.toISOString().slice(0, 10);
 }
 
+// Shifts a YYYY-MM-DD Monday by N weeks. Used by the orders-list
+// week-filter chips. UTC math is safe here because the input is already
+// anchored at midnight UTC by weekOfMondayNY.
+export function shiftWeek(weekOf: string, weeks: number): string {
+  const [y, m, d] = weekOf.split("-").map((n) => parseInt(n, 10));
+  const anchor = new Date(Date.UTC(y, m - 1, d));
+  anchor.setUTCDate(anchor.getUTCDate() + weeks * 7);
+  return anchor.toISOString().slice(0, 10);
+}
+
 // Shell chrome strings, Sunday-anchored, NY-time. Same tz discipline as
 // weekOfMondayNY — late-Saturday-NY (Sunday UTC) would otherwise jump the
 // admin shell into next week several hours early.

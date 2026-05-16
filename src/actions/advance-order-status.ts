@@ -18,6 +18,9 @@ function isValidTransition(
   return false;
 }
 
+// Uses cookie-bound client (not admin) — the admin_all_orders RLS policy
+// (migration 20260508014838) is the gate on writes here. Matches the
+// recordSend pattern.
 export async function advanceOrderStatus(
   orderId: string,
   nextStatus: OrderStatus,

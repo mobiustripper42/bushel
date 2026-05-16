@@ -1,9 +1,6 @@
 import { OrdersPage } from "@/components/admin/orders-page";
-import {
-  currentWeekOf,
-  listOrders,
-  shiftWeek,
-} from "@/lib/admin/orders-queries";
+import { currentWeekOf, listOrders } from "@/lib/admin/orders-queries";
+import { shiftWeek } from "@/lib/week";
 
 export const metadata = { title: "Orders — Bay Branch Farm" };
 

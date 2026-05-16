@@ -45,14 +45,6 @@ function narrowFulfillment(s: string): "pickup" | "delivery" {
   return s === "delivery" ? "delivery" : "pickup";
 }
 
-// Shifts a YYYY-MM-DD Monday by N weeks. Used by week-filter chips.
-export function shiftWeek(weekOf: string, weeks: number): string {
-  const [y, m, d] = weekOf.split("-").map((n) => parseInt(n, 10));
-  const anchor = new Date(Date.UTC(y, m - 1, d));
-  anchor.setUTCDate(anchor.getUTCDate() + weeks * 7);
-  return anchor.toISOString().slice(0, 10);
-}
-
 export function currentWeekOf(): string {
   return weekOfMondayNY();
 }
