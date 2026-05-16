@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.5] - 2026-05-16
+- PR #105: Phase 5.3 — Playwright cross-task spec: customer → admin → export
+
 ## [0.6.4] - 2026-05-16
 - PR #104: Phase 5.2 — Export to Wave (CSV download + clipboard TSV)
 
