@@ -131,9 +131,9 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 5.1 | Order list (column sort + week filter); status update UI; `needs_reconciliation` rows highlighted regardless of sort | 3 | TBD |
-| 5.2 | Export to Wave: CSV download + copy-to-clipboard (TSV) | 3 | TBD |
-| 5.3 | Playwright spec: status transitions + export (clipboard read) | 2 | TBD |
+| 5.1 | Order list (column sort + week filter); status update UI; `needs_reconciliation` rows highlighted regardless of sort | 3 | [#97](https://github.com/mobiustripper42/bushel/issues/97) |
+| 5.2 | Export to Wave: CSV download + copy-to-clipboard (TSV) | 3 | [#98](https://github.com/mobiustripper42/bushel/issues/98) |
+| 5.3 | Playwright spec: status transitions + export (clipboard read) | 2 | [#99](https://github.com/mobiustripper42/bushel/issues/99) |
 
 ---
 
