@@ -6,7 +6,7 @@ branch: task/read-the-tape-session-20
 started: 2026-05-16T10:52:14Z
 ended:
 points:
-pr_numbers: [101, 103, 104]
+pr_numbers: [101, 103, 104, 105]
 status: open
 transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-acaa-a65b7dca12df.jsonl
 ---
@@ -87,6 +87,28 @@ transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-aca
 **Points:** 3
 **Branch:** task/5.2-export-to-wave
 **Opened at:** 2026-05-16T13:46:37Z
+
+## Task 4: Phase 5.3 — Playwright cross-task spec (#99)
+
+**Completed:**
+- `tests/orders-flow.spec.ts` — 3 desktop-only cross-task tests modeled on `tests/notifications-flow.spec.ts` (Phase 4.4 pattern):
+  1. End-to-end customer → admin: customer places order on `/c/<token>` in a fresh context, admin sees it on `/admin/orders` (looked up by order_id from DB after submit), advances new → ready → delivered, exports CSV, asserts the new order's invoice number + customer + line item all appear in the file. Dual-context (customer + admin) so admin cookies don't bleed into the customer flow.
+  2. Reconciliation pin holds across BOTH column sort and week-filter changes. Seeds clean + flagged orders; sorts by Customer; round-trips Last week → This week; asserts the flagged row stays first throughout.
+  3. Export respects the active week filter. Seeds orders for both weeks; this-week CSV contains only this-week orders, Last-week chip CSV contains only last-week orders. Filename matches active `weekOf`.
+- `playwright.config.ts` — adds `**/orders-flow.spec.ts` to tablet/mobile testIgnore (admin desktop-only per DEC-019, same bucket as notifications-flow).
+- Reused 5.1's DB-poll-between-chained-transitions pattern for the status-advance loop in test 1.
+
+**Snags worth remembering:**
+- **Helper duplication is now a real problem.** Code review counted SIX spec files with their own `admin()`, `customerIds()`, `seedOrder()` — already drifted between specs (5.1 takes a `status` param, 5.3 omits it, 5.2 uses different defaults). Each new spec copies+modifies the last. Saved as a Phase 6 cleanup task — extract to `tests/helpers.ts` BEFORE adding a seventh.
+- **`supabase db reset` silently no-ops if containers are restarting.** Hit this twice — ran `supabase db reset`, got empty output (no error), tests then failed on globalSetup because auth.users was wiped+not-reseeded. `supabase status` showed services "Stopped" momentarily. Wait a few seconds + retry the reset. Could be a CLI bug; worth noting in CLAUDE.md if it recurs.
+- **`Awaited<ReturnType<Page["waitForEvent"]>>` is the wrong way to type a Playwright `Download`.** Playwright exports `Download` from `@playwright/test`. The roundabout type let me skip the import but required a cast in the helper body. Reviewer caught it; one-line fix to import the type.
+- **Phase 6 just grew (project memory updated).** Mid-review of 5.1, user realized Annabel needs `/admin/orders` mobile-responsive, not desktop-only. Added 6.5 to the planned 6.4/6.6/6.7 mobile-admin sweep + DEC-034 (amending DEC-019). Saved as `project_phase_6_mobile_admin_scope.md` so `/retro` picks it up; the orders-flow.spec.ts and notifications-flow.spec.ts `testIgnore` entries should come off when 6.4/6.5 land.
+
+**Code review:** 7 findings, 4 addressed (afterAll lastWeek cleanup, Download type, variable shadow, shiftWeek lift). 3 deferred with rationale: helper extraction → Phase 6 task; storageState pattern divergence justified by test 1; naming nit (clearOrdersForWeek vs clearWeek) folded into the extraction.
+**PR:** [#105](https://github.com/mobiustripper42/bushel/pull/105) (stacked on #104 → #103 → #101)
+**Points:** 2
+**Branch:** task/5.3-orders-spec
+**Opened at:** 2026-05-16T14:07:59Z
 
 **Next Steps:**
 
