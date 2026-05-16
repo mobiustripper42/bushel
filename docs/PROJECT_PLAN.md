@@ -138,13 +138,24 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 
 ---
 
-## Phase 6 — Polish + go-live (10 pts → ~1.5–3.5 hrs)
+## Phase 6 — Polish + go-live (36 pts → ~5.4–12.6 hrs)
+
+DEC-034 amends DEC-019: admin is fully mobile-responsive; desktop is the primary surface. Annabel runs the farm from her phone during ops hours.
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 6.1 | Customer-side responsive sweep + brand polish + `ui-reviewer` pass + optional Claude design tooling pass | 5 | TBD |
-| 6.2 | Production env: Vercel env vars, transactional email service configured (provider, API key, single-recipient deny-list test), DNS for `order` confirmed, secrets | 2 | TBD |
-| 6.3 | UAT with Annabel; final fixes; structural issues defer to Phase 7+ | 3 | TBD |
+| 6.1 | Customer-side responsive sweep + brand polish + `ui-reviewer` pass + optional Claude design tooling pass | 5 | [#106](https://github.com/mobiustripper42/bushel/issues/106) |
+| 6.2 | Production env: Vercel env vars, transactional email service configured (provider, API key, single-recipient deny-list test), DNS for `order` confirmed, secrets | 2 | [#107](https://github.com/mobiustripper42/bushel/issues/107) |
+| 6.3 | UAT with Annabel; final fixes; structural issues defer to Phase 7+ | 3 | [#108](https://github.com/mobiustripper42/bushel/issues/108) |
+| 6.4 | `/admin/send` mobile-responsive (queue list at 375px; touch-friendly Send buttons) | 3 | [#109](https://github.com/mobiustripper42/bushel/issues/109) |
+| 6.5 | `/admin/orders` mobile-responsive (table → card stack at 375px; export split-button stays usable on touch) | 3 | [#110](https://github.com/mobiustripper42/bushel/issues/110) |
+| 6.6 | Admin shell responsive (sidebar → drawer/sheet at ≤768px; nav badges + week pill survive narrow viewports) | 5 | [#111](https://github.com/mobiustripper42/bushel/issues/111) |
+| 6.7 | Desktop SMS relay via copy-clipboard + messages.google.com (operator path when on desktop) | 2 | [#112](https://github.com/mobiustripper42/bushel/issues/112) |
+| 6.8 | Extract `admin()` / `customerIds()` / `seedOrder()` / `clearOrdersForWeek()` into `tests/helpers.ts` — six spec files have drifted copies | 2 | [#113](https://github.com/mobiustripper42/bushel/issues/113) |
+| 6.9 | Realtime inventory subscription, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag (ship-or-skip) | 5 | [#53](https://github.com/mobiustripper42/bushel/issues/53) |
+| 6.10 | Admin customers — show deactivated customers (toggle/filter) | 2 | [#61](https://github.com/mobiustripper42/bushel/issues/61) |
+| 6.11 | Standardize admin-only auth guard across server actions | 2 | [#63](https://github.com/mobiustripper42/bushel/issues/63) |
+| 6.12 | Infra — auto-rebind preview.baybranchfarm.com at branch cut | 2 | [#69](https://github.com/mobiustripper42/bushel/issues/69) |
 
 V1 ships at end of Phase 6.
 
