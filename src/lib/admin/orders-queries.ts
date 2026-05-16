@@ -14,6 +14,10 @@ export const ORDER_STATUSES: OrderStatus[] = [
 export type OrderItem = {
   productId: string;
   name: string;
+  // products.description doubles as the Wave-export "Item Number" slug per the
+  // 5.2 mapping (e.g. "KALE-BUNCH"). Null when unset — Wave just gets a blank
+  // Item Number cell, which Annabel fills before posting the invoice.
+  description: string | null;
   unit: string;
   qty: number;
   unitPriceCents: number;
@@ -63,7 +67,7 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
        status, needs_reconciliation,
        customers(id, name),
        order_items(product_id, qty, unit_price_cents,
-         products(name, unit, qty_available))`,
+         products(name, description, unit, qty_available))`,
     )
     .eq("week_of", weekOf)
     .order("created_at", { ascending: false });
@@ -78,12 +82,18 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         product_id: string;
         qty: number;
         unit_price_cents: number;
-        products: { name: string; unit: string; qty_available: number } | null;
+        products: {
+          name: string;
+          description: string | null;
+          unit: string;
+          qty_available: number;
+        } | null;
       }>)
         .filter((i) => i.products !== null)
         .map((i) => ({
           productId: i.product_id,
           name: i.products!.name,
+          description: i.products!.description,
           unit: i.products!.unit,
           qty: i.qty,
           unitPriceCents: i.unit_price_cents,

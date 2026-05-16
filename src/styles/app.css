@@ -2106,3 +2106,63 @@
   line-height: 1.5;
 }
 .callout-warn strong { color: var(--rose-600); }
+
+/* Split button — Export to Wave (Phase 5.2) */
+.split-btn-wrap { position: relative; display: inline-flex; align-items: center; gap: 12px; }
+.split-btn-main {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--leaf-600);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 0 16px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  height: 44px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+.split-btn-main:hover:not(:disabled) { background: var(--leaf-700); }
+.split-btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
+.split-btn-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255,255,255,0.25);
+  margin: 0 4px;
+}
+.split-btn-chev { font-size: 0.7rem; }
+
+.split-scrim { position: fixed; inset: 0; z-index: 30; }
+.split-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-sm);
+  box-shadow: 0 10px 30px -8px rgba(31,30,26,0.2);
+  width: 240px;
+  padding: 6px;
+  z-index: 40;
+}
+.split-item {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.split-item:hover { background: var(--leaf-50); }
+.split-item-title { font-weight: 600; color: var(--ink-900); margin-bottom: 2px; }
+.split-item-sub { font-size: 0.8rem; color: var(--ink-500); }
+
+.export-feedback {
+  font-size: 0.82rem;
+  color: var(--ink-700);
+}

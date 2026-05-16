@@ -34,6 +34,7 @@ export default async function OrdersRoute({
     <OrdersPage
       orders={orders}
       weekFilter={weekFilter}
+      weekOf={selectedWeek}
       thisWeekCount={thisWeekCount}
       lastWeekCount={lastWeekCount}
     />
