@@ -186,7 +186,8 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     ]);
     const text = await readDownloadText(download);
     const lines = text.split("\r\n");
-    expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
+    // No header row — first line is the seeded order's data.
+    expect(lines[0]).not.toBe(EXPORT_COLUMNS.join(","));
     // Customer Name leads each row; Description column carries product name.
     const kaleLine = lines.find(
       (l) =>
