@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.3] - 2026-05-16
+- PR #93: Phase 4.2 — Send-queue page (#88)
+
 ## [0.5.2] - 2026-05-15
 - PR #92: Phase 4.1 — `sms:` deep-link builder utility (#87)
 
