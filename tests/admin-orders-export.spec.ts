@@ -107,7 +107,7 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
 test("toCsv: header + line item shape, RFC 4180 quoting", () => {
   const csv = toCsv([
     mockOrder({
-      id: "abcdef1234-5678-90ab-cdef-000000000000",
+      id: "abcdef123456789-abcd-0000-0000-000000000000",
       customerName: 'Bar Cento, Cleveland "Westside"',
       items: [
         {
@@ -127,8 +127,8 @@ test("toCsv: header + line item shape, RFC 4180 quoting", () => {
   expect(lines[1]).toContain('"Bar Cento, Cleveland ""Westside"""');
   // Newline in item name → quoted with literal newline preserved
   expect(lines[1]).toContain('"Heirloom\ntomatoes"');
-  // Invoice number is the first 8 chars of the order UUID
-  expect(lines[1].startsWith("abcdef12,")).toBe(true);
+  // Invoice number is the first 12 chars of the order id (string slice)
+  expect(lines[1].startsWith("abcdef123456,")).toBe(true);
   // Quantity + Unit Price columns follow Item Name
   expect(lines[1]).toContain(",3,5.50,lb,,");
 });
@@ -153,9 +153,10 @@ test("toCsv: one row per line item; rows from the same order share an invoice nu
   ]);
   const lines = csv.split("\r\n");
   expect(lines).toHaveLength(4); // header + 3 line items
-  expect(lines[1].startsWith("11111111,A,Kale,")).toBe(true);
-  expect(lines[2].startsWith("11111111,A,Eggs,")).toBe(true);
-  expect(lines[3].startsWith("99999999,B,Honey,")).toBe(true);
+  // slice(0, 12) of a standard UUID includes one hyphen (e.g. "11111111-222")
+  expect(lines[1].startsWith("11111111-222,A,Kale,")).toBe(true);
+  expect(lines[2].startsWith("11111111-222,A,Eggs,")).toBe(true);
+  expect(lines[3].startsWith("99999999-aaa,B,Honey,")).toBe(true);
 });
 
 test("toCsv: empty orders → header only", () => {
@@ -231,7 +232,7 @@ test.describe("admin orders export — UI", () => {
     await page.getByRole("button", { name: /export to wave/i }).click();
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("menuitem", { name: /download csv/i }).click(),
+      page.getByRole("button", { name: /download csv/i }).click(),
     ]);
     expect(download.suggestedFilename()).toBe(`bushel-orders-${thisWeek}.csv`);
     const stream = await download.createReadStream();
@@ -259,7 +260,7 @@ test.describe("admin orders export — UI", () => {
 
     await page.goto("/admin/orders");
     await page.getByRole("button", { name: /export to wave/i }).click();
-    await page.getByRole("menuitem", { name: /copy as tsv/i }).click();
+    await page.getByRole("button", { name: /copy as tsv/i }).click();
     await expect(page.getByText(/copied to clipboard/i)).toBeVisible({ timeout: 3000 });
 
     const clip: string = await page.evaluate(() => navigator.clipboard.readText());

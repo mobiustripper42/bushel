@@ -27,7 +27,7 @@ export function ExportOrdersButton({ orders, weekOf }: Props) {
 
   useEffect(() => {
     if (!feedback) return;
-    const id = window.setTimeout(() => setFeedback(null), 2000);
+    const id = window.setTimeout(() => setFeedback(null), 4000);
     return () => window.clearTimeout(id);
   }, [feedback]);
 
@@ -49,7 +49,8 @@ export function ExportOrdersButton({ orders, weekOf }: Props) {
     try {
       await navigator.clipboard.writeText(toTsv(orders));
       setFeedback("Copied to clipboard");
-    } catch {
+    } catch (err) {
+      console.warn("copyTsv: clipboard write failed", err);
       setFeedback("Clipboard blocked — try CSV");
     }
     setOpen(false);
@@ -76,11 +77,14 @@ export function ExportOrdersButton({ orders, weekOf }: Props) {
             onClick={() => setOpen(false)}
             aria-hidden="true"
           ></div>
-          <div className="split-menu" role="menu">
+          {/* Plain popover with two buttons — not a true ARIA menu
+              (no arrow-key nav, no focus trap, no roving tabindex). Avoid
+              role="menu" so assistive tech doesn't promise behavior we
+              don't implement. */}
+          <div className="split-menu">
             <button
               type="button"
               className="split-item"
-              role="menuitem"
               onClick={downloadCsv}
             >
               <div>
@@ -91,7 +95,6 @@ export function ExportOrdersButton({ orders, weekOf }: Props) {
             <button
               type="button"
               className="split-item"
-              role="menuitem"
               onClick={copyTsv}
             >
               <div>

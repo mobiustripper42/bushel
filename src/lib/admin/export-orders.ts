@@ -40,8 +40,13 @@ type ExportRow = {
   messages: string;
 };
 
+// 12 hex chars = 2^48 combinations. With 7 customers × weekly orders, an
+// in-export collision is essentially impossible — and the failure mode if
+// two rows shared an invoice number is Wave silently merging two customers'
+// orders into one invoice. 8 chars (~4B combos) felt fine on paper but
+// review flagged the silent-merge risk; 12 is the cheap fix.
 function invoiceNumberFor(orderId: string): string {
-  return orderId.slice(0, 8);
+  return orderId.slice(0, 12);
 }
 
 function money(cents: number): string {

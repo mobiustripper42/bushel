@@ -46,7 +46,13 @@
       "Bash(kill $(lsof -ti:3001))",
       "Bash(xargs -r kill -9)",
       "Bash(NOTIFICATIONS_ENABLED=false npm start *)",
-      "Bash(pkill -f \"playwright test\")"
+      "Bash(kill -9 3894536)",
+      "Bash(tee /tmp/full-suite-run-1.log)",
+      "Bash(pkill -f \"playwright test\")",
+      "Bash(kill -9 3134879)",
+      "Bash(ps -p 2189,2309,3153855 -o pid,ppid,cmd)",
+      "Bash(kill -9 3175509)",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }
