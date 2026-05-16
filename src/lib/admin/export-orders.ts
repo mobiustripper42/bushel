@@ -8,6 +8,12 @@
 //   Customer Name | Item Number | Quantity | Unit Price | Description |
 //   Sales Taxes  | Messages
 //
+// HEADER ROW IS INTENTIONALLY OMITTED. Wave's import flow expects raw data
+// rows; Annabel's sheet template already labels the columns. Emitting a
+// header would import as a phantom invoice for a customer named
+// "Customer Name." EXPORT_COLUMNS stays exported for documentation +
+// test assertions.
+//
 // One row per LINE ITEM. Per-product mapping:
 //   Wave "Item Number" ← products.description (used as a slug, e.g.
 //     "KALE-BUNCH" — Annabel populates this in the inventory editor).
@@ -93,19 +99,15 @@ function rowToValues(row: ExportRow): string[] {
 }
 
 export function toCsv(orders: OrderRow[]): string {
-  const lines = [EXPORT_COLUMNS.map(csvEscape).join(",")];
-  for (const row of ordersToRows(orders)) {
-    lines.push(rowToValues(row).map(csvEscape).join(","));
-  }
-  return lines.join("\r\n");
+  return ordersToRows(orders)
+    .map((row) => rowToValues(row).map(csvEscape).join(","))
+    .join("\r\n");
 }
 
 export function toTsv(orders: OrderRow[]): string {
-  const lines = [EXPORT_COLUMNS.map(tsvEscape).join("\t")];
-  for (const row of ordersToRows(orders)) {
-    lines.push(rowToValues(row).map(tsvEscape).join("\t"));
-  }
-  return lines.join("\n");
+  return ordersToRows(orders)
+    .map((row) => rowToValues(row).map(tsvEscape).join("\t"))
+    .join("\n");
 }
 
 export function csvFilename(weekOf: string): string {

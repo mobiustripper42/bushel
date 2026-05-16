@@ -105,7 +105,7 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
   };
 }
 
-test("toCsv: header + line item shape, RFC 4180 quoting", () => {
+test("toCsv: no header row; line items only, RFC 4180 quoting", () => {
   const csv = toCsv([
     mockOrder({
       customerName: 'Bar Cento, Cleveland "Westside"',
@@ -122,14 +122,19 @@ test("toCsv: header + line item shape, RFC 4180 quoting", () => {
       ],
     }),
   ]);
+  // First (and only) data row — header is intentionally omitted so Wave
+  // doesn't import a phantom "Customer Name" invoice.
   const lines = csv.split("\r\n");
-  expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
+  expect(lines).toHaveLength(1);
+  // EXPORT_COLUMNS still exists as a doc constant — confirm the data line
+  // is NOT a header.
+  expect(lines[0]).not.toBe(EXPORT_COLUMNS.join(","));
   // Comma in customer name → quoted; embedded quotes doubled
-  expect(lines[1]).toContain('"Bar Cento, Cleveland ""Westside"""');
+  expect(lines[0]).toContain('"Bar Cento, Cleveland ""Westside"""');
   // Newline in product name (now the Description column) → quoted, preserved
-  expect(lines[1]).toContain('"Heirloom\ntomatoes"');
+  expect(lines[0]).toContain('"Heirloom\ntomatoes"');
   // Item Number column carries the slug
-  expect(lines[1]).toContain(",HEIRLOOM-LB,3,5.50,");
+  expect(lines[0]).toContain(",HEIRLOOM-LB,3,5.50,");
 });
 
 test("toCsv: empty Item Number when product description (slug) is null", () => {
@@ -151,7 +156,8 @@ test("toCsv: empty Item Number when product description (slug) is null", () => {
   ]);
   const lines = csv.split("\r\n");
   // Customer Name, then empty Item Number (",,"), then Quantity, Unit Price, ...
-  expect(lines[1]).toBe("Plum Café,,4,4.00,Garlic scapes,,");
+  expect(lines).toHaveLength(1);
+  expect(lines[0]).toBe("Plum Café,,4,4.00,Garlic scapes,,");
 });
 
 test("toCsv: one row per line item; multi-item order keeps per-line slugs", () => {
@@ -171,14 +177,14 @@ test("toCsv: one row per line item; multi-item order keeps per-line slugs", () =
     }),
   ]);
   const lines = csv.split("\r\n");
-  expect(lines).toHaveLength(4); // header + 3 line items
-  expect(lines[1]).toBe("A,KALE-BU,1,3.00,Kale,,");
-  expect(lines[2]).toBe("A,EGG-DZ,2,6.00,Eggs,,");
-  expect(lines[3]).toBe("B,HON-JAR,1,12.00,Honey,,");
+  expect(lines).toHaveLength(3); // 3 line items, no header
+  expect(lines[0]).toBe("A,KALE-BU,1,3.00,Kale,,");
+  expect(lines[1]).toBe("A,EGG-DZ,2,6.00,Eggs,,");
+  expect(lines[2]).toBe("B,HON-JAR,1,12.00,Honey,,");
 });
 
-test("toCsv: empty orders → header only", () => {
-  expect(toCsv([])).toBe(EXPORT_COLUMNS.join(","));
+test("toCsv: empty orders → empty string (no header)", () => {
+  expect(toCsv([])).toBe("");
 });
 
 test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
@@ -199,12 +205,11 @@ test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
     }),
   ]);
   const lines = tsv.split("\n");
-  expect(lines[0]).toBe(EXPORT_COLUMNS.join("\t"));
-  // Each line is one row — newline-in-field must NOT add extra lines
-  expect(lines).toHaveLength(2);
-  expect(lines[1]).toContain("Has tab");
-  expect(lines[1]).toContain("Has newline");
-  expect(lines[1]).toContain("SLUG-WITH NEWLINE");
+  // No header — one data row only.
+  expect(lines).toHaveLength(1);
+  expect(lines[0]).toContain("Has tab");
+  expect(lines[0]).toContain("Has newline");
+  expect(lines[0]).toContain("SLUG-WITH NEWLINE");
 });
 
 test("ordersToRows: itemNumber = product description (slug); description = product name", () => {
@@ -273,8 +278,7 @@ test.describe("admin orders export — UI", () => {
     let text = "";
     for await (const chunk of stream) text += chunk.toString();
     const lines = text.split("\r\n");
-    expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
-    // Customer Name, Item Number (=slug), Quantity, Unit Price, Description (=name), ...
+    // No header row — first line is the seeded order's data.
     const line = lines.find((l) => l.includes(TEST_CUSTOMERS.farmStand.name));
     expect(line).toBe(`${TEST_CUSTOMERS.farmStand.name},KALE-BU,2,3.00,Kale,,`);
   });
@@ -299,7 +303,6 @@ test.describe("admin orders export — UI", () => {
 
     const clip: string = await page.evaluate(() => navigator.clipboard.readText());
     const lines = clip.split("\n");
-    expect(lines[0]).toBe(EXPORT_COLUMNS.join("\t"));
     const line = lines.find((l) => l.includes(TEST_CUSTOMERS.restaurant.name));
     // Tab-separated: Customer, '', 1, 12.00, Honey, '', ''
     expect(line).toBe(`${TEST_CUSTOMERS.restaurant.name}\t\t1\t12.00\tHoney\t\t`);
