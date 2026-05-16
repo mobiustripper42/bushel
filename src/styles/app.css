@@ -1616,3 +1616,188 @@
   border-color: var(--leaf-100);
   color: var(--leaf-700);
 }
+
+/* ============================================================
+   Admin · Send Update (Phase 4.2)
+   ============================================================ */
+
+.send-head { margin-bottom: 22px; }
+.send-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.send-subtitle {
+  margin-top: 4px;
+  color: var(--ink-500);
+  font-size: 0.95rem;
+  max-width: 64ch;
+}
+
+.send-mode-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--ink-200);
+  margin: 22px 0 24px;
+}
+.send-mode-tab {
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.send-mode-tab:hover { color: var(--ink-900); }
+.send-mode-tab.is-active {
+  color: var(--leaf-700);
+  border-bottom-color: var(--leaf-700);
+}
+
+.send-card {
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-md);
+  padding: 22px 24px;
+  margin-bottom: 22px;
+}
+.send-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.send-field { display: block; }
+.send-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--ink-900);
+  margin-bottom: 8px;
+}
+.send-label-hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--ink-500);
+}
+.send-textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--ink-900);
+  background: var(--cream);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-sm);
+  resize: vertical;
+}
+.send-textarea:focus {
+  outline: none;
+  border-color: var(--leaf-600);
+  background: var(--paper);
+}
+.send-charcount {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--ink-500);
+  margin-top: 6px;
+}
+
+.send-queue-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  color: var(--ink-500);
+}
+.send-queue-meta strong {
+  font-weight: 600;
+  color: var(--ink-900);
+}
+.send-queue-meta-week { font-variant-numeric: tabular-nums; }
+
+.send-empty {
+  padding: 36px;
+  text-align: center;
+  color: var(--ink-500);
+  background: var(--paper);
+  border: 1px dashed var(--ink-200);
+  border-radius: var(--r-md);
+}
+
+.send-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.send-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--ink-200);
+}
+.send-row:last-child { border-bottom: 0; }
+.send-row[data-sent="true"] { background: var(--cream); }
+
+.send-row-name { min-width: 0; }
+.send-row-customer {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.96rem;
+  color: var(--ink-900);
+}
+.send-row-phone {
+  font-size: 0.82rem;
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.send-row-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.send-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  background: var(--ink-100);
+  color: var(--ink-700);
+}
+.send-status.is-sent {
+  background: rgba(121, 196, 78, 0.16);
+  color: var(--leaf-700);
+}
+.send-row-error {
+  font-size: 0.74rem;
+  color: var(--rose-600);
+}
+.send-row-disabled {
+  font-size: 0.82rem;
+  color: var(--ink-500);
+}
