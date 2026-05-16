@@ -175,7 +175,10 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
       }, { timeout: 5000 })
       .toBe("delivered");
 
-    // Export → CSV contains the just-placed order's line item
+    // Export → CSV contains the just-placed order's line item.
+    // No invoice-number column anymore (Wave assigns on import) — match on
+    // customer name + product name; column shape is
+    //   Customer Name, Item Number, Quantity, Unit Price, Description, …
     await adminPage.getByRole("button", { name: /export to wave/i }).click();
     const [download] = await Promise.all([
       adminPage.waitForEvent("download"),
@@ -184,13 +187,19 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     const text = await readDownloadText(download);
     const lines = text.split("\r\n");
     expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
-    // First 12 chars of the order id is the invoice number
-    const invoiceNumber = orderId.slice(0, 12);
-    const kaleLine = lines.find((l) => l.startsWith(invoiceNumber));
+    // Customer Name leads each row; Description column carries product name.
+    const kaleLine = lines.find(
+      (l) =>
+        l.startsWith(`${TEST_CUSTOMERS.farmStand.name},`) &&
+        l.includes(TEST_PRODUCTS.kale.name),
+    );
     expect(kaleLine).toBeTruthy();
-    expect(kaleLine).toContain(TEST_CUSTOMERS.farmStand.name);
-    expect(kaleLine).toContain(TEST_PRODUCTS.kale.name);
-    expect(kaleLine).toContain(",2,3.00,bunch,,");
+    // Seed product has description = null, so Item Number cell is empty.
+    expect(kaleLine).toBe(`${TEST_CUSTOMERS.farmStand.name},,2,3.00,${TEST_PRODUCTS.kale.name},,`);
+
+    // Reference orderId so the unused-var lint stays happy + documents the
+    // intent that this CSV line corresponds to the order we just created.
+    expect(orderId).toBeTruthy();
 
     await adminCtx.close();
   });
@@ -260,13 +269,16 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await clearOrdersForWeek(lastWeek);
 
     const ids = await customerIds();
-    const thisWeekOrderId = await seedOrder({
+    // farmStand=delivery this week with Kale; restaurant=pickup last week with
+    // Honey. Customer + product names are the unique markers — no invoice-
+    // number column anymore, so identification has to come from these.
+    await seedOrder({
       customerId: ids.farmStand,
       weekOf: thisWeek,
       fulfillmentType: "delivery",
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 3, unitPriceCents: 300 }],
     });
-    const lastWeekOrderId = await seedOrder({
+    await seedOrder({
       customerId: ids.restaurant,
       weekOf: lastWeek,
       fulfillmentType: "pickup",
@@ -285,10 +297,10 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     ]);
     expect(thisDl.suggestedFilename()).toBe(`bushel-orders-${thisWeek}.csv`);
     const thisText = await readDownloadText(thisDl);
-    expect(thisText).toContain(thisWeekOrderId.slice(0, 12));
-    expect(thisText).not.toContain(lastWeekOrderId.slice(0, 12));
     expect(thisText).toContain(TEST_CUSTOMERS.farmStand.name);
+    expect(thisText).toContain(TEST_PRODUCTS.kale.name);
     expect(thisText).not.toContain(TEST_CUSTOMERS.restaurant.name);
+    expect(thisText).not.toContain(TEST_PRODUCTS.honey.name);
 
     // Switch to Last week — re-export
     await adminPage.getByRole("button", { name: /^last week/i }).click();
@@ -300,10 +312,10 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     ]);
     expect(lastDl.suggestedFilename()).toBe(`bushel-orders-${lastWeek}.csv`);
     const lastText = await readDownloadText(lastDl);
-    expect(lastText).toContain(lastWeekOrderId.slice(0, 12));
-    expect(lastText).not.toContain(thisWeekOrderId.slice(0, 12));
     expect(lastText).toContain(TEST_CUSTOMERS.restaurant.name);
+    expect(lastText).toContain(TEST_PRODUCTS.honey.name);
     expect(lastText).not.toContain(TEST_CUSTOMERS.farmStand.name);
+    expect(lastText).not.toContain(TEST_PRODUCTS.kale.name);
 
     await adminCtx.close();
   });
