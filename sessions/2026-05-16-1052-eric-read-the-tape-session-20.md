@@ -6,7 +6,7 @@ branch: task/read-the-tape-session-20
 started: 2026-05-16T10:52:14Z
 ended:
 points:
-pr_numbers: [101, 103]
+pr_numbers: [101, 103, 104]
 status: open
 transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-acaa-a65b7dca12df.jsonl
 ---
@@ -63,6 +63,30 @@ transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-aca
 **Points:** 3
 **Branch:** task/fix-notifications-flow-ci-flake
 **Opened at:** 2026-05-16T13:08:48Z
+
+## Task 3: Phase 5.2 — Export to Wave (CSV + clipboard TSV) (#98)
+
+**Completed:**
+- `src/lib/admin/export-orders.ts`: pure `toCsv(orders)` / `toTsv(orders)` against the exact Wave Sheets-import header (`Invoice Number, Customer Name, Item Name, Quantity, Unit Price, Description, Sales Taxes, Messages`). User-confirmed columns — I'd guessed a generic invoice shape first, asked, and swapped. One row per line item; rows from the same order share the Invoice Number so Wave bundles them into a single draft invoice on import. Description carries `item.unit` (e.g. "bunch") since Wave has no separate unit column. Sales Taxes + Messages blank in V1.
+- CSV is RFC 4180 (CRLF, quote-and-double-quote escape for `,` / `"` / `\r` / `\n`). TSV strips embedded tabs/newlines from fields so paste-to-Sheets row shape stays intact.
+- `src/components/admin/export-orders-button.tsx`: client split-button + popover. CSV via Blob URL + revoke; TSV via `navigator.clipboard.writeText` with graceful fallback. Disabled when no orders.
+- `src/components/admin/orders-page.tsx`: render the button in `page-head` actions; new `weekOf` prop threads through.
+- `src/app/(admin)/admin/orders/page.tsx`: passes `selectedWeek` as `weekOf` so the CSV filename is `bushel-orders-<YYYY-MM-DD>.csv`.
+- `src/styles/app.css`: `.split-btn-*` / `.split-menu` / `.split-item` primitives appended (app.css-only rule held).
+- `tests/admin-orders-export.spec.ts`: 5 unit + 3 integration tests, 8/8 green.
+
+**Snags worth remembering:**
+- **Don't guess at external system column shapes** — I shipped commit 1 with a plausible-but-invented column list (Date, Customer, Item, Unit, Quantity, Unit Price, Amount). The AC literally said "match what Wave's Sheets import expects" and I rationalized past it because the design didn't supply them. User caught it ("do you need the wave columns?"), gave me the actual header, and I rewrote. Lesson: when the AC names an external system contract, ask for the contract before writing the transformer. The cost of being wrong here was high (re-write + re-test + cargo-culted column comments).
+- **UUID slice contains hyphens.** `"11111111-2222-...".slice(0, 12)` is `"11111111-222"`, not `"111111112222"`. Tests had to assert on the hyphenated form. Worth a one-line comment so the next reader doesn't trip on it. Could strip the hyphen, but the trade-off is cosmetic vs the round-trip clarity of "this came from a UUID."
+- **Code review caught the silent-merge risk on 8-char Invoice Numbers.** 8 hex chars = ~4B combinations, fine in expectation but Wave's bundling-by-Invoice-Number rule means two-orders-same-prefix → merged into one invoice silently, wrong customer billed. Cheap fix: widen to 12 chars (2^48 combos). Took the fix; documented the reasoning in the function comment.
+- **Dropped `role="menu"`/`role="menuitem"`** after review — we render two buttons in a popover but don't implement arrow-key nav or focus trap. The ARIA roles were promising behavior we didn't deliver. Plain buttons + no role is more honest. Updated the test selectors from `getByRole("menuitem")` to `getByRole("button")` as a result.
+- **`.env.local` directive crystallized.** User: "you can leave env.local pointing to local." I'd been habitually restoring it to cloud after test swaps (per CLAUDE.md prose). Saved as a feedback memory — going forward leave .env.local on local Supabase, don't restore. The CLAUDE.md prose is now stale on this point.
+
+**Code review:** 7 findings, 4 addressed in `3b07810` (12-char invoice number, drop ARIA menu roles, console.warn clipboard error, feedback 2s→4s). 3 skipped with rationale: leading-space-in-customer-name CSV gotcha (Sheets is lenient — defer), scrim swallowing underlying clicks (matches design mockup pattern), `money(0)` rendering (intentional, DEC-016 silent on it).
+**PR:** [#104](https://github.com/mobiustripper42/bushel/pull/104) (stacked on #103, which is stacked on #101)
+**Points:** 3
+**Branch:** task/5.2-export-to-wave
+**Opened at:** 2026-05-16T13:46:37Z
 
 **Next Steps:**
 
