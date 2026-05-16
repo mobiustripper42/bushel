@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.4] - 2026-05-16
+- PR #94: Phase 4.3 — Order-arrival admin alert via Telegram (#89, DEC-033)
+
 ## [0.5.3] - 2026-05-16
 - PR #93: Phase 4.2 — Send-queue page (#88)
 
