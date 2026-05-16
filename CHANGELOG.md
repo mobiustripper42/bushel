@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.2] - 2026-05-16
+- PR #101: Phase 5.1 — admin orders list + status UI + reconciliation pin
+
 ## [0.6.1] - 2026-05-16
 - PR #100: read-the-tape session 20: settings, retro Read-before-Edit, P17
 
