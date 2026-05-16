@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.2] - 2026-05-15
+- PR #92: Phase 4.1 — `sms:` deep-link builder utility (#87)
+
 ## [0.5.1] - 2026-05-15
 - PR #91: read-the-tape session 23: stale :3001, JSON-in-Bash, worktree cd hygiene
 
