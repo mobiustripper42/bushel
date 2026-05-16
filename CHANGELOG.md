@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.1] - 2026-05-15
+- PR #91: read-the-tape session 23: stale :3001, JSON-in-Bash, worktree cd hygiene
+
 ## [0.5.0] - 2026-05-15 — Phase 3
 - 36 pts labeled (56 session-counted) shipped across 9 sessions (0.35 h/pt active)
 - See `docs/RETROSPECTIVES.md` for the full retro
