@@ -3,25 +3,28 @@
 //   - CSV  → file download (RFC 4180 quoting)
 //   - TSV  → clipboard paste into Wave's Sheets import
 //
-// Columns match Wave's Sheets import exactly:
-//   Invoice Number | Customer Name | Item Name | Quantity | Unit Price |
-//   Description    | Sales Taxes   | Messages
+// Columns match Wave's Sheets import exactly (7 cols, no Invoice Number —
+// Wave assigns the invoice number itself when the sheet is imported):
+//   Customer Name | Item Number | Quantity | Unit Price | Description |
+//   Sales Taxes  | Messages
 //
-// One row per LINE ITEM. Wave bundles rows that share an Invoice Number into
-// a single draft invoice — so all of one order's line items share the same
-// Invoice Number (we use the first 8 chars of the order UUID, matching what
-// the admin list shows as `#xxxxxxxx`). Description carries the unit
-// (e.g. "bunch", "lb") because Wave doesn't have a separate unit column —
-// putting it in Description keeps the per-line context visible on the
-// invoice. Sales Taxes + Messages are intentionally blank (no tax in V1, no
-// per-line note channel from the customer order form).
+// One row per LINE ITEM. Per-product mapping:
+//   Wave "Item Number" ← products.description (used as a slug, e.g.
+//     "KALE-BUNCH" — Annabel populates this in the inventory editor).
+//     Empty cell when the slug isn't set; she fills it in Wave before
+//     posting.
+//   Wave "Description" ← products.name (the human-readable product name).
+//   products.unit is no longer in the export; it lives in the customer-
+//     facing UI and the admin row detail, not the invoice.
+//
+// Sales Taxes + Messages are intentionally blank (no tax in V1, no per-line
+// note channel from the customer order form).
 
 import type { OrderRow } from "@/lib/admin/orders-queries";
 
 export const EXPORT_COLUMNS = [
-  "Invoice Number",
   "Customer Name",
-  "Item Name",
+  "Item Number",
   "Quantity",
   "Unit Price",
   "Description",
@@ -30,24 +33,14 @@ export const EXPORT_COLUMNS = [
 ] as const;
 
 type ExportRow = {
-  invoiceNumber: string;
   customerName: string;
-  itemName: string;
+  itemNumber: string;
   quantity: string;
   unitPrice: string;
   description: string;
   salesTaxes: string;
   messages: string;
 };
-
-// 12 hex chars = 2^48 combinations. With 7 customers × weekly orders, an
-// in-export collision is essentially impossible — and the failure mode if
-// two rows shared an invoice number is Wave silently merging two customers'
-// orders into one invoice. 8 chars (~4B combos) felt fine on paper but
-// review flagged the silent-merge risk; 12 is the cheap fix.
-function invoiceNumberFor(orderId: string): string {
-  return orderId.slice(0, 12);
-}
 
 function money(cents: number): string {
   return (cents / 100).toFixed(2);
@@ -56,15 +49,13 @@ function money(cents: number): string {
 export function ordersToRows(orders: OrderRow[]): ExportRow[] {
   const rows: ExportRow[] = [];
   for (const o of orders) {
-    const invoiceNumber = invoiceNumberFor(o.id);
     for (const i of o.items) {
       rows.push({
-        invoiceNumber,
         customerName: o.customerName,
-        itemName: i.name,
+        itemNumber: i.description ?? "",
         quantity: String(i.qty),
         unitPrice: money(i.unitPriceCents),
-        description: i.unit,
+        description: i.name,
         salesTaxes: "",
         messages: "",
       });
@@ -91,9 +82,8 @@ function tsvEscape(value: string): string {
 
 function rowToValues(row: ExportRow): string[] {
   return [
-    row.invoiceNumber,
     row.customerName,
-    row.itemName,
+    row.itemNumber,
     row.quantity,
     row.unitPrice,
     row.description,

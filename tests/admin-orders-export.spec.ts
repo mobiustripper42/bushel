@@ -93,6 +93,7 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
       {
         productId: "p1",
         name: "Kale",
+        description: "KALE-BUNCH",
         unit: "bunch",
         qty: 2,
         unitPriceCents: 300,
@@ -107,12 +108,12 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
 test("toCsv: header + line item shape, RFC 4180 quoting", () => {
   const csv = toCsv([
     mockOrder({
-      id: "abcdef123456789-abcd-0000-0000-000000000000",
       customerName: 'Bar Cento, Cleveland "Westside"',
       items: [
         {
           productId: "p1",
           name: "Heirloom\ntomatoes",
+          description: "HEIRLOOM-LB",
           unit: "lb",
           qty: 3,
           unitPriceCents: 550,
@@ -125,38 +126,55 @@ test("toCsv: header + line item shape, RFC 4180 quoting", () => {
   expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
   // Comma in customer name → quoted; embedded quotes doubled
   expect(lines[1]).toContain('"Bar Cento, Cleveland ""Westside"""');
-  // Newline in item name → quoted with literal newline preserved
+  // Newline in product name (now the Description column) → quoted, preserved
   expect(lines[1]).toContain('"Heirloom\ntomatoes"');
-  // Invoice number is the first 12 chars of the order id (string slice)
-  expect(lines[1].startsWith("abcdef123456,")).toBe(true);
-  // Quantity + Unit Price columns follow Item Name
-  expect(lines[1]).toContain(",3,5.50,lb,,");
+  // Item Number column carries the slug
+  expect(lines[1]).toContain(",HEIRLOOM-LB,3,5.50,");
 });
 
-test("toCsv: one row per line item; rows from the same order share an invoice number", () => {
+test("toCsv: empty Item Number when product description (slug) is null", () => {
   const csv = toCsv([
     mockOrder({
-      id: "11111111-2222-3333-4444-555555555555",
+      customerName: "Plum Café",
+      items: [
+        {
+          productId: "p1",
+          name: "Garlic scapes",
+          description: null,
+          unit: "bunch",
+          qty: 4,
+          unitPriceCents: 400,
+          qtyAvailable: 10,
+        },
+      ],
+    }),
+  ]);
+  const lines = csv.split("\r\n");
+  // Customer Name, then empty Item Number (",,"), then Quantity, Unit Price, ...
+  expect(lines[1]).toBe("Plum Café,,4,4.00,Garlic scapes,,");
+});
+
+test("toCsv: one row per line item; multi-item order keeps per-line slugs", () => {
+  const csv = toCsv([
+    mockOrder({
       customerName: "A",
       items: [
-        { productId: "p1", name: "Kale", unit: "bunch", qty: 1, unitPriceCents: 300, qtyAvailable: 5 },
-        { productId: "p2", name: "Eggs", unit: "dozen", qty: 2, unitPriceCents: 600, qtyAvailable: 5 },
+        { productId: "p1", name: "Kale", description: "KALE-BU", unit: "bunch", qty: 1, unitPriceCents: 300, qtyAvailable: 5 },
+        { productId: "p2", name: "Eggs", description: "EGG-DZ", unit: "dozen", qty: 2, unitPriceCents: 600, qtyAvailable: 5 },
       ],
     }),
     mockOrder({
-      id: "99999999-aaaa-bbbb-cccc-dddddddddddd",
       customerName: "B",
       items: [
-        { productId: "p3", name: "Honey", unit: "jar", qty: 1, unitPriceCents: 1200, qtyAvailable: 5 },
+        { productId: "p3", name: "Honey", description: "HON-JAR", unit: "jar", qty: 1, unitPriceCents: 1200, qtyAvailable: 5 },
       ],
     }),
   ]);
   const lines = csv.split("\r\n");
   expect(lines).toHaveLength(4); // header + 3 line items
-  // slice(0, 12) of a standard UUID includes one hyphen (e.g. "11111111-222")
-  expect(lines[1].startsWith("11111111-222,A,Kale,")).toBe(true);
-  expect(lines[2].startsWith("11111111-222,A,Eggs,")).toBe(true);
-  expect(lines[3].startsWith("99999999-aaa,B,Honey,")).toBe(true);
+  expect(lines[1]).toBe("A,KALE-BU,1,3.00,Kale,,");
+  expect(lines[2]).toBe("A,EGG-DZ,2,6.00,Eggs,,");
+  expect(lines[3]).toBe("B,HON-JAR,1,12.00,Honey,,");
 });
 
 test("toCsv: empty orders → header only", () => {
@@ -171,6 +189,7 @@ test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
         {
           productId: "p1",
           name: "Has\nnewline",
+          description: "SLUG-WITH\nNEWLINE",
           unit: "lb",
           qty: 1,
           unitPriceCents: 100,
@@ -185,19 +204,21 @@ test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
   expect(lines).toHaveLength(2);
   expect(lines[1]).toContain("Has tab");
   expect(lines[1]).toContain("Has newline");
+  expect(lines[1]).toContain("SLUG-WITH NEWLINE");
 });
 
-test("ordersToRows: quantity + unit price; description = item.unit", () => {
+test("ordersToRows: itemNumber = product description (slug); description = product name", () => {
   const rows = ordersToRows([
     mockOrder({
       items: [
-        { productId: "p", name: "X", unit: "ea", qty: 7, unitPriceCents: 125, qtyAvailable: 10 },
+        { productId: "p", name: "Honey", description: "HONEY-JAR", unit: "jar", qty: 7, unitPriceCents: 125, qtyAvailable: 10 },
       ],
     }),
   ]);
+  expect(rows[0].itemNumber).toBe("HONEY-JAR");
+  expect(rows[0].description).toBe("Honey");
   expect(rows[0].quantity).toBe("7");
   expect(rows[0].unitPrice).toBe("1.25");
-  expect(rows[0].description).toBe("ea");
   expect(rows[0].salesTaxes).toBe("");
   expect(rows[0].messages).toBe("");
 });
@@ -217,8 +238,21 @@ test.describe("admin orders export — UI", () => {
     await clearWeek(thisWeek);
   });
 
+  // Set a product slug for the download test so we exercise the non-empty
+  // Item Number path. Restored in afterEach.
+  async function setProductSlug(productId: string, slug: string | null): Promise<void> {
+    await admin().from("products").update({ description: slug }).eq("id", productId);
+  }
+
+  test.afterEach(async () => {
+    // Restore seed shape — description is null for all TEST_PRODUCTS in seed.
+    await setProductSlug(TEST_PRODUCTS.kale.id, null);
+    await setProductSlug(TEST_PRODUCTS.honey.id, null);
+  });
+
   test("Download CSV produces a file with the expected header + body", async ({ page }) => {
     const ids = await customerIds();
+    await setProductSlug(TEST_PRODUCTS.kale.id, "KALE-BU");
     await seedOrder({
       customerId: ids.farmStand,
       weekOf: thisWeek,
@@ -240,15 +274,15 @@ test.describe("admin orders export — UI", () => {
     for await (const chunk of stream) text += chunk.toString();
     const lines = text.split("\r\n");
     expect(lines[0]).toBe(EXPORT_COLUMNS.join(","));
-    expect(lines[1]).toContain(TEST_CUSTOMERS.farmStand.name);
-    expect(lines[1]).toContain("Kale");
-    // Quantity=2, Unit Price=3.00, Description=bunch
-    expect(lines[1]).toContain(",2,3.00,bunch,,");
+    // Customer Name, Item Number (=slug), Quantity, Unit Price, Description (=name), ...
+    const line = lines.find((l) => l.includes(TEST_CUSTOMERS.farmStand.name));
+    expect(line).toBe(`${TEST_CUSTOMERS.farmStand.name},KALE-BU,2,3.00,Kale,,`);
   });
 
-  test("Copy as TSV writes to clipboard", async ({ page, context }) => {
+  test("Copy as TSV writes to clipboard; empty Item Number when slug is null", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const ids = await customerIds();
+    // Honey has no slug (seed default) — assert the Item Number cell is empty.
     await seedOrder({
       customerId: ids.restaurant,
       weekOf: thisWeek,
@@ -266,10 +300,9 @@ test.describe("admin orders export — UI", () => {
     const clip: string = await page.evaluate(() => navigator.clipboard.readText());
     const lines = clip.split("\n");
     expect(lines[0]).toBe(EXPORT_COLUMNS.join("\t"));
-    expect(lines[1]).toContain(TEST_CUSTOMERS.restaurant.name);
-    expect(lines[1]).toContain("Honey");
-    expect(lines[1]).toContain("12.00");
-    expect(lines[1]).toContain("jar"); // Description = unit
+    const line = lines.find((l) => l.includes(TEST_CUSTOMERS.restaurant.name));
+    // Tab-separated: Customer, '', 1, 12.00, Honey, '', ''
+    expect(line).toBe(`${TEST_CUSTOMERS.restaurant.name}\t\t1\t12.00\tHoney\t\t`);
   });
 
   test("Export button disabled when no orders for the week", async ({ page }) => {
