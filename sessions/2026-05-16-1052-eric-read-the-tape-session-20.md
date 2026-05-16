@@ -6,7 +6,7 @@ branch: task/read-the-tape-session-20
 started: 2026-05-16T10:52:14Z
 ended:
 points:
-pr_numbers: [101]
+pr_numbers: [101, 103]
 status: open
 transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-acaa-a65b7dca12df.jsonl
 ---
@@ -40,6 +40,29 @@ transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-aca
 **Points:** 3
 **Branch:** task/5.1-orders-list
 **Opened at:** 2026-05-16T11:31:31Z
+
+## Task 2: Fix notifications-flow CI flake (#102)
+
+**Completed:**
+- Diagnosed and fixed the cross-spec CI failure that's been red since PR #96. Symptom (test customer row missing from queue) was a red herring — actual cause was `/admin/send` redirecting to `/login` because the admin-shell sign-out test invalidated the @supabase/ssr-managed JWT shared via storageState.
+- `src/actions/sign-out.ts`: `supabase.auth.signOut({ scope: "local" })`. Default scope is `global`, which revokes the refresh token server-side. Correct production UX (signing out on the laptop shouldn't kick Annabel out of her phone) and necessary — but not sufficient — for the test fix.
+- `tests/global-setup.ts`: extracted `writeAdminStorageState()` helper that signs in the test admin and writes `playwright/.auth/admin.json`. globalSetup now calls this internally; the helper is also exported so tests can refresh state mid-run.
+- `tests/admin-shell.spec.ts`: `afterAll(writeAdminStorageState)` on the sign-out describe block. Empirically — and this took the longest to nail down — `scope:"local"` alone isn't enough; `@supabase/ssr`'s `getUser()` on a fresh context still rejects the post-signOut cookies. Rewriting storageState after the sign-out test is what actually unblocks the downstream specs.
+- `tests/notifications-flow.spec.ts`: `resetCustomerState()` now error-checks the update + asserts at least one row was affected (loud failure if test customer goes missing). New `ensureOrderingOpen()` in beforeEach — admin-settings flips `ordering_schedule.is_open=false` without restoring, and the deep-link test renders the customer page (which redirects to the closed state when ordering is closed).
+- `playwright.config.ts`: testIgnore `notifications-flow.spec.ts` on tablet/mobile projects. It exercises `/admin/send` which is desktop-only per DEC-019; tablet/mobile fanout was tripling failure noise.
+
+**Snags worth remembering:**
+- **The diagnostic that cracked it.** Adding `console.log(page.url())` to the failing test immediately showed `/login?next=/admin/send` — the customer state was fine, the auth was broken. ~30 minutes of upfront investigation went into wrong directions (admin-customers delete syntax, ordering schedule race) before the diagnostic revealed the truth. Lesson: when a test fails with "element not found," capture the page URL FIRST before reasoning about state. Cheap diagnostic, high signal.
+- **scope:"local" isn't actually local.** The Supabase docs claim scope:'local' only clears local state without revoking server-side. But `@supabase/ssr`'s middleware-style `getUser()` on a fresh context loading the SAME cookies still got rejected after a previous context's `signOut({scope:"local"})`. Why is unclear — maybe `getUser()` triggers a refresh that hits the just-rotated token. Workaround: regenerate storageState in afterAll. Production-side the scope:"local" fix is still correct.
+- **`.env.local` points at CLOUD, not local Supabase.** Running `npx playwright test` against the cloud project would have `admin-customers.spec.ts:30` execute `DELETE FROM customers WHERE token NOT IN (...)` against the dev/preview cloud DB, wiping any real test data. Per CLAUDE.md: ".env.local and npm run dev point at the dev/preview cloud project, not 127.0.0.1:54421" — but Playwright reads `.env.local` directly via dotenv. The CI workflow sets local Supabase env vars before running tests; locally the user/skill has to swap `.env.local` manually before a full-suite run. Worth a `.env.local.test` overlay or a `test` script in package.json.
+- **Stale `next-server` on port 3001 hides between invocations.** `lsof -ti:3001` returned empty but `ss -tlnp` showed a `next-server` listening. Killed via the pid from `ss`. CLAUDE.md mentions the `next start` orphan issue but `lsof` isn't always sufficient — `ss -tlnp | grep :3001` is the more reliable probe.
+- **CI's full-suite has been failing since PR #96.** The Phase 4.4 spec landed broken in CI, and #96/#100/#101 all merged through red. Nobody (me included) noticed until I caught it on #101. The team practice of "merge through CI failures" makes spec-introduced flakes invisible for as long as nobody runs the full suite locally. Worth flagging in retro.
+
+**Code review:** Skipped — straightforward test-infra fix with the production-side change (scope:"local") being a one-line improvement, and the verification (177/177 local pass) is the strongest signal. CI green will confirm.
+**PR:** [#103](https://github.com/mobiustripper42/bushel/pull/103) (stacked on #101)
+**Points:** 3
+**Branch:** task/fix-notifications-flow-ci-flake
+**Opened at:** 2026-05-16T13:08:48Z
 
 **Next Steps:**
 
