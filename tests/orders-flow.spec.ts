@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Download, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -91,22 +91,34 @@ async function stepUp(page: Page, productName: string, qty: number): Promise<voi
   }
 }
 
-async function readDownloadText(download: Awaited<ReturnType<Page["waitForEvent"]>>): Promise<string> {
-  const stream = await (download as { createReadStream: () => Promise<NodeJS.ReadableStream> }).createReadStream();
+async function readDownloadText(download: Download): Promise<string> {
+  const stream = await download.createReadStream();
   let text = "";
   for await (const chunk of stream) text += chunk.toString();
   return text;
 }
 
+function shiftWeek(weekOf: string, weeks: number): string {
+  const [y, m, d] = weekOf.split("-").map((n) => parseInt(n, 10));
+  const anchor = new Date(Date.UTC(y, m - 1, d));
+  anchor.setUTCDate(anchor.getUTCDate() + weeks * 7);
+  return anchor.toISOString().slice(0, 10);
+}
+
 test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () => {
   const thisWeek = weekOfMondayNY();
+  const lastWeek = shiftWeek(thisWeek, -1);
 
   test.beforeEach(async () => {
     await resetCustomerOrderState();
   });
 
+  // Clean both weeks we ever touch — test 3 seeds lastWeek and clears it
+  // inline on success, but a mid-test failure would otherwise leak the
+  // last-week order indefinitely.
   test.afterAll(async () => {
     await clearOrdersForWeek(thisWeek);
+    await clearOrdersForWeek(lastWeek);
   });
 
   test("customer places an order → admin advances status → export contains the row", async ({
@@ -211,12 +223,12 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await adminPage.goto("/admin/orders");
 
     async function topOrderId(): Promise<string> {
-      const ids = await adminPage
+      const rowIds = await adminPage
         .locator("tr.ord-row")
         .evaluateAll((els) =>
           (els as HTMLElement[]).map((el) => el.dataset.orderId ?? ""),
         );
-      return ids[0];
+      return rowIds[0];
     }
 
     // Default sort (placed desc): flagged row pinned regardless of which is newer
@@ -244,12 +256,6 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
   });
 
   test("export respects the active week filter", async ({ browser }) => {
-    const lastWeek = (() => {
-      const [y, m, d] = thisWeek.split("-").map((n) => parseInt(n, 10));
-      const anchor = new Date(Date.UTC(y, m - 1, d));
-      anchor.setUTCDate(anchor.getUTCDate() - 7);
-      return anchor.toISOString().slice(0, 10);
-    })();
     await clearOrdersForWeek(thisWeek);
     await clearOrdersForWeek(lastWeek);
 
@@ -299,7 +305,6 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     expect(lastText).toContain(TEST_CUSTOMERS.restaurant.name);
     expect(lastText).not.toContain(TEST_CUSTOMERS.farmStand.name);
 
-    await clearOrdersForWeek(lastWeek);
     await adminCtx.close();
   });
 });
