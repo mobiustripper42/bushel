@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.1] - 2026-05-16
+- PR #100: read-the-tape session 20: settings, retro Read-before-Edit, P17
+
 ## [0.6.0] - 2026-05-16 — Phase 4
 - 11 pts shipped in 1 session (0.27 h/pt active)
 - See `docs/RETROSPECTIVES.md` for the full retro
