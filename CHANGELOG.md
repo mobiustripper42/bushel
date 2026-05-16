@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.4] - 2026-05-16
+- PR #104: Phase 5.2 — Export to Wave (CSV download + clipboard TSV)
+
 ## [0.6.3] - 2026-05-16
 - PR #103: Fix notifications-flow CI flake — sign-out invalidates shared session (#102)
 
