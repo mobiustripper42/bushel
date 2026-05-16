@@ -4,10 +4,10 @@ dev: eric
 slug: read-the-tape-session-20
 branch: task/read-the-tape-session-20
 started: 2026-05-16T10:52:14Z
-ended:
-points:
+ended: 2026-05-16T20:02:39Z
+points: 11
 pr_numbers: [101, 103, 104, 105]
-status: open
+status: closed
 transcript: /home/eric/.claude/projects/-home-eric-bushel/b00c6569-590f-443d-acaa-a65b7dca12df.jsonl
 ---
 
