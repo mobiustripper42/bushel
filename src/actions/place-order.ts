@@ -7,6 +7,7 @@ import {
   CUSTOMER_TOKEN_COOKIE,
   lookupCustomerByToken,
 } from "@/lib/customer/session";
+import { sendAdminOrderAlert } from "@/lib/notifications/admin-telegram";
 import type { Json } from "@/lib/supabase/types";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -54,5 +55,32 @@ export async function placeOrder(
 
   if (error) return { error: error.message };
 
+  // Best-effort admin alert (DEC-033). Failure is swallowed inside the
+  // wrapper — order placement never blocks on a notification miss. We
+  // await so the serverless function doesn't terminate before the POST
+  // completes; ~200ms of customer-perceptible latency on submit.
+  //
+  // TODO(DEC-033): once place_order RPC ever applies pricing rules
+  // (discounts, rounding), read the total from the inserted order row
+  // instead of recomputing from the payload here.
+  const total = payload.items.reduce(
+    (sum, it) => sum + it.qty * it.unit_price_cents,
+    0,
+  );
+  await sendAdminOrderAlert({
+    customerName: customer.name,
+    weekOf: weekOfMondayNY(),
+    lineItemCount: payload.items.length,
+    totalCents: total,
+    adminOrdersUrl: `${adminBaseUrl()}/admin/orders`,
+  });
+
   redirect(`/c/${token}/confirmed`);
+}
+
+// Admin link in the Telegram alert must always point at prod (where Annabel
+// works), not at whatever host the customer placed the order from. Preview
+// deployments shouldn't deep-link Annabel into preview data.
+function adminBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://order.baybranchfarm.com";
 }
