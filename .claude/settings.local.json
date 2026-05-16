@@ -48,7 +48,9 @@
       "Bash(NOTIFICATIONS_ENABLED=false npm start *)",
       "Bash(pkill -f \"playwright test\")",
       "Bash(awk '{print $NF}')",
-      "Skill(its-dead)"
+      "Skill(its-dead)",
+      "Bash(disown)",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-orders.spec.ts tests/admin-orders-export.spec.ts tests/orders-flow.spec.ts tests/notifications-flow.spec.ts tests/admin-shell.spec.ts --project=desktop)"
     ]
   }
 }

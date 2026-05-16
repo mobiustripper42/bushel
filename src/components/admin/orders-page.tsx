@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { OrderRow } from "@/components/admin/order-row";
+import { ExportOrdersButton } from "@/components/admin/export-orders-button";
 import type { OrderRow as OrderRowData } from "@/lib/admin/orders-queries";
 
 type SortKey = "placed" | "customer" | "total";
@@ -12,6 +13,7 @@ type SortDir = "asc" | "desc";
 type Props = {
   orders: OrderRowData[];
   weekFilter: "this" | "last";
+  weekOf: string;
   thisWeekCount: number;
   lastWeekCount: number;
 };
@@ -54,7 +56,7 @@ function SortHeader({
   );
 }
 
-export function OrdersPage({ orders, weekFilter, thisWeekCount, lastWeekCount }: Props) {
+export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeekCount }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -103,6 +105,9 @@ export function OrdersPage({ orders, weekFilter, thisWeekCount, lastWeekCount }:
             {reconCount > 0 && ` · ${reconCount} need reconciliation`}
           </div>
           <h1 className="page-title">Orders</h1>
+        </div>
+        <div className="page-actions">
+          <ExportOrdersButton orders={sorted} weekOf={weekOf} />
         </div>
       </div>
 

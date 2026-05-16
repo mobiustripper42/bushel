@@ -35,7 +35,7 @@ async function testCustomerIds(): Promise<{ farmStand: string; restaurant: strin
 async function resetCustomerState(): Promise<void> {
   const sb = admin();
   for (const token of [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]) {
-    await sb
+    const { data, error } = await sb
       .from("customers")
       .update({
         phone: "(216) 555-0100",
@@ -43,7 +43,10 @@ async function resetCustomerState(): Promise<void> {
         send_weekly_link: true,
         is_active: true,
       })
-      .eq("token", token);
+      .eq("token", token)
+      .select("id");
+    if (error) throw new Error(`resetCustomerState(${token}): ${error.message}`);
+    if (!data?.length) throw new Error(`resetCustomerState(${token}): no rows updated — test customer missing`);
   }
 }
 
@@ -52,6 +55,16 @@ async function clearSends(): Promise<void> {
     .from("customer_sends")
     .delete()
     .eq("week_of", weekOfMondayNY());
+}
+
+// admin-settings.spec.ts flips ordering_schedule.is_open without restoring,
+// and the "deep-link → customer page" test below renders the customer order
+// page (which redirects to the closed state when is_open=false).
+async function ensureOrderingOpen(): Promise<void> {
+  await admin()
+    .from("ordering_schedule")
+    .update({ is_open: true, override_closes_at: null })
+    .eq("is_singleton", true);
 }
 
 async function clearOrdersFor(customerId: string): Promise<void> {
@@ -114,6 +127,7 @@ test.describe("notifications cross-task flow", () => {
   test.beforeEach(async () => {
     await resetCustomerState();
     await clearSends();
+    await ensureOrderingOpen();
   });
 
   test("deep-link body contains a working customer URL — operator → customer page", async ({ page }) => {
