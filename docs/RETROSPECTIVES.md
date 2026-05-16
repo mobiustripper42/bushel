@@ -1,5 +1,54 @@
 # Retrospectives
 
+## Phase 4 — 2026-05-16
+
+**Sessions:** 1 (S24)
+**Points:** 11 / 11 (100%)
+**Wall clock:** 13.7h (overnight)
+**Active time (wall − breaks):** 3.0h ← honest headline
+**Dev time (per DEC-013 math):** 0.3h¹
+**Review time (per DEC-013 math):** 2.3h
+**Velocities:**
+- Wall: 1.24 h/pt
+- **Active: 0.27 h/pt** ← use this for Phase 5/6 forecasting (faster than Phase 3's 0.35)
+- Dev: 0.024 h/pt ← DEC-013 method artifact (5 PRs in one session); do not trust as headline
+**Issues:** 4 created, 4 closed (#87–#90); 0 moved.
+
+¹ DEC-013's `dev_time` formula defines the dev window as "session start → first PR opens." When a session opens N PRs and keeps coding between them (as this one did), all subsequent dev work gets attributed to `review_time`. Phase 3 retro flagged this; Phase 4 reproduces it. Multi-PR session math is an unresolved seeds-template issue.
+
+### Per-session breakdown
+| Session | Date       | Wall | Dev  | Review | Breaks | Points | PRs                |
+|---------|------------|------|------|--------|--------|--------|--------------------|
+| 24      | 2026-05-15 | 13.7 | 0.3¹ | 2.3    | 10.7   | 11     | 92, 93, 94, 95, 96 |
+
+### What worked
+- Development work on the tasks was done efficiently.
+
+### What didn't
+- This last bit of debugging with the preview was incredibly frustrating.
+
+### Changes for next phase
+- Not for next phase, but the next project — phases are too small, need more points. *(Backport target for `/push-seeds`.)*
+
+### Scope changes
+- **DEC-033 added** (admin order-arrival alert pivoted from email → Telegram bot push). DEC-027 marked superseded. Decided in planning conversation before any code shipped.
+- **DEC-034 amending DEC-019** (admin desktop-only): `/admin/send` is mobile-required because operator-sent `sms:` deep links only resolve on a phone. Discussed but not yet logged to DECISIONS.md.
+- **Three new Phase 6 tasks proposed** (mobile-admin work): 6.4 `/admin/send` mobile-responsive (3 pts), 6.6 admin shell responsive (5 pts), 6.7 desktop SMS-relay via clipboard + messages.google.com (2 pts). Discussed but not yet logged to PROJECT_PLAN.md.
+- **PR #95 stacked-PR misfire:** merged into parent branch `task/4.2-send-queue-page` after #93 had already merged to main, stranding 4.4 commits. Re-PR'd as #96. Process gap — GitHub doesn't auto-retarget stacked children when the parent merges.
+
+### PM read
+Phase 4 came in at 11 points planned, 11 delivered, in one overnight session. Read straight against Phase 3's 36 labeled / 56 counted points, it's a quarter of the work — and the active-time number (3.0h, 0.27 h/pt) is actually faster than Phase 3's 0.35 h/pt headline. The dev/review split is the same DEC-013 artifact flagged last retro: five PRs in one session converts most real coding into "review_time" by the formula, dropping dev_time to a fictional 0.3h. Quote 0.27 h/pt active as the Phase 4 number and keep footnoting the DEC-013 math until the skill spec catches up to multi-PR sessions.
+
+Scope was the cleanest it's been. The DEC-027 → DEC-033 pivot to Telegram is the kind of mid-phase decision worth defending — caught in planning, not in code, and the new decision retired the old one explicitly. Compare to Phase 2, where a wrong-spec inventory editor took two passes to surface. The mockup-vs-AC conflict on 4.2 (pre-DEC-026 broadcast UI vs per-customer queue) was the test of whether the design-folder discipline holds, and the answer was yes: surfaced the conflict, got a pick, built once. That's the rule working as intended for the case it wasn't originally written for. Worth extending CLAUDE.md's "stop and ask if no design exists" to "stop and ask if design contradicts AC" — the session file already names this.
+
+Two patterns in the session file are worth pulling forward. First, the stacked-PR misfire on #95 → #96 is a process gap, not a one-off — GitHub doesn't retarget stacked children when the parent merges, and the child silently lands on a dangling branch if you click merge. The fix (retarget child to main before parent merges, or base on main from the start) belongs in CLAUDE.md alongside the existing stacking guidance. Second, the `data-customer-id` discipline born from dev-DB-duplicates contamination is now the right default for any spec that has to coexist with real data — generalize it before Phase 6 admin work touches the same tables. The recurring `lsof -ti:3001` ritual and cross-spec leakage from admin-customers are still drag; they're noted in the CHEATSHEET territory the Phase 3 retro asked for.
+
+On your three answers. "Development work was done efficiently" — yes, and the numbers back it: 11 points in 3 active hours is the new shape, not a fluke. "The preview debugging was incredibly frustrating" is the answer worth pressing on. That hour wasn't a bug in your code — it was `NEXT_PUBLIC_*` env vars baking at build time, a stale preview deployment, and an earlier accidental production-scope tag on the preview branch. Three coupled systems (Vercel build cache, Vercel env-var scoping, Supabase OAuth redirect allowlist) each with non-obvious failure modes, and the symptom (auth bounces to localhost) doesn't point at any of them directly. The preview-rebind ritual in CLAUDE.md covers the DNS and OAuth pieces but doesn't address build-time env baking; that's a CLAUDE.md gap, not user error. On "the phases are too small, need more points for the next project" — agreed, with a caveat. Phase 4 at 11 pts is the floor of where the retro-and-planning overhead breaks even with the work. Phase 3 at 36/56 was the right size. The lesson for the next project isn't "make phases bigger" in the abstract — it's "don't carve sub-10-point phases unless there's a hard scope boundary," which Phase 4 had (notifications stack is one coherent thing). Worth distinguishing scope-bounded small phases from arbitrary-cut small phases when planning.
+
+Forward note for Phase 6. The carry-over count is climbing: #53, #69, #63, #61 from Phase 3's relabel, plus the three mobile-admin tasks (6.4, 6.6, 6.7) discussed this session but not yet logged, plus DEC-034. At Phase 4's 0.27 h/pt active that's a 4–6 hour phase if it stays at 17–25 points; at Phase 3's 0.35 it's 6–9 hours. The risk isn't velocity, it's that Phase 6 is now genuinely the catch-all the Phase 3 retro warned about. Bound it at the front before `/start-phase`: which of the carry-overs are V1-blocking, which are V1.5, which are post-launch polish. Otherwise it'll quietly grow another 10 points between now and start.
+
+---
+
 ## Phase 3 — 2026-05-15
 
 **Sessions:** 9 (S15–S23)

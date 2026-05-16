@@ -28,8 +28,11 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 | 3 (Phase 1) | 16 | 18.0 | 1.13 |
 | 3 (Phase 2) | 10 (labeled) + #27 admin-shell carry-over | 17.87 | 1.79 |
 | 9 (Phase 3) | 56 (29 plan + 7 polish + 20 non-labeled) | 49.25 wall / 19.42 active / 8.67 dev | 0.88 wall / 0.35 active / 0.15 dev |
+| 1 (Phase 4) | 11 (labeled, 100% delivery) | 13.7 wall / 3.0 active / 0.3 dev¹ | 1.24 wall / 0.27 active / 0.024 dev¹ |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
+
+¹ Phase 4 dev_time/dev-velocity numbers are artifacts of DEC-013's single-PR formula. Five PRs in one session attributes most coding to "review_time"; the honest forecast number is the active-time velocity (0.27 h/pt). Issue worth resolving at seeds-template level — multi-PR session math is unsolved.
 
 ---
 
@@ -115,12 +118,12 @@ Operator-sent SMS via native deep links (DEC-026); admin order-arrival alert via
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 4.1 | `sms:` deep-link builder utility (URL-encode body + token, iOS/Android verified) | 2 | [#87](https://github.com/mobiustripper42/bushel/issues/87) |
-| 4.2 | Send-queue page: weekly update + order confirmation + pickup reminder modes; priority-ordered customer list (DEC-026); per-customer Send button + mark-as-sent state | 5 | [#88](https://github.com/mobiustripper42/bushel/issues/88) |
-| 4.3 | Order-arrival admin email alert: transactional send on order create; provider config (Resend or similar) | 2 | [#89](https://github.com/mobiustripper42/bushel/issues/89) |
-| 4.4 | Playwright spec: deep-link generation, customer ordering, mark-as-sent flow | 2 | [#90](https://github.com/mobiustripper42/bushel/issues/90) |
+| 4.1 | `sms:` deep-link builder utility (URL-encode body + token, iOS/Android verified) | 2 | [x] [#87](https://github.com/mobiustripper42/bushel/issues/87) |
+| 4.2 | Send-queue page: weekly update + order confirmation + pickup reminder modes; priority-ordered customer list (DEC-026); per-customer Send button + mark-as-sent state | 5 | [x] [#88](https://github.com/mobiustripper42/bushel/issues/88) |
+| 4.3 | Order-arrival admin alert: transactional send on order create. **Pivoted to Telegram bot push (DEC-033)** during planning — supersedes DEC-027's email-first decision. | 2 | [x] [#89](https://github.com/mobiustripper42/bushel/issues/89) |
+| 4.4 | Playwright spec: deep-link generation, customer ordering, mark-as-sent flow | 2 | [x] [#90](https://github.com/mobiustripper42/bushel/issues/90) |
 
-**Stretch:** PWA push for the order-arrival alert (DEC-027 upgrade path). Wire if Android push proves reliable; otherwise email is the v1 path.
+**Stretch:** PWA push for the order-arrival alert (DEC-033 upgrade path; original framing in DEC-027). Wire if Android push proves reliable; Telegram is the v1 path.
 
 ---
 
