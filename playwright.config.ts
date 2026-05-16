@@ -23,17 +23,25 @@ export default defineConfig({
     {
       name: "tablet",
       // Admin is desktop-only (DEC-019); admin specs run on desktop project only.
-      // notifications-flow.spec.ts exercises the admin /admin/send queue, so it
-      // belongs in the same admin-desktop-only bucket.
-      testIgnore: ["**/admin*.spec.ts", "**/notifications-flow.spec.ts"],
+      // notifications-flow.spec.ts + orders-flow.spec.ts exercise admin pages,
+      // so they belong in the same admin-desktop-only bucket.
+      testIgnore: [
+        "**/admin*.spec.ts",
+        "**/notifications-flow.spec.ts",
+        "**/orders-flow.spec.ts",
+      ],
       use: { ...devices["Desktop Chrome"], viewport: { width: 768, height: 1024 } },
     },
     {
       name: "mobile",
       // Admin is desktop-only (DEC-019); admin specs run on desktop project only.
-      // notifications-flow.spec.ts exercises the admin /admin/send queue, so it
-      // belongs in the same admin-desktop-only bucket.
-      testIgnore: ["**/admin*.spec.ts", "**/notifications-flow.spec.ts"],
+      // notifications-flow.spec.ts + orders-flow.spec.ts exercise admin pages,
+      // so they belong in the same admin-desktop-only bucket.
+      testIgnore: [
+        "**/admin*.spec.ts",
+        "**/notifications-flow.spec.ts",
+        "**/orders-flow.spec.ts",
+      ],
       use: { ...devices["iPhone 13"], browserName: "webkit", viewport: { width: 375, height: 812 } },
     },
   ],
