@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.5] - 2026-05-16
+- PR #95: Phase 4.4 — Notifications cross-task Playwright spec (#90) — merged to parent branch (stacked-PR misfire); see #96 for actual main-branch landing
+
 ## [0.5.4] - 2026-05-16
 - PR #94: Phase 4.3 — Order-arrival admin alert via Telegram (#89, DEC-033)
 
