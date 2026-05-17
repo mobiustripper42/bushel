@@ -1,4 +1,5 @@
 import { signInWithGoogle } from "./actions";
+import { VersionTag } from "@/components/VersionTag";
 
 export default async function LoginPage({
   searchParams,
@@ -19,6 +20,9 @@ export default async function LoginPage({
           Sign in with Google
         </button>
       </form>
+      <footer className="fixed bottom-2 right-3">
+        <VersionTag className="text-xs text-muted-foreground" />
+      </footer>
     </main>
   );
 }
