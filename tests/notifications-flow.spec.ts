@@ -164,7 +164,8 @@ test.describe("notifications cross-task flow", () => {
     await customerCtx.close();
   });
 
-  test("reload preserves Sent state — admin returns later and the pill persists", async ({ page }) => {
+  test("reload preserves Sent state — admin returns later and the pill persists", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
     const ids = await testCustomerIds();
     await page.goto("/admin/send");
 
@@ -198,7 +199,8 @@ test.describe("notifications cross-task flow", () => {
     await expect(reloadedRow.getByRole("link", { name: /re-send/i })).toBeVisible();
   });
 
-  test("re-send is idempotent — second click does not duplicate the row", async ({ page }) => {
+  test("re-send is idempotent — second click does not duplicate the row", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
     const ids = await testCustomerIds();
     await page.goto("/admin/send");
 
@@ -236,7 +238,8 @@ test.describe("notifications cross-task flow", () => {
     expect(data?.length).toBe(1);
   });
 
-  test("mode independence — sent in weekly_update does not bleed into order_confirmation", async ({ page }) => {
+  test("mode independence — sent in weekly_update does not bleed into order_confirmation", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
     const ids = await testCustomerIds();
 
     // Seed an order so the customer appears in order_confirmation mode too.
