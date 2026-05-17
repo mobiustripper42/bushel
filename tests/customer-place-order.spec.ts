@@ -32,6 +32,16 @@ test.describe("/c/[token] place order", () => {
     await resetCustomerOrderState();
   });
 
+  // Without this, the last "happy path" test leaves a freshly-placed order
+  // for the seeded farmStand customer in the current week. The next spec to
+  // alphabetically follow (notifications-flow.spec.ts) opens /c/<token> and
+  // expects to see the "What's available" heading — but the /c page redirects
+  // to /confirmed whenever an order exists for the current week, so the
+  // assertion times out. resetCustomerOrderState clears it.
+  test.afterAll(async () => {
+    await resetCustomerOrderState();
+  });
+
   test("happy path: submit creates an order + decrements inventory, lands on confirmed", async ({
     page,
   }) => {
