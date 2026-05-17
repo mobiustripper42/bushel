@@ -1,11 +1,14 @@
 import { test, expect, type Download, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 
 import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
+  admin,
   customerOrderUrl,
+  customerIds,
+  clearOrdersForWeek,
+  seedOrder,
   resetCustomerOrderState,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
@@ -17,72 +20,6 @@ import { EXPORT_COLUMNS } from "@/lib/admin/export-orders";
 //       export it
 //   (b) reconciliation pin survives sort + week-filter changes together
 //   (c) export respects the active week filter
-
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
-
-async function customerIds(): Promise<{ farmStand: string; restaurant: string }> {
-  const sb = admin();
-  const { data, error } = await sb
-    .from("customers")
-    .select("id, token")
-    .in("token", [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]);
-  if (error || !data) throw new Error(`customerIds: ${error?.message ?? "no rows"}`);
-  const map = new Map(data.map((r) => [r.token, r.id]));
-  return {
-    farmStand: map.get(TEST_CUSTOMERS.farmStand.token)!,
-    restaurant: map.get(TEST_CUSTOMERS.restaurant.token)!,
-  };
-}
-
-async function clearOrdersForWeek(weekOf: string): Promise<void> {
-  const sb = admin();
-  const ids = await customerIds();
-  await sb
-    .from("orders")
-    .delete()
-    .in("customer_id", [ids.farmStand, ids.restaurant])
-    .eq("week_of", weekOf);
-}
-
-type SeedOrderInput = {
-  customerId: string;
-  weekOf: string;
-  fulfillmentType: "pickup" | "delivery";
-  needsReconciliation?: boolean;
-  items: Array<{ productId: string; qty: number; unitPriceCents: number }>;
-};
-
-async function seedOrder(input: SeedOrderInput): Promise<string> {
-  const sb = admin();
-  const { data: order, error } = await sb
-    .from("orders")
-    .insert({
-      customer_id: input.customerId,
-      week_of: input.weekOf,
-      fulfillment_type: input.fulfillmentType,
-      delivery_address: input.fulfillmentType === "delivery" ? "123 Test St" : null,
-      status: "new",
-      needs_reconciliation: input.needsReconciliation ?? false,
-    })
-    .select("id")
-    .single();
-  if (error || !order) throw new Error(`seedOrder: ${error?.message}`);
-  await sb.from("order_items").insert(
-    input.items.map((i) => ({
-      order_id: order.id,
-      product_id: i.productId,
-      qty: i.qty,
-      unit_price_cents: i.unitPriceCents,
-    })),
-  );
-  return order.id;
-}
 
 async function stepUp(page: Page, productName: string, qty: number): Promise<void> {
   const row = page.locator(".item-row", { hasText: productName });

@@ -1,21 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { weekOfMondayNY } from "@/lib/week";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
+  admin,
   customerOrderUrl,
   resetCustomerOrderState,
 } from "./helpers";
-
-// We hit Supabase directly to read back what the action wrote.
-function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 async function getCustomerId(token: string): Promise<string> {
   const sb = admin();

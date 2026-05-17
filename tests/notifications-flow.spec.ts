@@ -1,7 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 
-import { ADMIN_STORAGE_STATE, TEST_CUSTOMERS } from "./helpers";
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_CUSTOMERS,
+  admin,
+  testCustomerIds,
+} from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
 
 // Phase 4.4 — cross-task integration tests covering the gaps that 4.1, 4.2,
@@ -9,28 +13,6 @@ import { weekOfMondayNY } from "@/lib/week";
 // actually point at the customer's order page end-to-end? (b) does Sent
 // state survive a reload? (c) is re-send idempotent? (d) are the three
 // modes independent on the (customer_id, week_of, mode) PK?
-
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
-
-async function testCustomerIds(): Promise<{ farmStand: string; restaurant: string }> {
-  const sb = admin();
-  const { data, error } = await sb
-    .from("customers")
-    .select("id, token")
-    .in("token", [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]);
-  if (error || !data) throw new Error(`testCustomerIds: ${error?.message ?? "no rows"}`);
-  const map = new Map(data.map((r) => [r.token, r.id]));
-  return {
-    farmStand: map.get(TEST_CUSTOMERS.farmStand.token)!,
-    restaurant: map.get(TEST_CUSTOMERS.restaurant.token)!,
-  };
-}
 
 async function resetCustomerState(): Promise<void> {
   const sb = admin();

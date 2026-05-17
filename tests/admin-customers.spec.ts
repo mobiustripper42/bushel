@@ -1,14 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-import { ADMIN_STORAGE_STATE, TEST_CUSTOMERS } from "./helpers";
-
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_CUSTOMERS,
+  adminClient,
+} from "./helpers";
 
 async function resetTestCustomers() {
   const supabase = adminClient();

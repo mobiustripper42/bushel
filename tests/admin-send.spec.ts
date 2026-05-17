@@ -1,33 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 
-import { ADMIN_STORAGE_STATE, TEST_CUSTOMERS } from "./helpers";
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_CUSTOMERS,
+  admin,
+  testCustomerIds,
+} from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
-
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
-
-// Dev/preview DB carries real data and historical test artifacts; multiple
-// customers may share the same display name. Filter rows by data-customer-id
-// instead of visible text. Resolved once per test from the seeded tokens.
-async function testCustomerIds(): Promise<{ farmStand: string; restaurant: string }> {
-  const sb = admin();
-  const { data: rows, error } = await sb
-    .from("customers")
-    .select("id, token")
-    .in("token", [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]);
-  if (error || !rows) throw new Error(`testCustomerIds: ${error?.message ?? "no rows"}`);
-  const map = new Map(rows.map((r) => [r.token, r.id]));
-  return {
-    farmStand: map.get(TEST_CUSTOMERS.farmStand.token)!,
-    restaurant: map.get(TEST_CUSTOMERS.restaurant.token)!,
-  };
-}
 
 async function clearSends(): Promise<void> {
   const sb = admin();

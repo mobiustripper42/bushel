@@ -1,79 +1,15 @@
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 
-import { ADMIN_STORAGE_STATE, TEST_CUSTOMERS, TEST_PRODUCTS } from "./helpers";
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_CUSTOMERS,
+  TEST_PRODUCTS,
+  admin,
+  customerIds,
+  clearWeek,
+  seedOrder,
+} from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
-
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
-
-async function customerIds(): Promise<{ farmStand: string; restaurant: string }> {
-  const sb = admin();
-  const { data, error } = await sb
-    .from("customers")
-    .select("id, token")
-    .in("token", [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]);
-  if (error || !data) throw new Error(`customerIds: ${error?.message ?? "no rows"}`);
-  const map = new Map(data.map((r) => [r.token, r.id]));
-  return {
-    farmStand: map.get(TEST_CUSTOMERS.farmStand.token)!,
-    restaurant: map.get(TEST_CUSTOMERS.restaurant.token)!,
-  };
-}
-
-async function clearWeek(weekOf: string): Promise<void> {
-  const sb = admin();
-  const ids = await customerIds();
-  await sb
-    .from("orders")
-    .delete()
-    .in("customer_id", [ids.farmStand, ids.restaurant])
-    .eq("week_of", weekOf);
-}
-
-type SeedOrderInput = {
-  customerId: string;
-  weekOf: string;
-  fulfillmentType: "pickup" | "delivery";
-  status?: "new" | "ready" | "picked-up" | "delivered";
-  needsReconciliation?: boolean;
-  items: Array<{ productId: string; qty: number; unitPriceCents: number }>;
-};
-
-async function seedOrder(input: SeedOrderInput): Promise<string> {
-  const sb = admin();
-  const { data: order, error: oErr } = await sb
-    .from("orders")
-    .insert({
-      customer_id: input.customerId,
-      week_of: input.weekOf,
-      fulfillment_type: input.fulfillmentType,
-      delivery_address:
-        input.fulfillmentType === "delivery" ? "123 Test St" : null,
-      delivery_preference:
-        input.fulfillmentType === "delivery" ? "Front door" : null,
-      status: input.status ?? "new",
-      needs_reconciliation: input.needsReconciliation ?? false,
-    })
-    .select("id")
-    .single();
-  if (oErr || !order) throw new Error(`seedOrder: ${oErr?.message}`);
-
-  const rows = input.items.map((i) => ({
-    order_id: order.id,
-    product_id: i.productId,
-    qty: i.qty,
-    unit_price_cents: i.unitPriceCents,
-  }));
-  const { error: iErr } = await sb.from("order_items").insert(rows);
-  if (iErr) throw new Error(`seedOrder items: ${iErr.message}`);
-  return order.id;
-}
 
 test.describe("admin orders list", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
