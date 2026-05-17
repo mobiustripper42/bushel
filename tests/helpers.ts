@@ -30,9 +30,6 @@ export const TEST_PRODUCTS = {
 } as const;
 
 // Lazy admin Supabase client — only constructed when a test calls it.
-// Exported as both `admin` (the common shorthand used in admin-side specs)
-// and `adminClient` (the name customer-side specs picked up). Same function;
-// two names so the Phase 6.8 consolidation didn't churn every existing call.
 export function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -40,7 +37,6 @@ export function admin() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
-export { admin as adminClient };
 
 // Resolves the two seeded test customers' UUIDs by token. Used by every spec
 // that needs to query orders/sends/etc. scoped to the test fixtures.
@@ -57,14 +53,9 @@ export async function customerIds(): Promise<{ farmStand: string; restaurant: st
     restaurant: map.get(TEST_CUSTOMERS.restaurant.token)!,
   };
 }
-// admin-send + notifications-flow specs settled on `testCustomerIds`; alias
-// rather than churn every call site.
-export { customerIds as testCustomerIds };
-
 // Deletes orders for the two seeded test customers in a given NY-week-Monday.
 // Caller passes the week explicitly (use `weekOfMondayNY()` from @/lib/week
-// for the current week). admin-orders + admin-orders-export specs called
-// this `clearWeek`; alias preserved for the same reason.
+// for the current week).
 export async function clearOrdersForWeek(weekOf: string): Promise<void> {
   const sb = admin();
   const ids = await customerIds();
@@ -74,7 +65,6 @@ export async function clearOrdersForWeek(weekOf: string): Promise<void> {
     .in("customer_id", [ids.farmStand, ids.restaurant])
     .eq("week_of", weekOf);
 }
-export { clearOrdersForWeek as clearWeek };
 
 // Inserts an order + its line items for a seeded test customer. Union of the
 // shapes used across admin-orders, admin-orders-export, and orders-flow specs

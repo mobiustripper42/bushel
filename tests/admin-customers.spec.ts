@@ -2,11 +2,11 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
-  adminClient,
+  admin,
 } from "./helpers";
 
 async function resetTestCustomers() {
-  const supabase = adminClient();
+  const supabase = admin();
   for (const token of [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]) {
     await supabase
       .from("customers")
@@ -81,7 +81,7 @@ test.describe("admin customers", () => {
 
   test("Delete customer deactivates and drops the row from the list", async ({ page }) => {
     // Seed phone so beforeEach-cleaned customer can be edited
-    const supabase = adminClient();
+    const supabase = admin();
     await supabase.from("customers").update({ phone: "216-555-0100" }).eq("token", TEST_CUSTOMERS.restaurant.token);
 
     await page.goto("/admin/customers");
@@ -108,7 +108,7 @@ test.describe("admin customers", () => {
   });
 
   test("Regenerate rotates the customer token and refreshes the row", async ({ page }) => {
-    const supabase = adminClient();
+    const supabase = admin();
     const seedToken = TEST_CUSTOMERS.restaurant.token;
 
     try {
@@ -176,7 +176,7 @@ test.describe("admin customers", () => {
     // Wait for the server action's round-trip to persist before reloading —
     // otherwise on slow projects (mobile WebKit) the reload can race and read
     // the pre-toggle DB row.
-    const supabase = adminClient();
+    const supabase = admin();
     const expectedFlipped = initial === "true" ? false : true;
     await expect
       .poll(

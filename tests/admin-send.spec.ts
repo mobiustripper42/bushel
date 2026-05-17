@@ -4,7 +4,7 @@ import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   admin,
-  testCustomerIds,
+  customerIds,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -115,7 +115,7 @@ test.describe("admin send-queue", () => {
   });
 
   test("weekly_update: lists subscribers in priority order with sms: deep links", async ({ page }) => {
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     const list = page.getByRole("list", { name: /weekly update queue/i });
@@ -147,7 +147,7 @@ test.describe("admin send-queue", () => {
       testInfo.project.name === "mobile",
       "WebKit navigates to sms:... on click and clears the page; onClick fires (server action runs) but the DOM is gone before the optimistic Sent pill can be asserted. Headless Chromium ignores the sms: navigation, so desktop covers this code path.",
     );
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     const list = page.getByRole("list", { name: /weekly update queue/i });
@@ -186,7 +186,7 @@ test.describe("admin send-queue", () => {
   test("desktop: clicking Send copies the body to clipboard and opens Messages for Web", async ({ page, context }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "Desktop-only path (Phase 6.7). Mobile uses the sms: deep link directly.");
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     const list = page.getByRole("list", { name: /weekly update queue/i });
@@ -241,7 +241,7 @@ test.describe("admin send-queue", () => {
   });
 
   test("intro note saves and is injected into the weekly_update body", async ({ page }) => {
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     const textarea = page.getByLabel(/this week.+intro note/i);
@@ -266,7 +266,7 @@ test.describe("admin send-queue", () => {
   });
 
   test("order_confirmation mode: only customers with current-week orders appear", async ({ page }) => {
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await clearCurrentWeekOrders();
     await ensureOrderForCustomer(TEST_CUSTOMERS.farmStand.token);
 
@@ -292,7 +292,7 @@ test.describe("admin send-queue", () => {
 
   test("mobile (375px): page fits viewport; Send button is touch-sized; drawer opens and closes", async ({ page, viewport }, testInfo) => {
     test.skip(testInfo.project.name !== "mobile", "Mobile-only assertions; covered on the mobile project.");
-    await testCustomerIds();
+    await customerIds();
     await page.goto("/admin/send");
 
     // (a) No horizontal overflow at the iPhone-13 width — shell + page combined
@@ -320,7 +320,7 @@ test.describe("admin send-queue", () => {
   });
 
   test("pickup_reminder mode: same order-bound customer set, different body", async ({ page }, testInfo) => {
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await clearCurrentWeekOrders();
     await ensureOrderForCustomer(TEST_CUSTOMERS.farmStand.token);
 
