@@ -94,6 +94,27 @@ test.describe("admin inventory", () => {
     );
   });
 
+  test("mobile (375px): page fits viewport; rows render as cards; qty input is editable", async ({ page, viewport }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Mobile-only assertions; covered on the mobile project.");
+    await page.goto("/admin/inventory");
+
+    // No horizontal overflow at iPhone-13 width — the data-table reflows to
+    // a card stack (Phase 6.6 / DEC-034).
+    const vw = viewport!.width;
+    const docWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(docWidth).toBeLessThanOrEqual(vw + 1);
+
+    // Seed row still reachable through the same data-row-name attribute.
+    const kale = rowByName(page, TEST_PRODUCTS.kale.name);
+    await expect(kale).toBeVisible();
+
+    // Qty input is still wired up — Annabel can edit from a phone in a pinch.
+    const qtyInput = kale.getByRole("spinbutton", { name: /quantity/i });
+    await expect(qtyInput).toBeVisible();
+    await qtyInput.fill("17");
+    await expect(saveButton(page, 1)).toBeEnabled();
+  });
+
   test("add row, save, then delete the added row", async ({ page }) => {
     await page.goto("/admin/inventory");
 

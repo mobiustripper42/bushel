@@ -145,6 +145,29 @@ test.describe("admin customers", () => {
     }
   });
 
+  test("mobile (375px): page fits viewport; row renders as a card; copy-link is tappable", async ({ page, viewport }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Mobile-only assertions; covered on the mobile project.");
+    await page.goto("/admin/customers");
+
+    // No horizontal overflow at iPhone-13 width — the cust-table reflows to
+    // a card stack (Phase 6.6 / DEC-034).
+    const vw = viewport!.width;
+    const docWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(docWidth).toBeLessThanOrEqual(vw + 1);
+
+    // Seed row still locatable by data-row-name, with copy-link in reach.
+    const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
+    await expect(row).toBeVisible();
+    await expect(row.locator(".cust-name")).toHaveText(TEST_CUSTOMERS.farmStand.name);
+
+    const copy = row.getByRole("button", {
+      name: new RegExp(`copy order link for ${TEST_CUSTOMERS.farmStand.name}`, "i"),
+    });
+    const box = await copy.boundingBox();
+    expect(box, "Copy-link button should be visible").not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(36);
+  });
+
   test("subscribed switch toggles inline without opening the drawer", async ({ page }) => {
     await page.goto("/admin/customers");
     const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
@@ -154,6 +177,25 @@ test.describe("admin customers", () => {
     await sw.click();
     // Drawer must NOT open from the switch
     await expect(drawer(page)).toHaveCount(0);
+
+    // Wait for the server action's round-trip to persist before reloading —
+    // otherwise on slow projects (mobile WebKit) the reload can race and read
+    // the pre-toggle DB row.
+    const supabase = adminClient();
+    const expectedFlipped = initial === "true" ? false : true;
+    await expect
+      .poll(
+        async () => {
+          const { data } = await supabase
+            .from("customers")
+            .select("send_weekly_link")
+            .eq("token", TEST_CUSTOMERS.farmStand.token)
+            .single();
+          return data?.send_weekly_link ?? null;
+        },
+        { timeout: 5000 },
+      )
+      .toBe(expectedFlipped);
 
     await page.reload();
     const flipped = await rowByName(page, TEST_CUSTOMERS.farmStand.name)
