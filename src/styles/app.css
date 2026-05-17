@@ -1621,6 +1621,12 @@
    Admin · Send Update (Phase 4.2)
    ============================================================ */
 
+.send-page {
+  padding: 32px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
 .send-head { margin-bottom: 22px; }
 .send-title {
   font-family: var(--font-display);
@@ -1749,6 +1755,7 @@
 .send-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "name status action";
   align-items: center;
   gap: 18px;
   padding: 14px 20px;
@@ -1757,7 +1764,9 @@
 .send-row:last-child { border-bottom: 0; }
 .send-row[data-sent="true"] { background: var(--cream); }
 
-.send-row-name { min-width: 0; }
+.send-row-name { grid-area: name; min-width: 0; }
+.send-row-status { grid-area: status; }
+.send-row-action { grid-area: action; }
 .send-row-customer {
   font-family: var(--sans);
   font-weight: 600;
@@ -1800,6 +1809,36 @@
 .send-row-disabled {
   font-size: 0.82rem;
   color: var(--ink-500);
+}
+
+@media (max-width: 640px) {
+  .send-page { padding: 16px; }
+  .send-title { font-size: 1.5rem; }
+  .send-card { padding: 16px; }
+  .send-card-actions { flex-wrap: wrap; }
+
+  .send-mode-tabs {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .send-mode-tab {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+  .send-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name   status"
+      "action action";
+    gap: 10px 12px;
+    padding: 12px 14px;
+  }
+  .send-row-action,
+  .send-row-action .btn { width: 100%; }
 }
 
 /* ── Orders (admin/orders, Phase 5.1) ───────────────────── */
