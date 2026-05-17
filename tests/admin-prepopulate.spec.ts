@@ -1,6 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-import { ADMIN_STORAGE_STATE, TEST_CUSTOMERS, TEST_PRODUCTS } from "./helpers";
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_CUSTOMERS,
+  TEST_PRODUCTS,
+  adminClient,
+} from "./helpers";
 
 function rowByName(page: Page, name: string) {
   return page.locator(`tr[data-row-name="${name}"]`);
@@ -10,14 +14,6 @@ function rowByName(page: Page, name: string) {
 const LAST_WEEK_ORDER_ID = "eeeeeeee-0000-0000-0000-000000000001";
 const LAST_WEEK_ORDER_ITEM_ID = "ffffffff-0000-0000-0000-000000000001";
 const LAST_WEEK_QTY = 3;
-
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-}
 
 function lastWeekDate(): string {
   const d = new Date();
