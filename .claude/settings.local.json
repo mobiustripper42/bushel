@@ -59,7 +59,10 @@
       "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts --project=desktop)",
       "Read(//home/eric/sailbook/**)",
       "Bash(kill -9 1035442)",
-      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts:154 --project=mobile)"
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts:154 --project=mobile)",
+      "Bash(sed -n '85,105p' src/styles/app.css)",
+      "Bash(sed -n '845,855p' src/styles/app.css)",
+      "Bash(kill -9 1104178)"
     ]
   }
 }

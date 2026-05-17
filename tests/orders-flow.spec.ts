@@ -207,7 +207,8 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
 
   test("reconciliation pin holds across both column sort and week filter changes", async ({
     browser,
-  }) => {
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "Sort headers are hidden on mobile (card-stack layout); pin behavior is covered by the admin-orders mobile-specific test.");
     await clearOrdersForWeek(thisWeek);
     const ids = await customerIds();
     // Clean order placed later (so newer by created_at) for restaurant

@@ -41,12 +41,10 @@ export default defineConfig({
       testIgnore: [
         "**/admin-alert-template.spec.ts",
         "**/admin-auth.spec.ts",
-        "**/admin-orders.spec.ts",
         "**/admin-orders-export.spec.ts",
         "**/admin-prepopulate.spec.ts",
         "**/admin-settings.spec.ts",
         "**/admin-shell.spec.ts",
-        "**/orders-flow.spec.ts",
       ],
       use: { ...devices["iPhone 13"], browserName: "webkit", viewport: { width: 375, height: 812 } },
     },

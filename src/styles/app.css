@@ -2406,6 +2406,117 @@
   color: var(--ink-700);
 }
 
+/* ── /admin/orders mobile (Phase 6.5 / DEC-034) ──────────── */
+/* Placed at the end of the file so the cascade beats the base
+   .ord-* rules above without needing !important on every line. */
+@media (max-width: 640px) {
+  .ord-page { padding: 16px; }
+  .ord-page .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .ord-page .page-actions { width: 100%; }
+  .ord-page .page-actions .split-btn-wrap { width: 100%; }
+  .ord-page .page-actions .split-btn-main { width: 100%; justify-content: center; }
+
+  .ord-filters { flex-wrap: wrap; gap: 6px; }
+  .ord-filters .chip-tab { padding: 8px 14px; font-size: 0.85rem; }
+
+  .ord-tableCard {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .ord-table { font-size: 0.92rem; }
+  .ord-table,
+  .ord-table tbody,
+  .ord-table tr.ord-row,
+  .ord-table tr.ord-row > td,
+  .ord-table tr.ord-detail-row,
+  .ord-table tr.ord-detail-row > td {
+    display: block;
+    width: 100%;
+  }
+  .ord-table thead { display: none; }
+
+  .ord-table tr.ord-row {
+    background: var(--paper);
+    border: 1px solid var(--ink-200);
+    border-radius: var(--r-md);
+    margin-bottom: 12px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "id     total"
+      "cust   cust"
+      "when   ful"
+      "items  items"
+      "status status";
+    column-gap: 12px;
+    row-gap: 8px;
+  }
+  .ord-table tr.ord-row.is-open { border-color: var(--leaf-100); }
+  .ord-table tr.ord-row.needs-rec { border-color: rgba(178, 59, 46, 0.3); }
+
+  .ord-table tr.ord-row > td {
+    padding: 0;
+    border-top: 0;
+  }
+  .ord-table tr.ord-row > td.col-o-id     { grid-area: id; width: auto; }
+  .ord-table tr.ord-row > td.col-o-cust   { grid-area: cust; width: auto; min-width: 0; }
+  .ord-table tr.ord-row > td.col-o-when   { grid-area: when; width: auto; }
+  .ord-table tr.ord-row > td.col-o-items  { grid-area: items; width: auto; min-width: 0; }
+  .ord-table tr.ord-row > td.col-o-ful    { grid-area: ful; width: auto; justify-self: end; text-align: right; }
+  .ord-table tr.ord-row > td.col-o-total  { grid-area: total; width: auto; justify-self: end; text-align: right; }
+  .ord-table tr.ord-row > td.col-o-status { grid-area: status; width: auto; }
+
+  .ord-total { font-size: 1.15rem; }
+  .ord-items-prev { -webkit-line-clamp: 2; }
+  .ord-ful { flex-direction: row; align-items: center; gap: 8px; }
+
+  /* Status row: pill + advance button on a single line, button is full-width
+     and ≥44px tall (WCAG 2.5.5). */
+  .status-control {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .status-advance {
+    flex: 1;
+    min-height: 44px;
+    padding: 0 16px;
+    font-size: 0.9rem;
+    justify-content: center;
+  }
+
+  /* Detail panel: collapse to single column, tighten padding. */
+  .ord-table tr.ord-detail-row { margin-top: -12px; margin-bottom: 12px; }
+  .ord-table tr.ord-detail-row > td {
+    border: 1px solid var(--ink-200);
+    border-top: 0;
+    border-radius: 0 0 var(--r-md) var(--r-md);
+  }
+  .ord-detail { padding: 16px; }
+  .ord-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .ord-detail-list li {
+    grid-template-columns: 28px 1fr auto;
+    gap: 8px;
+    padding: 10px 0;
+  }
+  .callout-warn > div { flex-wrap: wrap; }
+  .callout-warn .btn { width: 100%; }
+
+  /* Split-button export menu fits viewport. */
+  .split-menu { width: min(280px, calc(100vw - 32px)); }
+}
+
 /* ── /admin/inventory + /admin/customers mobile (Phase 6.6 / DEC-034) ── */
 /* Card-stack reflow at ≤640px. Goal is "usable on a phone," not pixel-perfect.
    Annabel will mainly work from desktop; mobile is the back-pocket case. */

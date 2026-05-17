@@ -110,7 +110,8 @@ test.describe("admin orders list", () => {
     await expect(row.locator(".chip-ful")).toHaveText("Pickup");
   });
 
-  test("needs_reconciliation row pins to the top regardless of sort", async ({ page }) => {
+  test("needs_reconciliation row pins to the top regardless of sort", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "Sort headers are hidden on mobile (card-stack layout); pin behavior at 375px is covered by the mobile-specific test below.");
     const ids = await customerIds();
     // Restaurant placed earlier and clean — would normally sort first by placed-desc.
     const restaurantOrderId = await seedOrder({
@@ -236,6 +237,52 @@ test.describe("admin orders list", () => {
         { timeout: 5000 },
       )
       .toBe("picked-up");
+  });
+
+  test("mobile (375px): page fits viewport; cards stack; status-advance is touch-sized; recon-pin renders; expand works", async ({ page, viewport }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Mobile-only assertions; covered on the mobile project.");
+
+    const ids = await customerIds();
+    // Two orders so we can verify the recon-pin order and that the second card
+    // also stacks without overflow.
+    await seedOrder({
+      customerId: ids.restaurant,
+      weekOf: thisWeek,
+      fulfillmentType: "delivery",
+      items: [{ productId: TEST_PRODUCTS.kale.id, qty: 2, unitPriceCents: 300 }],
+    });
+    const reconId = await seedOrder({
+      customerId: ids.farmStand,
+      weekOf: thisWeek,
+      fulfillmentType: "pickup",
+      needsReconciliation: true,
+      items: [{ productId: TEST_PRODUCTS.honey.id, qty: 3, unitPriceCents: 1200 }],
+    });
+
+    await page.goto("/admin/orders");
+
+    // (a) No horizontal overflow at iPhone-13 width — admin shell collapses to
+    // drawer (Phase 6.4) and the orders table reflows to a card stack.
+    const vw = viewport!.width;
+    const docWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(docWidth).toBeLessThanOrEqual(vw + 1);
+
+    // (b) Recon-flagged order pins first and its badge is visible at mobile width.
+    const firstRow = page.locator("tr.ord-row").first();
+    await expect(firstRow).toHaveAttribute("data-order-id", reconId);
+    await expect(firstRow.locator(".badge-recon")).toBeVisible();
+
+    // (c) Status-advance is ≥44px tall (Apple HIG / WCAG 2.5.5).
+    const advanceBtn = firstRow.getByRole("button", { name: /mark ready/i });
+    const box = await advanceBtn.boundingBox();
+    expect(box, "Status-advance button should be visible").not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+
+    // (d) Tapping the card opens the detail; line items render in the stacked layout.
+    await firstRow.click();
+    const detail = page.locator("tr.ord-detail-row .ord-detail");
+    await expect(detail).toBeVisible();
+    await expect(detail.locator(".ord-li-name")).toContainText("Honey");
   });
 
   test("expand row reveals line items, customer note, and reconciliation callout", async ({ page }) => {
