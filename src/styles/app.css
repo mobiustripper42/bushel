@@ -872,6 +872,19 @@
   justify-self: end;
   font-size: 1rem; color: var(--ink-700); margin: 0;
 }
+
+/* Narrow phones: eyebrow + greet on opposite edges of a 1fr 1fr grid get
+   crowded near each other (visible chasm on iPhone 13 @ 375px). Stack them
+   vertically below 480px and left-align both. 6.1 review. */
+@media (max-width: 480px) {
+  .order-page .page-head {
+    grid-template-columns: 1fr;
+  }
+  .order-page .page-head .page-head-week,
+  .order-page .page-head .page-greet {
+    justify-self: start;
+  }
+}
 .customer-name { font-weight: 600; color: var(--ink-900); }
 
 .section-title {
@@ -942,8 +955,12 @@
 .item-name {
   font-weight: 600; color: var(--ink-900);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* min-width: 0 lets the ellipsis actually trigger inside the .item-line1
+     flex container — without it the name fights the price for space and
+     crowds the stepper at 375px. 6.1 review. */
+  min-width: 0;
 }
-.item-price { font-size: 0.92rem; white-space: nowrap; }
+.item-price { font-size: 0.92rem; white-space: nowrap; flex-shrink: 0; }
 .item-price .mono { font-weight: 600; color: var(--ink-900); }
 .item-per { color: var(--ink-500); }
 .item-line2 { font-size: 0.82rem; }
@@ -1165,6 +1182,13 @@
   .page-rail { display: block; position: sticky; top: 20px; }
   .sticky-bar { display: none; }
   .order-page { padding-bottom: 0; }
+  /* Desktop: sticky rail is the sole order-summary affordance. Hide the
+     in-flow .submit-summary block — duplicates the rail and creates a tall
+     empty void next to the sticky column on long pages. 6.1 review. */
+  .submit-summary { display: none; }
+  /* Desktop: drop the centered headline — everything below is left-aligned
+     to the column, so a centered h1 reads as a mismatch. 6.1 review. */
+  .order-page .page-head .page-title { text-align: left; }
 }
 
 /* ============================================================
