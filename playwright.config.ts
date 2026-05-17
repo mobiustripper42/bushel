@@ -41,8 +41,6 @@ export default defineConfig({
       testIgnore: [
         "**/admin-alert-template.spec.ts",
         "**/admin-auth.spec.ts",
-        "**/admin-customers.spec.ts",
-        "**/admin-inventory.spec.ts",
         "**/admin-orders-export.spec.ts",
         "**/admin-prepopulate.spec.ts",
         "**/admin-settings.spec.ts",
