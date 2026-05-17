@@ -151,7 +151,11 @@ test.describe("admin send-queue", () => {
     expect(href).toContain(TEST_CUSTOMERS.farmStand.token);
   });
 
-  test("weekly_update: clicking Send records the send and flips the status pill", async ({ page }) => {
+  test("weekly_update: clicking Send records the send and flips the status pill", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "mobile",
+      "WebKit navigates to sms:... on click and clears the page; onClick fires (server action runs) but the DOM is gone before the optimistic Sent pill can be asserted. Headless Chromium ignores the sms: navigation, so desktop covers this code path.",
+    );
     const ids = await testCustomerIds();
     await page.goto("/admin/send");
 
@@ -238,7 +242,36 @@ test.describe("admin send-queue", () => {
     expect(href).toContain("gate%20code%204321");
   });
 
-  test("pickup_reminder mode: same order-bound customer set, different body", async ({ page }) => {
+  test("mobile (375px): page fits viewport; Send button is touch-sized; drawer opens and closes", async ({ page, viewport }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Mobile-only assertions; covered on the mobile project.");
+    await testCustomerIds();
+    await page.goto("/admin/send");
+
+    // (a) No horizontal overflow at the iPhone-13 width — shell + page combined
+    // fit the viewport because the admin sidebar collapses into a drawer on
+    // mobile (Phase 6.4/DEC-034). 1px tolerance for WebKit sub-pixel rounding.
+    const vw = viewport!.width;
+    const docWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(docWidth).toBeLessThanOrEqual(vw + 1);
+
+    // (b) Send button is ≥44px tall (Apple HIG / WCAG 2.5.5). Same row used by
+    // operator on every tap; the rest of the queue mirrors this row's layout.
+    const sendLink = page.locator("li.send-row").first().getByRole("link", { name: /^send$/i });
+    const box = await sendLink.boundingBox();
+    expect(box, "Send link should be visible").not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+
+    // (c) Hamburger opens the drawer; nav link inside is reachable; close button closes it.
+    await expect(page.locator(".admin-side")).not.toBeVisible();
+    await page.getByRole("button", { name: /open navigation/i }).click();
+    const drawer = page.locator(".admin-mobile-drawer.is-open");
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByRole("link", { name: /inventory/i })).toBeVisible();
+    await page.getByRole("button", { name: /close navigation/i }).click();
+    await expect(page.locator(".admin-mobile-drawer.is-open")).toHaveCount(0);
+  });
+
+  test("pickup_reminder mode: same order-bound customer set, different body", async ({ page }, testInfo) => {
     const ids = await testCustomerIds();
     await clearCurrentWeekOrders();
     await ensureOrderForCustomer(TEST_CUSTOMERS.farmStand.token);
@@ -255,7 +288,7 @@ test.describe("admin send-queue", () => {
     expect(href).toContain("reminder");
     expect(href).toContain("ready%20for%20pickup");
 
-    // clicking Send works in this mode too
+    if (testInfo.project.name === "mobile") return; // sms: navigation clears page on WebKit; covered by desktop project
     await farmStandRow.getByRole("link", { name: /^send$/i }).click();
     await expect(farmStandRow.locator(".send-status")).toContainText("Sent", {
       timeout: 5000,

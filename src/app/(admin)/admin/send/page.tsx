@@ -78,7 +78,7 @@ export default async function SendPage({
   const unsentCount = rows.filter((r) => r.sentAt === null).length;
 
   return (
-    <div style={{ padding: "32px", maxWidth: 960, margin: "0 auto" }}>
+    <div className="send-page">
       <div className="send-head">
         <div className="eyebrow">Send queue</div>
         <div className="send-title">Send Update</div>

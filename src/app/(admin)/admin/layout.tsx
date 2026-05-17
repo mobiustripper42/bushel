@@ -1,5 +1,6 @@
 import { NavLink } from "@/components/admin/nav-link";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
+import { AdminMobileNavDrawer, type MobileNavItem } from "@/components/admin/admin-mobile-nav-drawer";
 import { signOut } from "@/actions/sign-out";
 import {
   getInventoryCount,
@@ -85,8 +86,20 @@ export default async function AdminShellLayout({
     return undefined;
   };
 
+  const mobileItems: MobileNavItem[] = NAV_ITEMS.map(({ href, label }) => ({
+    href,
+    label,
+    badge: badgeFor(href),
+  }));
+
   return (
     <div className="admin-shell">
+      <AdminMobileNavDrawer
+        items={mobileItems}
+        weekRange={week.range}
+        weekTopbar={week.topbar}
+        isOrderingOpen={isOpen}
+      />
       <aside className="admin-side">
         <div className="admin-side-mark">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">

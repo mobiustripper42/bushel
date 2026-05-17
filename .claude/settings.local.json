@@ -50,7 +50,16 @@
       "Bash(awk '{print $NF}')",
       "Skill(its-dead)",
       "Bash(disown)",
-      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-orders.spec.ts tests/admin-orders-export.spec.ts tests/orders-flow.spec.ts tests/notifications-flow.spec.ts tests/admin-shell.spec.ts --project=desktop)"
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-orders.spec.ts tests/admin-orders-export.spec.ts tests/orders-flow.spec.ts tests/notifications-flow.spec.ts tests/admin-shell.spec.ts --project=desktop)",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts tests/notifications-flow.spec.ts --project=desktop --project=mobile)",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts:241 --project=mobile)",
+      "Bash(xargs -I {} ls {})",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts:241 --project=mobile --reporter=line)",
+      "Bash(sudo ss -tlnp)",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts --project=desktop)",
+      "Read(//home/eric/sailbook/**)",
+      "Bash(kill -9 1035442)",
+      "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts:154 --project=mobile)"
     ]
   }
 }
