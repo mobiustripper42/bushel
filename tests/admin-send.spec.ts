@@ -111,7 +111,19 @@ async function ensureTestCustomerState(): Promise<void> {
 test.describe("admin send-queue", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ context, browserName }) => {
+    // Phase 6.7 — on desktop the Send button writes the SMS body to the
+    // clipboard before recording the send. Without these permissions the
+    // clipboard write throws and the send is intentionally NOT recorded
+    // (the operator sees an error and retries), which breaks every test
+    // here that asserts the Sent pill flip after clicking Send.
+    //
+    // WebKit doesn't support the clipboard-write permission name, but the
+    // mobile project's tests go down the sms: deep-link path anyway, so
+    // clipboard isn't needed there.
+    if (browserName === "chromium") {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    }
     await ensureTestCustomerState();
     await clearSends();
     await clearIntroNote();
@@ -175,6 +187,63 @@ test.describe("admin send-queue", () => {
 
     // DB side. The pill flips optimistically before the server action
     // completes, so poll for the actual row insertion.
+    const sb = admin();
+    await expect
+      .poll(
+        async () => {
+          const { data } = await sb
+            .from("customer_sends")
+            .select("customer_id")
+            .eq("customer_id", ids.farmStand)
+            .eq("week_of", weekOfMondayNY())
+            .eq("mode", "weekly_update");
+          return data?.length ?? 0;
+        },
+        { timeout: 5000 },
+      )
+      .toBe(1);
+  });
+
+  test("desktop: clicking Send copies the body to clipboard and opens Messages for Web", async ({ page, context }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "Desktop-only path (Phase 6.7). Mobile uses the sms: deep link directly.");
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    const ids = await testCustomerIds();
+    await page.goto("/admin/send");
+
+    const list = page.getByRole("list", { name: /weekly update queue/i });
+    const farmStandRow = list.locator(`li.send-row[data-customer-id="${ids.farmStand}"]`);
+    await expect(farmStandRow.locator(".send-status")).toHaveText("Unsent");
+
+    // Pull the body the row will copy by decoding it out of the sms: href.
+    const href = (await farmStandRow.getByRole("link", { name: /^send$/i }).getAttribute("href")) ?? "";
+    const bodyEncoded = href.split("?body=")[1] ?? "";
+    const expectedBody = decodeURIComponent(bodyEncoded);
+    expect(expectedBody).toContain("Bay Branch Farm");
+
+    // Click Send — desktop project ("(pointer: fine)") triggers the desktop
+    // path: preventDefault + clipboard.writeText + window.open in a new tab.
+    const [popup] = await Promise.all([
+      context.waitForEvent("page"),
+      farmStandRow.getByRole("link", { name: /^send$/i }).click(),
+    ]);
+
+    // Popup is the Messages-for-Web tab.
+    await popup.waitForLoadState("domcontentloaded").catch(() => {
+      // Real google.com may be unreachable in CI; URL alone is enough.
+    });
+    expect(popup.url()).toContain("messages.google.com");
+    await popup.close();
+
+    // Clipboard contains the body the operator will paste.
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clip).toBe(expectedBody);
+
+    // Copied indicator + Sent pill flip.
+    await expect(farmStandRow.locator(".send-row-copied")).toBeVisible();
+    await expect(farmStandRow.locator(".send-status")).toContainText("Sent", { timeout: 5000 });
+    await expect(farmStandRow).toHaveAttribute("data-sent", "true");
+
+    // DB confirmation.
     const sb = admin();
     await expect
       .poll(

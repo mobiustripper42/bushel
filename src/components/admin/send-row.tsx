@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type MouseEvent } from "react";
 
 import { recordSend } from "@/actions/record-send";
 import { buildSmsUrl } from "@/lib/notifications/sms-deep-link";
@@ -15,6 +15,18 @@ type SendRowProps = {
   mode: SendMode;
   initialSentAt: string | null;
 };
+
+const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
+
+// Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
+// or open iMessage on macOS — neither is what Annabel wants when working from
+// her laptop. Detect desktop via the pointer-precision media query (touch-
+// primary devices report "coarse"; trackpad/mouse report "fine") and fall back
+// to copy-body-to-clipboard + open messages.google.com in a new tab.
+function isDesktopOperator(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(pointer: fine)").matches;
+}
 
 function formatSentAt(iso: string): string {
   const d = new Date(iso);
@@ -38,12 +50,12 @@ export function SendRow({
   const [sentAt, setSentAt] = useState<string | null>(initialSentAt);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const smsHref = phone ? buildSmsUrl({ phone, body }) : null;
   const isSent = sentAt !== null;
 
-  function handleClick() {
-    if (!phone) return;
+  function recordOptimistic() {
     setError(null);
     const optimisticTimestamp = new Date().toISOString();
     setSentAt(optimisticTimestamp);
@@ -56,6 +68,36 @@ export function SendRow({
     });
   }
 
+  async function handleClick(e: MouseEvent<HTMLAnchorElement>) {
+    if (!phone) return;
+
+    if (isDesktopOperator()) {
+      // Desktop path: intercept the sms: nav, copy body to clipboard, open
+      // Messages for Web in a new tab. Messages for Web doesn't accept a
+      // prefill query-param — operator pastes after picking the conversation.
+      e.preventDefault();
+      // Open the tab synchronously inside the click handler; Safari and
+      // some Chromium variants pop-up-block window.open if it runs after
+      // an await.
+      window.open(MESSAGES_WEB_URL, "_blank", "noopener,noreferrer");
+      try {
+        await navigator.clipboard.writeText(body);
+      } catch {
+        // Clipboard blocked — surface the failure and do NOT record the send.
+        // The operator sees a single coherent state (error, still Unsent) and
+        // can retry after granting clipboard access, instead of an optimistic
+        // Sent pill that lies about delivery.
+        setError("Clipboard blocked. Copy the message manually, then click Send again.");
+        return;
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2400);
+    }
+    // Mobile path falls through: the <a href="sms:..."> navigation proceeds
+    // naturally (no preventDefault), and recordOptimistic() runs below.
+    recordOptimistic();
+  }
+
   return (
     <li className="send-row" data-customer-id={customerId} data-sent={isSent ? "true" : "false"}>
       <div className="send-row-name">
@@ -66,6 +108,11 @@ export function SendRow({
         <span className={"send-status" + (isSent ? " is-sent" : "")}>
           {isSent ? `Sent · ${formatSentAt(sentAt!)}` : "Unsent"}
         </span>
+        {copied && (
+          <span className="send-row-copied" role="status">
+            Copied — paste in Messages
+          </span>
+        )}
         {error && (
           <span className="send-row-error" role="alert">
             {error}

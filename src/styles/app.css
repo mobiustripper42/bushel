@@ -2006,6 +2006,11 @@
   font-size: 0.74rem;
   color: var(--rose-600);
 }
+.send-row-copied {
+  font-size: 0.74rem;
+  color: var(--leaf-700);
+  font-weight: 500;
+}
 .send-row-disabled {
   font-size: 0.82rem;
   color: var(--ink-500);
