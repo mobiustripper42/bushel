@@ -85,6 +85,10 @@ export type SeedOrderInput = {
   fulfillmentType: "pickup" | "delivery";
   status?: "new" | "ready" | "picked-up" | "delivered";
   needsReconciliation?: boolean;
+  // Opt-in for delivery orders. Defaults to null — matches admin-orders-export
+  // and orders-flow specs' pre-refactor behavior. admin-orders.spec passes
+  // "Front door" explicitly where it needs the field populated.
+  deliveryPreference?: string | null;
   items: Array<{ productId: string; qty: number; unitPriceCents: number }>;
 };
 export async function seedOrder(input: SeedOrderInput): Promise<string> {
@@ -98,7 +102,9 @@ export async function seedOrder(input: SeedOrderInput): Promise<string> {
       delivery_address:
         input.fulfillmentType === "delivery" ? "123 Test St" : null,
       delivery_preference:
-        input.fulfillmentType === "delivery" ? "Front door" : null,
+        input.fulfillmentType === "delivery"
+          ? (input.deliveryPreference ?? null)
+          : null,
       status: input.status ?? "new",
       needs_reconciliation: input.needsReconciliation ?? false,
     })
