@@ -111,7 +111,19 @@ async function ensureTestCustomerState(): Promise<void> {
 test.describe("admin send-queue", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ context, browserName }) => {
+    // Phase 6.7 — on desktop the Send button writes the SMS body to the
+    // clipboard before recording the send. Without these permissions the
+    // clipboard write throws and the send is intentionally NOT recorded
+    // (the operator sees an error and retries), which breaks every test
+    // here that asserts the Sent pill flip after clicking Send.
+    //
+    // WebKit doesn't support the clipboard-write permission name, but the
+    // mobile project's tests go down the sms: deep-link path anyway, so
+    // clipboard isn't needed there.
+    if (browserName === "chromium") {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    }
     await ensureTestCustomerState();
     await clearSends();
     await clearIntroNote();

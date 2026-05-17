@@ -16,13 +16,13 @@ type SendRowProps = {
   initialSentAt: string | null;
 };
 
-// Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
-// or open iMessage on macOS — neither is what Annabel wants when working from
-// her laptop. Detect desktop via the pointer-precision media query (touch
-// primary devices report "coarse"; trackpad/mouse report "fine") and fall back
-// to copy-body-to-clipboard + open messages.google.com in a new tab.
 const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
 
+// Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
+// or open iMessage on macOS — neither is what Annabel wants when working from
+// her laptop. Detect desktop via the pointer-precision media query (touch-
+// primary devices report "coarse"; trackpad/mouse report "fine") and fall back
+// to copy-body-to-clipboard + open messages.google.com in a new tab.
 function isDesktopOperator(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(pointer: fine)").matches;
@@ -76,17 +76,25 @@ export function SendRow({
       // Messages for Web in a new tab. Messages for Web doesn't accept a
       // prefill query-param — operator pastes after picking the conversation.
       e.preventDefault();
+      // Open the tab synchronously inside the click handler; Safari and
+      // some Chromium variants pop-up-block window.open if it runs after
+      // an await.
+      window.open(MESSAGES_WEB_URL, "_blank", "noopener,noreferrer");
       try {
         await navigator.clipboard.writeText(body);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2400);
       } catch {
-        // Clipboard blocked — surface the body so operator can copy by hand.
-        setError("Clipboard blocked. Copy the message manually.");
+        // Clipboard blocked — surface the failure and do NOT record the send.
+        // The operator sees a single coherent state (error, still Unsent) and
+        // can retry after granting clipboard access, instead of an optimistic
+        // Sent pill that lies about delivery.
+        setError("Clipboard blocked. Copy the message manually, then click Send again.");
+        return;
       }
-      window.open(MESSAGES_WEB_URL, "_blank", "noopener,noreferrer");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2400);
     }
-    // Mobile path: let the <a href="sms:..."> navigation proceed naturally.
+    // Mobile path falls through: the <a href="sms:..."> navigation proceeds
+    // naturally (no preventDefault), and recordOptimistic() runs below.
     recordOptimistic();
   }
 

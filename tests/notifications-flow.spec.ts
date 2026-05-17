@@ -124,7 +124,13 @@ async function ensureDeliveryOrder(token: string): Promise<void> {
 test.describe("notifications cross-task flow", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ context, browserName }) => {
+    // Phase 6.7 — desktop Send path writes to clipboard before recording.
+    // WebKit doesn't accept the clipboard-write permission; mobile project
+    // hits the sms: deep-link branch which never touches the clipboard.
+    if (browserName === "chromium") {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    }
     await resetCustomerState();
     await clearSends();
     await ensureOrderingOpen();
