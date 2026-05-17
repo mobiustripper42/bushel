@@ -6,7 +6,7 @@ import {
   TEST_PRODUCTS,
   admin,
   customerIds,
-  clearWeek,
+  clearOrdersForWeek,
   seedOrder,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
@@ -17,11 +17,11 @@ test.describe("admin orders list", () => {
   const thisWeek = weekOfMondayNY();
 
   test.beforeEach(async () => {
-    await clearWeek(thisWeek);
+    await clearOrdersForWeek(thisWeek);
   });
 
   test.afterAll(async () => {
-    await clearWeek(thisWeek);
+    await clearOrdersForWeek(thisWeek);
   });
 
   test("renders current-week orders with totals and item counts", async ({ page }) => {

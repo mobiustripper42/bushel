@@ -6,7 +6,7 @@ import {
   TEST_PRODUCTS,
   admin,
   customerIds,
-  clearWeek,
+  clearOrdersForWeek,
   seedOrder,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
@@ -181,11 +181,11 @@ test.describe("admin orders export — UI", () => {
   const thisWeek = weekOfMondayNY();
 
   test.beforeEach(async () => {
-    await clearWeek(thisWeek);
+    await clearOrdersForWeek(thisWeek);
   });
 
   test.afterAll(async () => {
-    await clearWeek(thisWeek);
+    await clearOrdersForWeek(thisWeek);
   });
 
   // Set a product slug for the download test so we exercise the non-empty

@@ -3,7 +3,7 @@ import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  adminClient,
+  admin,
 } from "./helpers";
 
 function rowByName(page: Page, name: string) {
@@ -25,7 +25,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
   test.beforeEach(async () => {
-    const supabase = adminClient();
+    const supabase = admin();
 
     // Resolve the test farm-stand customer id (seed.sql doesn't fix the UUID)
     const { data: customer, error: customerError } = await supabase
@@ -66,7 +66,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
   });
 
   test.afterEach(async () => {
-    const supabase = adminClient();
+    const supabase = admin();
     await supabase.from("orders").delete().eq("id", LAST_WEEK_ORDER_ID);
     // Reset Kale qty back to the canonical seed value
     await supabase

@@ -4,7 +4,7 @@ import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   admin,
-  testCustomerIds,
+  customerIds,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -119,7 +119,7 @@ test.describe("notifications cross-task flow", () => {
   });
 
   test("deep-link body contains a working customer URL — operator → customer page", async ({ page }) => {
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     // Extract the sms: href for our test customer
@@ -154,7 +154,7 @@ test.describe("notifications cross-task flow", () => {
 
   test("reload preserves Sent state — admin returns later and the pill persists", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     const list = page.getByRole("list", { name: /weekly update queue/i });
@@ -189,7 +189,7 @@ test.describe("notifications cross-task flow", () => {
 
   test("re-send is idempotent — second click does not duplicate the row", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
     await page.goto("/admin/send");
 
     const list = page.getByRole("list", { name: /weekly update queue/i });
@@ -228,7 +228,7 @@ test.describe("notifications cross-task flow", () => {
 
   test("mode independence — sent in weekly_update does not bleed into order_confirmation", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
-    const ids = await testCustomerIds();
+    const ids = await customerIds();
 
     // Seed an order so the customer appears in order_confirmation mode too.
     // try/finally so a mid-test failure doesn't leak the order into the
