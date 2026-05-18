@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.8] - 2026-05-18
+- PR #125: Tidy: collapse test-helper aliases to one canonical name (#122)
+
 ## [0.7.7] - 2026-05-18
 - PR #126: Redirect root URL to /admin; move VersionTag to login footer
 
