@@ -197,13 +197,7 @@ V1 shipped 2026-05-18. Phase 7 = one rolling phase of features, no fixed scope, 
 - ~~Wave API direct integration~~ — eric is switching off Wave in October; CSV export workflow is sufficient until then, and the replacement accounting system's API will dictate the new shape.
 - ~~Public signup for individuals~~ — wholesale-only is the product, not a V1 limitation.
 
-**Open-ended ideas worth filing later** (no issue yet — file when the trigger fires):
-- Self-serve customer order edits / cancellations (DEC-015)
-- Delivery fee logic (separate from minimum-delivery threshold)
-- Strict-decrement / hard rejection (only if optimistic causes real pain — DEC-012)
-- Weekly inventory snapshots / history (beyond pre-fill)
-- Per-customer reminder preferences (incl. email channel)
-- PWA push: "next-customer nudge" during send batches — likely subsumed by #140 Android app
+**Open-ended ideas** — see [`docs/OPEN_ITEMS.md`](OPEN_ITEMS.md). Wishlist that hasn't earned an issue yet; promote when the trigger fires.
 
 ---
 
