@@ -1,5 +1,56 @@
 # Retrospectives
 
+## Phase 6 — 2026-05-18 — V1 SHIPPED 🌱
+
+**Sessions:** 2 (S26, S27)
+**Points:** 20 shipped / 32 planned (62.5% — 12 pts affirmatively cut: #53 + #61 moved to V2, #63 + #69 closed as won't-do)
+**Wall clock:** 17.92h (includes ~10h S27 overnight break)
+**Active time (wall − breaks):** 4.92h ← honest headline
+**Dev time (per DEC-013 math):** 0.67h¹
+**Review time (per DEC-013 math):** 1.92h
+**Velocities:**
+- Wall: 0.90 h/pt
+- **Active: 0.25 h/pt** ← project record, headline forecast number
+- Dev: 0.035 h/pt ← DEC-013 method artifact (10 PRs in 2 sessions); do not trust as headline
+- Review: 0.10 h/pt
+**Issues:** 12 planned + 5 added mid-phase = 17 closed total; 2 moved to V2.
+
+¹ Same DEC-013 single-PR math artifact as Phases 4 + 5, amplified — S27 shipped 8 PRs in one session. Quote active velocity (0.25 h/pt) as the headline; dev/review split is for the table, not for forecasting.
+
+### Per-session breakdown
+| Session | Date       | Wall  | Active | Dev   | Review | Breaks | Points | PRs                                          |
+|---------|------------|-------|--------|-------|--------|--------|--------|----------------------------------------------|
+| 26      | 2026-05-16 | 4.58  | 2.08   | 0.25¹ | 0.00   | 2.50   | 5      | 115, 116                                     |
+| 27      | 2026-05-17 | 13.33 | 2.92   | 0.42¹ | 1.92   | 10.50  | 15     | 117, 118, 119, 121, 125, 126, 127, 128       |
+
+### What worked
+- "it was short"
+
+### What didn't
+- "it was short?"
+
+### Changes for next phase
+- "we are going to just do features, one long phase for the forseable future"
+
+### Scope changes
+- **2 issues moved to V2 (mid-phase triage):** #53 realtime inventory (5 pts), #61 deactivated customers toggle (2 pts). Both labeled `v2` and dropped from the Phase 6 ledger.
+- **2 issues closed as won't-do (mid-phase triage):** #63 admin-only auth guard standardization (RLS already covers it), #69 preview auto-rebind (manual click is fine for 1-dev project).
+- **5 issues added mid-phase:** #79 favicon (Phase 6 stray from S23), #114 Phase 5 close regression bug (recovered in S26), #122 alias tidy (code-review spawn from PR #121), #123 spec-isolation flake fix (caught during S27 refactor), root-redirect PR #126 (UX request mid-S27, no issue).
+- **Wave production data import** shipped manually: 11 customers + 12 products via SQL, tested against preview first, then re-run against prod. Not counted in points; was scoped as part of 6.2.
+
+### PM read
+Phase 6 was the cleanest run of the project. Active velocity 0.25 h/pt — project record, and a real one, not a measurement artifact: 20 points actually shipped, across 10 PRs, across two sessions, against a hard go-live deadline that didn't slip. The descending trend across phases (0.35 → 0.27 → 0.35 → 0.25) is real signal — by Phase 6 the muscle memory for the skill loop, the design-folder discipline, and the sailbook-derived CSS primitives had compounded. The 13-hour overnight break inflating wall clock is noise; ignore it.
+
+Scope behavior is the headline I want to flag, because it inverts the warning Phases 4 and 5 PM-reads kept repeating. Phase 6 was supposed to be the catch-all that ate every deferred ticket — instead the user did the bounding work mid-phase that the prior retros asked for: 2 issues closed as won't-do (RLS-covers-it, manual-is-fine), 2 moved to V2 with labels. That's the discipline the prior reads were begging for, applied in real time instead of postponed. Of the 32 planned points, 12 were affirmatively cut — that's not a miss, that's a decision. The 20 that shipped is the honest delivery, and it included unplanned bonus work (#122, #123, root redirect, Wave data import) that wasn't in the 32. Net: ahead, not behind.
+
+Pattern read from the session files: S27 was a 15-point single-session sprint with 8 PRs, which is at the edge of what the per-task `/kill-this` loop is built for — the 0.42h dev-time number is a DEC-013 measurement artifact (transcript JSONL gaps when PRs land back-to-back), not a real metric. Useful to note for Phase 7: when you're shipping more than ~5 PRs in a window, dev_time stops being trustworthy and active is the only honest number. The other recurring theme worth naming: every Phase 6 task that touched mobile chrome leaned on sailbook patterns first (`feedback_check_sailbook_first.md`), and every one shipped fast. That's a confirmed playbook, not a one-off.
+
+On the user's answers — "it was short" and "it was short?" is exactly the read I'd give it. There's nothing to extend. The third answer is the load-bearing one: "one long phase for the foreseeable future" is a real architectural choice about how to run post-launch, and worth treating as such. It means `/start-phase` and `/retro` stop being phase-boundary rituals and become checkpoint rituals on a rolling backlog. The skill loop still works, but the cadence question — when does Phase 7 retro, ever? — is unresolved and worth deciding before the first 20-point batch lands without a retro to bound it.
+
+Forward note for Phase 7: six issues already filed from Annabel's UAT (12 pts) is a good starting batch. The risk in "one long phase, just features" mode is that without phase boundaries forcing scope discipline, the carry-over creep returns — except now there's no carry-over, just permanent in-flight. Recommend a soft checkpoint mechanism: every ~20 points shipped, run a mini-retro (metrics + 3 questions, skip the version-bump ceremony) to keep the velocity signal alive and catch scope drift before it compounds. Otherwise the next retro is "Phase 7, 8 months later, 200 points" and the read becomes useless. Bushel shipped. The system works. Now make sure the measurement keeps working too.
+
+---
+
 ## Phase 5 — 2026-05-16
 
 **Sessions:** 1 (S25)
