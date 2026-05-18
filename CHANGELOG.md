@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.5] - 2026-05-18
+- PR #119: Phase 6.7 — Desktop SMS relay via clipboard + Messages for Web (#112)
+
 ## [0.7.4] - 2026-05-18
 - PR #118: Phase 6.6 — /admin/inventory + /admin/customers mobile-responsive (#111)
 
