@@ -184,21 +184,26 @@ Contingent on Annabel confirming the V1 multi-unit product count is small (~3); 
 
 ---
 
-## Phase 7+ (deferred / optional)
+## Phase 7 — Post-go-live feature backlog
 
-- Wave API direct integration
-- Per-customer pricing
-- Public signup for individuals
-- Self-serve order edits/cancellations
-- Per-customer reminder preferences (incl. expanding `notification_preference` to email)
-- **Minimum delivery amount** (dollar threshold) — product owner discussion item
-- Delivery fee logic
-- Order history page for repeat customers
-- Strict-decrement / hard rejection (only if optimistic causes real pain)
-- Realtime inventory subscription (if 3.8 shipped dark)
-- Weekly inventory snapshots / history
-- **PWA push: "next-customer nudge" during send batches** — wire after PWA push proves reliable for the order-arrival alert (DEC-027). Lets Annabel walk away mid-batch and get pinged for the next send.
-- **Bushel 10DLC brand registration + A2P migration** — trigger when volume crosses ~50 messages/week or operator wants automated unattended sends. Reverses DEC-026 in part; DEC-026 captures the trip-wire.
+V1 shipped 2026-05-18. Phase 7 = one rolling phase of features, no fixed scope, no end date. The GitHub issue list (label `phase:7`) is the canonical backlog; this section is the prose summary.
+
+**Filed as issues** (sized; see GitHub for full text):
+- UAT punch-list from Annabel: #129 unsaved-changes guard, #130 unsubscribed-customer block, #131 Telegram chat swap, #132 oversold-at-qty=0 bug, #133 `products.slug` column, #134 pre-populate UAT.
+- Carry-overs from prior phases: #53 realtime inventory, #61 deactivated-customers toggle, #63 *(closed won't-do)*, #69 *(closed won't-do)*.
+- Future-features: #135 multi-unit products epic (DEC-032), #136 customer order history, #137 per-customer pricing, #138 minimum delivery amount, #139 10DLC brand registration *(trigger-gated)*, #140 native Android app for Annabel push, #120 Messages-for-Web Chrome extension.
+
+**Explicitly not building** (was in old "Phase 7+" list; removed):
+- ~~Wave API direct integration~~ — eric is switching off Wave in October; CSV export workflow is sufficient until then, and the replacement accounting system's API will dictate the new shape.
+- ~~Public signup for individuals~~ — wholesale-only is the product, not a V1 limitation.
+
+**Open-ended ideas worth filing later** (no issue yet — file when the trigger fires):
+- Self-serve customer order edits / cancellations (DEC-015)
+- Delivery fee logic (separate from minimum-delivery threshold)
+- Strict-decrement / hard rejection (only if optimistic causes real pain — DEC-012)
+- Weekly inventory snapshots / history (beyond pre-fill)
+- Per-customer reminder preferences (incl. email channel)
+- PWA push: "next-customer nudge" during send batches — likely subsumed by #140 Android app
 
 ---
 

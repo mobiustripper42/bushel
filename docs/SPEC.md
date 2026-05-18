@@ -78,15 +78,15 @@ Per-product unit denominations (lb, pint, flat) with per-unit pricing; inventory
 This is the scope guardrail. Check before adding anything.
 
 - **Payments / invoicing** — Wave still bills. Bushel exports the order list.
-- **Public signup** — wholesale customers only, manually added by Annabel (DEC-006).
-- **Per-customer pricing** — single price list (DEC-007). V2.
-- **Customer-side order edits / cancellations** — text Annabel (DEC-015). V2 candidate.
-- **Order history for customers** — current week only.
+- **Public signup** — wholesale-only is the product, not a V1 limitation. Never building.
+- **Per-customer pricing** — single price list (DEC-007). Phase 7 backlog (#137).
+- **Customer-side order edits / cancellations** — text Annabel (DEC-015). Phase 7 candidate (no issue yet).
+- **Order history for customers** — current week only in V1. Phase 7 (#136).
 - **Customer email channel** — customers get SMS only; the order-arrival email is admin-only (DEC-027).
-- **Delivery fees / minimum order** — open question with the product owner; Phase 7+.
+- **Delivery fees / minimum order** — Phase 7 (#138 minimum delivery; fee logic separate).
 - **Delivery zone validation** — customer list is the implicit zone (DEC-009).
 - **Inventory snapshots / week-by-week comparisons** — "Pre-fill from last week" is the only history.
-- **Wave API direct integration** — CSV/TSV is the workflow (DEC-016). V2.
+- **Wave API direct integration** — not building. CSV/TSV is the workflow (DEC-016); eric is switching off Wave in October.
 - **Strict rejection on oversell** — optimistic stays. May stay forever (DEC-012). Phase 7+ if it ever causes real pain.
 - **Bushel-branded SMS sender ID** — operator's personal number is the sender. A2P registration is the trip-wire at ~50 messages/week (DEC-026).
 - **Per-customer reminder preferences (incl. expanding to email)** — single channel in V1.
