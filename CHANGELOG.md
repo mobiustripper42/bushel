@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.2] - 2026-05-18
+- PR #116: Phase 6.4 (full) — admin shell collapses to drawer at ≤768px + /admin/send page CSS mobile-responsive
+
 ## [0.7.1] - 2026-05-18
 - PR #115: Phase 5 recovery — re-land #103/#104/#105 code (closes #114)
 
