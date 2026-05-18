@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.7] - 2026-05-18
+- PR #126: Redirect root URL to /admin; move VersionTag to login footer
+
 ## [0.7.6] - 2026-05-18
 - PR #121: Phase 6.8 — Extract test helpers into tests/helpers.ts (#113)
 
