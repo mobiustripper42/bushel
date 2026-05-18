@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.1] - 2026-05-18
+- PR #115: Phase 5 recovery — re-land #103/#104/#105 code (closes #114)
+
 ## [0.7.0] - 2026-05-16 — Phase 5
 - 11 pts shipped in 1 session (0.35 h/pt active)
 - See `docs/RETROSPECTIVES.md` for the full retro
