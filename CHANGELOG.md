@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.8.0] - 2026-05-18 — Phase 6 (V1 SHIPPED)
+- 20 pts shipped across 2 sessions (0.25 h/pt active — project record)
+- See `docs/RETROSPECTIVES.md` for the full retro
+
 ## [0.7.10] - 2026-05-18
 - PR #128: Phase 6.1 — Customer-side responsive polish (#106)
 
