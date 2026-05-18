@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.10] - 2026-05-18
+- PR #128: Phase 6.1 — Customer-side responsive polish (#106)
+
 ## [0.7.9] - 2026-05-18
 - PR #127: Fix flake: customer-place-order leaves order that breaks notifications-flow (#123)
 
