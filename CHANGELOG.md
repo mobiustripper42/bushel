@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.9] - 2026-05-18
+- PR #127: Fix flake: customer-place-order leaves order that breaks notifications-flow (#123)
+
 ## [0.7.8] - 2026-05-18
 - PR #125: Tidy: collapse test-helper aliases to one canonical name (#122)
 
