@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.7.4] - 2026-05-18
+- PR #118: Phase 6.6 — /admin/inventory + /admin/customers mobile-responsive (#111)
+
 ## [0.7.3] - 2026-05-18
 - PR #117: Phase 6.5 — /admin/orders mobile-responsive (#110)
 
