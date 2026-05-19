@@ -13,7 +13,6 @@ Promote to a GitHub `phase:N` issue when the trigger fires (real-world signal, d
 
 ## Triage
 
-- **Self-serve customer order edits / cancellations** (DEC-015) — text-Annabel is the V1 workaround. Trigger: real customer asks more than once.
 - **Delivery fee logic** (DEC-009) — separate from min-delivery [#138](https://github.com/mobiustripper42/bushel/issues/138). Trigger: PO input on fee structure (flat? distance-based? tiered?).
 - **Strict-decrement / hard rejection on oversell** (DEC-012) — only if optimistic causes real operational pain. May stay forever.
 - **Weekly inventory snapshots / history** — beyond pre-fill. Vague. Trigger: real use case ("what did I have on hand 6 weeks ago?").
@@ -23,6 +22,9 @@ Promote to a GitHub `phase:N` issue when the trigger fires (real-world signal, d
 ## Promoted
 
 *(empty — entries move here with a `→ #NNN` link when filed as issues)*
+
+[#146](https://github.com/mobiustripper42/bushel/issues/146)
+**Self-serve customer order edits / cancellations** (DEC-015) — text-Annabel is the V1 workaround. Trigger: real customer asks more than once. 
 
 ## Dropped
 
