@@ -69,6 +69,26 @@ Several agents and slash-command skills support the development workflow. All ru
 
 ---
 
+### 5. @doc-consistency
+
+**Purpose:** Cross-references factual claims across the project's doc set and flags mismatches and unfilled template placeholders. Report-only.
+
+**When to invoke:**
+- Mid-project, anytime the docs feel like they've drifted apart
+- Before a phase boundary (clean-state check)
+- After a session that touched multiple docs at once
+- Via `/doc-consistency-check` (the manual surface)
+
+**Spec:** `.claude/agents/doc-consistency.md`
+
+**Scope:** `docs/*.md` + root `CLAUDE.md`. Type-aware via `.claude/project-type` — `webapp` must declare brand in BRAND.md; `tool` must justify any "not used"; literal `PLACEHOLDER` is always a finding regardless of type.
+
+**Hard fences:** no structural recommendations (DEC numbering, file ownership, "you should reorganize"), no edits, no copy editing. Fact-check only.
+
+**Output:** Per-category pass/MISMATCH report with file:line refs and verbatim conflicting quotes. Zero-finding sweeps are a valid full report.
+
+---
+
 ## Session Skills
 
 Slash commands manage session lifecycle. Time tracking is automatic.
@@ -172,11 +192,12 @@ Slash commands manage session lifecycle. Time tracking is automatic.
 ## Agent Summary
 
 | Agent/Skill | Model | When | Purpose |
-|-------------|-------|------|---------|
+|-------------|-------|------|-------|
 | @architect | Opus | Before design decisions | Keep architecture coherent |
 | @code-review | Sonnet | After commits, optional | Catch issues early |
 | @pm | Sonnet | Start/end of sessions | Track progress, flag risks |
 | @ui-reviewer | Sonnet | After UI work, phase boundaries | Design quality |
+| @doc-consistency | Sonnet | Via `/doc-consistency-check`, mid-project, before phase boundaries | Cross-reference facts across docs; flag mismatches + placeholders. Report-only |
 | /its-alive | — | Session start | Timestamp + open session file + briefing |
 | /pause-this | — | Mid-session break | Safe pause with commit |
 | /restart-this | — | Resume from pause | Reload context |
@@ -186,6 +207,7 @@ Slash commands manage session lifecycle. Time tracking is automatic.
 | /retro | — | Phase boundary (end) | Close out phase, write retro, bump minor version |
 | /bump-major | — | Breaking change | Manual major version bump |
 | /promote-staging | — | Ship staging to prod | ff-merge `staging` → `main`, tag, push |
+| /doc-consistency-check | — | Mid-project, before phase boundaries | Invokes @doc-consistency; cross-refs `docs/*.md` + root `CLAUDE.md` |
 
 **Per-session files:** the workflow uses `sessions/YYYY-MM-DD-HHMM-<dev>-<slug>.md` (one file per session) instead of a single monolithic `session-log.md`. `<dev>` comes from `~/.claude/devname` (one-line file, falls back to `$USER`). The slug is derived from the branch name (`task/X-foo` → `X-foo`, `main` → `main`, etc.). The active JSONL transcript path is captured in the file's frontmatter for later `/read-the-tape` audits.
 
