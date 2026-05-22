@@ -544,7 +544,7 @@ export function OrderForm({
           type="button"
           className="btn btn-primary sticky-btn"
           onClick={scrollToFulfill}
-          disabled={lineCount === 0}
+          disabled={submitDisabled}
         >
           Review
         </button>
