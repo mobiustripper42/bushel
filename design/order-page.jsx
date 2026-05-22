@@ -2,7 +2,7 @@
  * Mobile-first responsive. State driven by tweaks.
  */
 
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 
 // ───── Data ──────────────────────────────────────────────────────────
 const INVENTORY = [
@@ -147,6 +147,11 @@ function OrderPage({ tweaks }) {
     setTimeout(() => setSubmitted(false), 2400);
   };
 
+  const fulfillRef = useRef(null);
+  const scrollToFulfill = () => {
+    fulfillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className={"order-page vp-" + (tweaks.viewport || "mobile")}>
       {/* Top brand strip */}
@@ -208,7 +213,7 @@ function OrderPage({ tweaks }) {
             </section>
 
             {/* Fulfillment ──────────────────────────────── */}
-            <section className="fulfill">
+            <section className="fulfill" ref={fulfillRef}>
               <Eyebrow>fulfillment</Eyebrow>
               <h2 className="section-title">How would you like it?</h2>
               <div className="fulfill-tabs">
@@ -391,10 +396,9 @@ function OrderPage({ tweaks }) {
         </div>
         <button
           className="btn btn-primary sticky-btn"
-          onClick={submit}
+          onClick={scrollToFulfill}
           disabled={lineCount === 0}>
-          
-          {submitted ? "✓ Placed" : "Review & submit"}
+          Review
         </button>
       </div>
     </div>);

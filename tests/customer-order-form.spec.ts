@@ -105,4 +105,29 @@ test.describe("/c/[token] order form", () => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.restaurant.token));
     await expect(page.locator("#delivery-pref")).toHaveValue("");
   });
+
+  test("sticky-bar Review scrolls to fulfillment without submitting", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Sticky bar is mobile-only (CSS @media >= 880px hides it).");
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+    const kaleRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+    await kaleRow.getByRole("button", { name: "increase" }).click();
+
+    const stickyBtn = page.locator(".sticky-btn");
+    await expect(stickyBtn).toHaveText("Review");
+
+    // Scroll back to top so the click has somewhere to scroll to (test fixture
+    // is short enough that fulfill can already be in view).
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const beforeY = await page.evaluate(() => window.scrollY);
+
+    await stickyBtn.click();
+
+    // Fulfill section is in viewport after click, scroll position moved down,
+    // and we did NOT navigate to /confirmed.
+    await expect(page.locator(".fulfill")).toBeInViewport();
+    const afterY = await page.evaluate(() => window.scrollY);
+    expect(afterY).toBeGreaterThan(beforeY);
+    expect(page.url()).not.toContain("/confirmed");
+  });
 });

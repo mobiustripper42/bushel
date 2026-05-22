@@ -214,6 +214,11 @@ export function OrderForm({
   // latch; the server action is idempotent on the second call but the second
   // request still hits the network unnecessarily.
   const submittingRef = useRef(false);
+  const fulfillRef = useRef<HTMLElement>(null);
+
+  const scrollToFulfill = () => {
+    fulfillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const itemsWithQty = useMemo(
     () => products.filter((p) => (qty[p.id] ?? 0) > 0),
@@ -350,7 +355,7 @@ export function OrderForm({
               </div>
             </section>
 
-            <section className="fulfill">
+            <section className="fulfill" ref={fulfillRef}>
               <div className="eyebrow">fulfillment</div>
               <h2 className="section-title">How would you like it?</h2>
               <div className="fulfill-tabs" role="tablist">
@@ -538,15 +543,10 @@ export function OrderForm({
         <button
           type="button"
           className="btn btn-primary sticky-btn"
-          onClick={handleSubmit}
-          disabled={submitDisabled}
-          aria-busy={isPending}
+          onClick={scrollToFulfill}
+          disabled={lineCount === 0}
         >
-          {isPending ? (
-            <span className="btn-spinner" aria-hidden="true" />
-          ) : (
-            "Review & submit"
-          )}
+          Review
         </button>
       </div>
     </div>
