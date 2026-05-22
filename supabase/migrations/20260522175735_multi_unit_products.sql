@@ -100,7 +100,11 @@ alter table public.products
 --     is guaranteed unique even if two products share a name (which happens
 --     in test fixtures and isn't otherwise prevented). The 6.5b admin UI will
 --     offer human-curated slugs; this trigger is the safety net.
-create function public.products_spawn_default_unit() returns trigger as $$
+create function public.products_spawn_default_unit() returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
 begin
   insert into public.product_units (
     product_id, label, conversion_to_base, unit_price_cents, is_active, slug
@@ -116,7 +120,7 @@ begin
   on conflict (product_id, label) do nothing;
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create trigger products_spawn_default_unit_trigger
   after insert on public.products
@@ -124,7 +128,11 @@ create trigger products_spawn_default_unit_trigger
 
 -- 5b. order_items inserts without product_unit_id inherit from the product's
 --     first active unit (the default, until callers wise up to multi-unit).
-create function public.order_items_default_unit() returns trigger as $$
+create function public.order_items_default_unit() returns trigger
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
 begin
   if new.product_unit_id is null then
     select id into new.product_unit_id
@@ -135,7 +143,7 @@ begin
   end if;
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 create trigger order_items_default_unit_trigger
   before insert on public.order_items

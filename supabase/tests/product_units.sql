@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(28);
 
 -- ============================================================
 -- Schema sanity (migration 20260522175735_multi_unit_products)
@@ -18,6 +18,44 @@ select has_column('public', 'product_units', 'slug',               'product_unit
 select has_column('public', 'order_items',   'product_unit_id',    'order_items.product_unit_id exists (DEC-032)');
 select col_not_null('public', 'order_items', 'product_unit_id',    'order_items.product_unit_id is NOT NULL');
 select col_type_is('public', 'products', 'qty_available', 'numeric(10,2)', 'products.qty_available widened to numeric(10,2)');
+
+-- ============================================================
+-- Backfill: every pre-existing product got exactly one product_units row
+-- ============================================================
+select is(
+  (select count(*)::int from public.products),
+  (select count(distinct product_id)::int from public.product_units),
+  'backfill produced one product_units row per existing product'
+);
+
+-- ============================================================
+-- FK enforcement on order_items.product_unit_id
+-- ============================================================
+insert into public.customers (id, name, token)
+values ('cccccccc-aaaa-0000-0000-000000000001'::uuid, 'FK Customer', 'token-fk');
+
+insert into public.orders (id, customer_id, week_of, fulfillment_type, status)
+values ('cccccccc-bbbb-0000-0000-000000000001'::uuid,
+        'cccccccc-aaaa-0000-0000-000000000001'::uuid,
+        '2026-05-11', 'delivery', 'new');
+
+select throws_ok(
+  $$ insert into public.order_items (order_id, product_id, qty, unit_price_cents, product_unit_id)
+     values ('cccccccc-bbbb-0000-0000-000000000001'::uuid,
+             (select id from public.products limit 1),
+             1, 100,
+             '99999999-9999-9999-9999-999999999999'::uuid) $$,
+  '23503', null, 'order_items.product_unit_id FK rejects unknown unit id'
+);
+
+-- ============================================================
+-- conversion_to_base > 0 check
+-- ============================================================
+select throws_ok(
+  $$ insert into public.product_units (product_id, label, conversion_to_base, unit_price_cents, slug)
+     values ((select id from public.products limit 1), 'bad', 0, 100, 'bad-zero') $$,
+  '23514', null, 'product_units.conversion_to_base must be > 0'
+);
 
 -- ============================================================
 -- Safety-net trigger: new product spawns a default unit row
@@ -140,6 +178,18 @@ select lives_ok(
   'authenticated can insert product_units'
 );
 reset role;
+
+-- ============================================================
+-- Cascade: deleting a product wipes its product_units rows
+-- ============================================================
+delete from public.order_items where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid;
+delete from public.products where id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid;
+select is(
+  (select count(*)::int from public.product_units
+    where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid),
+  0,
+  'deleting a product cascades to its product_units rows'
+);
 
 select * from finish();
 rollback;
