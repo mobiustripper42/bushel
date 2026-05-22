@@ -138,6 +138,7 @@ export type Database = {
           id: string
           order_id: string
           product_id: string
+          product_unit_id: string
           qty: number
           unit_price_cents: number
         }
@@ -146,6 +147,7 @@ export type Database = {
           id?: string
           order_id: string
           product_id: string
+          product_unit_id: string
           qty: number
           unit_price_cents: number
         }
@@ -154,6 +156,7 @@ export type Database = {
           id?: string
           order_id?: string
           product_id?: string
+          product_unit_id?: string
           qty?: number
           unit_price_cents?: number
         }
@@ -170,6 +173,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_unit_id_fkey"
+            columns: ["product_unit_id"]
+            isOneToOne: false
+            referencedRelation: "product_units"
             referencedColumns: ["id"]
           },
         ]
@@ -265,6 +275,53 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_units: {
+        Row: {
+          conversion_to_base: number
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          product_id: string
+          slug: string
+          sort_order: number | null
+          unit_price_cents: number
+          updated_at: string
+        }
+        Insert: {
+          conversion_to_base?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          product_id: string
+          slug: string
+          sort_order?: number | null
+          unit_price_cents: number
+          updated_at?: string
+        }
+        Update: {
+          conversion_to_base?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          product_id?: string
+          slug?: string
+          sort_order?: number | null
+          unit_price_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_units_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
