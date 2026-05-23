@@ -274,6 +274,163 @@
   font-weight: 400;
 }
 
+/* Units chip — sits under the inline unit cell. Opens the Units drawer. */
+.inv-unitsChip {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 4px;
+  padding: 3px 9px 3px 6px;
+  background: transparent;
+  border: 1px dashed var(--ink-300);
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.inv-unitsChip:hover {
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+  border-color: var(--leaf-100);
+}
+.inv-unitsChip.is-multi {
+  border-style: solid;
+  border-color: var(--leaf-100);
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+  font-weight: 600;
+}
+.inv-unitsChip-plus {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--ink-200);
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+.inv-unitsChip:hover .inv-unitsChip-plus {
+  background: var(--leaf-600);
+  color: var(--paper);
+}
+.inv-unitsChip-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px;
+  background: var(--leaf-600);
+  color: var(--paper);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Units drawer */
+.units-drawer { width: min(560px, 100vw); }
+.units-drawer-sub {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--ink-500);
+  line-height: 1.4;
+}
+
+.units-list {
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  overflow: hidden;
+}
+.units-list-head,
+.units-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 90px 100px 56px 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+.units-list-head {
+  background: var(--cream);
+  border-bottom: 1px solid var(--ink-200);
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-500);
+}
+.units-col-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-300);
+  margin-left: 2px;
+}
+.units-row {
+  border-top: 1px solid var(--ink-200);
+  position: relative;
+}
+.units-row:first-of-type { border-top: 0; }
+.units-row.is-base { background: var(--leaf-50); }
+.units-row.is-inactive { background: var(--ink-100); }
+.units-row.is-inactive .inv-cell { color: var(--ink-500); }
+
+.units-col-label {
+  position: relative;
+  display: flex; align-items: center; gap: 6px;
+}
+.units-col-label .inv-cell { flex: 1; min-width: 0; }
+.units-baseBadge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 5px;
+  background: var(--leaf-600);
+  color: var(--paper);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.units-col-conv .inv-cell:disabled,
+.units-col-conv .inv-cell[disabled] {
+  background: var(--ink-100);
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
+
+.units-col-price .inv-priceWrap { width: 100%; }
+.units-col-price .inv-cell { padding-left: 22px; }
+
+.units-col-active { display: flex; justify-content: center; }
+.units-col-trash  { display: flex; justify-content: flex-end; }
+
+.units-addRow {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-top: 1px dashed var(--ink-300);
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+.units-addRow:hover { background: var(--leaf-50); color: var(--leaf-700); }
+
+.units-help {
+  margin-top: 18px;
+  padding: 12px 14px;
+  background: var(--cream);
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-700);
+}
+.units-help strong { color: var(--ink-900); }
+.units-help em { font-style: italic; color: var(--leaf-700); }
+
 /* Sticky save bar */
 .inv-saveBar {
   position: sticky;

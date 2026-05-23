@@ -62,7 +62,16 @@
       "Bash(NOTIFICATIONS_ENABLED=false npx playwright test tests/admin-send.spec.ts:154 --project=mobile)",
       "Bash(sed -n '85,105p' src/styles/app.css)",
       "Bash(sed -n '845,855p' src/styles/app.css)",
-      "Bash(kill -9 1104178)"
+      "Bash(kill -9 1104178)",
+      "Bash(kill -9 382085 387825)",
+      "Bash(PORT=3001 npx next *)",
+      "Bash(PGPASSWORD=postgres psql *)",
+      "Bash(docker exec *)",
+      "Bash(netstat -tlnp)",
+      "Bash(kill -9 306301)",
+      "Bash(vercel env *)",
+      "Bash(awk NR>=170 && NR<=182 *)",
+      "Bash(kill -9 3368201)"
     ]
   }
 }
