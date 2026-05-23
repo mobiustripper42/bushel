@@ -224,6 +224,8 @@ export async function resetProductUnits(productId: string, basePriceCents: numbe
     .single();
   if (!product) return;
 
+  // Non-atomic: a concurrent reader between delete + insert would observe
+  // zero units for this product. Relies on Playwright's workers=1 config.
   await sb.from("product_units").delete().eq("product_id", productId);
 
   const nameSlug = product.name

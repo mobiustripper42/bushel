@@ -57,6 +57,10 @@ function pickBaseId(units: ProductUnitState[]): string | null {
 
 export function UnitsDrawer({ productId, productName, initialUnits, onClose, onSaved }: Props) {
   const [units, setUnits] = useState<ProductUnitState[]>(initialUnits);
+  // Contract: parent unmounts this component on close (inventory-editor
+  // conditional renders on unitsOpenFor). deletedIds therefore lives only
+  // for the current open. If a future refactor keeps the drawer mounted
+  // across opens, this list needs an explicit reset on open.
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();

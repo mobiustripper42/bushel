@@ -94,7 +94,19 @@ export async function saveProductUnits(
       .from("product_units")
       .delete()
       .in("id", input.deletedUnitIds);
-    if (error) return { error: error.message };
+    if (error) {
+      // 23503 = foreign_key_violation — order_items.product_unit_id is ON
+      // DELETE RESTRICT. Surface a friendly message so Annabel knows the
+      // remedy (deactivate instead of delete) without seeing the raw FK
+      // constraint name.
+      if (error.code === "23503") {
+        return {
+          error:
+            "Can't delete a unit that's already on an existing order. Turn the Active switch off instead — customers won't see it next week.",
+        };
+      }
+      return { error: error.message };
+    }
   }
 
   for (const u of trimmed) {
