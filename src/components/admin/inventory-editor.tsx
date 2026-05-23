@@ -9,10 +9,12 @@ import { StatusDot } from "@/components/ui/status-dot";
 import { SaveBar } from "@/components/ui/save-bar";
 import { InventoryRow, type InventoryRowState } from "@/components/admin/inventory-row";
 import { PrepopulateButton } from "@/components/admin/prepopulate-button";
+import { UnitsDrawer, type ProductUnitState } from "@/components/admin/units-drawer";
 import { saveInventory } from "@/actions/save-inventory";
 
 type Props = {
   initialRows: InventoryRowState[];
+  initialUnits: Record<string, ProductUnitState[]>;
   weekLabel: string;
 };
 
@@ -21,13 +23,14 @@ function newLocalId(): string {
   return `new-${Date.now()}-${nextLocalId++}`;
 }
 
-export function InventoryEditor({ initialRows, weekLabel }: Props) {
+export function InventoryEditor({ initialRows, initialUnits, weekLabel }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState<InventoryRowState[]>(initialRows);
   const [baseline, setBaseline] = useState<InventoryRowState[]>(initialRows);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
+  const [unitsOpenFor, setUnitsOpenFor] = useState<string | null>(null);
 
   const baselineMap = useMemo(() => {
     const m = new Map<string, InventoryRowState>();
@@ -204,14 +207,20 @@ export function InventoryEditor({ initialRows, weekLabel }: Props) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <InventoryRow
-                key={row.id}
-                row={row}
-                onUpdate={(patch) => update(row.id, patch)}
-                onRemove={() => remove(row.id)}
-              />
-            ))}
+            {rows.map((row) => {
+              const units = initialUnits[row.id] ?? [];
+              return (
+                <InventoryRow
+                  key={row.id}
+                  row={row}
+                  unitsCount={units.length}
+                  inactiveExtrasCount={Math.max(0, units.filter((u) => !u.is_active).length)}
+                  onUpdate={(patch) => update(row.id, patch)}
+                  onRemove={() => remove(row.id)}
+                  onOpenUnits={row.isNew ? undefined : () => setUnitsOpenFor(row.id)}
+                />
+              );
+            })}
           </tbody>
         </table>
         <button type="button" className="add-row" onClick={addRow}>
@@ -227,6 +236,23 @@ export function InventoryEditor({ initialRows, weekLabel }: Props) {
         onSave={handleSave}
         saving={saving}
       />
+
+      {unitsOpenFor && (() => {
+        const product = rows.find((r) => r.id === unitsOpenFor);
+        if (!product) return null;
+        return (
+          <UnitsDrawer
+            productId={unitsOpenFor}
+            productName={product.name}
+            initialUnits={initialUnits[unitsOpenFor] ?? []}
+            onClose={() => setUnitsOpenFor(null)}
+            onSaved={() => {
+              setUnitsOpenFor(null);
+              router.refresh();
+            }}
+          />
+        );
+      })()}
     </>
   );
 }

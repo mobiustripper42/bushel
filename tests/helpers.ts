@@ -208,3 +208,38 @@ export async function setProductQty(id: string, qty: number): Promise<void> {
   const sb = admin();
   await sb.from("products").update({ qty_available: qty }).eq("id", id);
 }
+
+// Resets a product's units to the single base row the 6.5a safety-net
+// trigger originally seeded: label = product.unit, conv = 1, price =
+// basePriceCents, active = true, slug = "<name-slug>-<id8>" (trigger's
+// format). Deletes every existing product_units row first to clear any
+// leaked slug/label drift from a prior failed test run, then re-inserts
+// a fresh base row. Used by beforeEach/afterEach in units-drawer specs.
+export async function resetProductUnits(productId: string, basePriceCents: number): Promise<void> {
+  const sb = admin();
+  const { data: product } = await sb
+    .from("products")
+    .select("name, unit")
+    .eq("id", productId)
+    .single();
+  if (!product) return;
+
+  // Non-atomic: a concurrent reader between delete + insert would observe
+  // zero units for this product. Relies on Playwright's workers=1 config.
+  await sb.from("product_units").delete().eq("product_id", productId);
+
+  const nameSlug = product.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const id8 = productId.slice(0, 8);
+
+  await sb.from("product_units").insert({
+    product_id: productId,
+    label: product.unit,
+    conversion_to_base: 1,
+    unit_price_cents: basePriceCents,
+    is_active: true,
+    slug: `${nameSlug}-${id8}`,
+  });
+}

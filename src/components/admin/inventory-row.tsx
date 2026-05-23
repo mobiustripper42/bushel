@@ -20,18 +20,29 @@ export type InventoryRowState = {
 
 type Props = {
   row: InventoryRowState;
+  unitsCount?: number;
+  inactiveExtrasCount?: number;
   onUpdate: (patch: Partial<InventoryRowState>) => void;
   onRemove: () => void;
+  onOpenUnits?: () => void;
 };
 
 function priceToString(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-export function InventoryRow({ row, onUpdate, onRemove }: Props) {
+export function InventoryRow({
+  row,
+  unitsCount = 1,
+  inactiveExtrasCount = 0,
+  onUpdate,
+  onRemove,
+  onOpenUnits,
+}: Props) {
   const [descOpen, setDescOpen] = useState(false);
   const qtyClass =
     row.qty_available === 0 ? " is-zero" : row.qty_available <= 3 ? " is-low" : "";
+  const extras = Math.max(0, unitsCount - 1);
 
   return (
     <>
@@ -115,6 +126,34 @@ export function InventoryRow({ row, onUpdate, onRemove }: Props) {
             placeholder="per lb"
             aria-label="Unit"
           />
+          {onOpenUnits && (
+            <button
+              type="button"
+              className={"units-chip" + (extras > 0 ? " is-multi" : "")}
+              onClick={onOpenUnits}
+              aria-label={
+                extras > 0
+                  ? `Edit units for ${row.name || "row"} (${unitsCount} total)`
+                  : `Add another unit for ${row.name || "row"}`
+              }
+              title={extras > 0 ? "Edit units" : "Add another unit"}
+            >
+              {extras === 0 ? (
+                <>
+                  <span className="units-chip-plus">+</span>
+                  <span>Add unit</span>
+                </>
+              ) : (
+                <>
+                  <span className="units-chip-count">{unitsCount}</span>
+                  <span>
+                    units
+                    {inactiveExtrasCount > 0 ? ` · ${inactiveExtrasCount} off` : ""}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
         </td>
         <td>
           <input

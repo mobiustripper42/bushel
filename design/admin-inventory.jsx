@@ -1,21 +1,49 @@
 /* Admin · Inventory editor */
 
-const { useState, useMemo, useRef } = React;
+const { useState, useMemo, useRef, useEffect } = React;
 
 const CATEGORIES = ["Vegetables", "Fruit", "Herbs", "Flowers", "Other"];
 
+/* Seed inventory. Each product carries a `units` array — every product has
+ * at least one row (the base unit, conversion 1.0). Multi-unit products have
+ * additional rows with conversion-to-base != 1.0. The row's top-level
+ * `price` + `unit` mirror the base unit and stay inline-editable for speed;
+ * additional units live behind the Units drawer. */
 const SEED_ROWS = [
-  { id: "p01", name: "Heirloom tomatoes",   category: "Vegetables", price: 5.50, unit: "per lb",     qty: 24, desc: "Mix of Cherokee Purple, Brandywine, and Striped German.", available: true },
-  { id: "p02", name: "Genovese basil",      category: "Herbs",      price: 3.50, unit: "per bunch",  qty: 18, desc: "Big leaves — pesto-ready.", available: true },
-  { id: "p03", name: "Dino kale",           category: "Vegetables", price: 4.50, unit: "per bunch",  qty: 12, desc: "Lacinato. Tender stems this week.", available: true },
-  { id: "p04", name: "Sungold cherry tomatoes", category: "Vegetables", price: 6.00, unit: "per pint", qty: 16, desc: "Picked Tuesday. Honey-sweet.", available: true },
-  { id: "p05", name: "Red beets",           category: "Vegetables", price: 3.25, unit: "per lb",     qty: 9,  desc: "Tops included — good for sautéing.", available: true },
-  { id: "p06", name: "Zucchini",            category: "Vegetables", price: 2.50, unit: "each",       qty: 22, desc: "Medium size, tender skin.", available: true },
-  { id: "p07", name: "Zinnia bouquet",      category: "Flowers",    price: 12.00, unit: "per bunch", qty: 6,  desc: "Mixed colors, ~15 stems.", available: true },
-  { id: "p08", name: "Strawberries",        category: "Fruit",      price: 7.50, unit: "per pint",   qty: 0,  desc: "Last picking — back next week.", available: false },
-  { id: "p09", name: "Garlic scapes",       category: "Herbs",      price: 4.00, unit: "per bunch",  qty: 14, desc: "Curly tops, mild garlic flavor.", available: true },
-  { id: "p10", name: "Rainbow chard",       category: "Vegetables", price: 4.50, unit: "per bunch",  qty: 11, desc: "Beautiful stems — yellow, magenta, white.", available: true },
+  { id: "p01", name: "Heirloom tomatoes",   category: "Vegetables", price: 5.50, unit: "per lb",     qty: 24, desc: "Mix of Cherokee Purple, Brandywine, and Striped German.", available: true,
+    units: [
+      { id: "u01a", label: "per lb", conv: 1.0, price: 5.50, active: true, base: true },
+    ] },
+  { id: "p02", name: "Genovese basil",      category: "Herbs",      price: 3.50, unit: "per bunch",  qty: 18, desc: "Big leaves — pesto-ready.", available: true,
+    units: [
+      { id: "u02a", label: "per bunch", conv: 1.0,  price: 3.50,  active: true, base: true },
+      { id: "u02b", label: "per lb",    conv: 0.25, price: 12.00, active: true, base: false },
+    ] },
+  { id: "p03", name: "Dino kale",           category: "Vegetables", price: 4.50, unit: "per bunch",  qty: 12, desc: "Lacinato. Tender stems this week.", available: true,
+    units: [
+      { id: "u03a", label: "per bunch", conv: 1.0, price: 4.50, active: true, base: true },
+    ] },
+  { id: "p04", name: "Sungold cherry tomatoes", category: "Vegetables", price: 6.00, unit: "per pint", qty: 16, desc: "Picked Tuesday. Honey-sweet.", available: true,
+    units: [
+      { id: "u04a", label: "per pint", conv: 1.0, price: 6.00,  active: true, base: true },
+      { id: "u04b", label: "per qt",   conv: 0.5, price: 11.50, active: true, base: false },
+    ] },
+  { id: "p05", name: "Red beets",           category: "Vegetables", price: 3.25, unit: "per lb",     qty: 9,  desc: "Tops included — good for sautéing.", available: true,
+    units: [ { id: "u05a", label: "per lb", conv: 1.0, price: 3.25, active: true, base: true } ] },
+  { id: "p06", name: "Zucchini",            category: "Vegetables", price: 2.50, unit: "each",       qty: 22, desc: "Medium size, tender skin.", available: true,
+    units: [ { id: "u06a", label: "each", conv: 1.0, price: 2.50, active: true, base: true } ] },
+  { id: "p07", name: "Zinnia bouquet",      category: "Flowers",    price: 12.00, unit: "per bunch", qty: 6,  desc: "Mixed colors, ~15 stems.", available: true,
+    units: [ { id: "u07a", label: "per bunch", conv: 1.0, price: 12.00, active: true, base: true } ] },
+  { id: "p08", name: "Strawberries",        category: "Fruit",      price: 7.50, unit: "per pint",   qty: 0,  desc: "Last picking — back next week.", available: false,
+    units: [ { id: "u08a", label: "per pint", conv: 1.0, price: 7.50, active: true, base: true } ] },
+  { id: "p09", name: "Garlic scapes",       category: "Herbs",      price: 4.00, unit: "per bunch",  qty: 14, desc: "Curly tops, mild garlic flavor.", available: true,
+    units: [ { id: "u09a", label: "per bunch", conv: 1.0, price: 4.00, active: true, base: true } ] },
+  { id: "p10", name: "Rainbow chard",       category: "Vegetables", price: 4.50, unit: "per bunch",  qty: 11, desc: "Beautiful stems — yellow, magenta, white.", available: true,
+    units: [ { id: "u10a", label: "per bunch", conv: 1.0, price: 4.50, active: true, base: true } ] },
 ];
+
+let nextUnitId = 100;
+function newUnitId() { return "u" + String(nextUnitId++); }
 
 let nextId = 11;
 function newRowId() { return "p" + String(nextId++).padStart(2, "0"); }
@@ -23,6 +51,7 @@ function newRowId() { return "p" + String(nextId++).padStart(2, "0"); }
 function InventoryPage() {
   const [rows, setRows] = useState(SEED_ROWS);
   const [originalRows] = useState(SEED_ROWS);
+  const [unitsOpenFor, setUnitsOpenFor] = useState(null); // product id, or null
 
   const dirty = useMemo(
     () => JSON.stringify(rows) !== JSON.stringify(originalRows),
@@ -46,12 +75,27 @@ function InventoryPage() {
   const remove = (id) =>
     setRows(rs => rs.filter(r => r.id !== id));
 
-  const addRow = () =>
+  const addRow = () => {
+    const baseId = newUnitId();
     setRows(rs => [...rs, {
       id: newRowId(),
       name: "", category: "Vegetables", price: 0, unit: "per lb",
-      qty: 0, desc: "", available: true
+      qty: 0, desc: "", available: true,
+      units: [{ id: baseId, label: "per lb", conv: 1.0, price: 0, active: true, base: true }],
     }]);
+  };
+
+  /* When base-unit label/price change inline, mirror onto the product row.
+   * When extra units change in the drawer, they don't touch the inline cells. */
+  const saveUnits = (productId, nextUnits) => {
+    const base = nextUnits.find(u => u.base);
+    setRows(rs => rs.map(r => r.id === productId
+      ? { ...r, unit: base ? base.label : r.unit, price: base ? base.price : r.price, units: nextUnits }
+      : r));
+    setUnitsOpenFor(null);
+  };
+
+  const productForDrawer = unitsOpenFor ? rows.find(r => r.id === unitsOpenFor) : null;
 
   return (
     <div className="inv-page">
@@ -108,6 +152,7 @@ function InventoryPage() {
                 index={i}
                 onUpdate={(patch) => update(row.id, patch)}
                 onRemove={() => remove(row.id)}
+                onOpenUnits={() => setUnitsOpenFor(row.id)}
               />
             ))}
           </tbody>
@@ -118,6 +163,14 @@ function InventoryPage() {
           <span className="inv-addRow-hint mono">↹ Tab moves between cells</span>
         </button>
       </div>
+
+      {productForDrawer && (
+        <UnitsDrawer
+          product={productForDrawer}
+          onClose={() => setUnitsOpenFor(null)}
+          onSave={(nextUnits) => saveUnits(productForDrawer.id, nextUnits)}
+        />
+      )}
 
       {dirty && (
         <div className="inv-saveBar">
@@ -135,8 +188,10 @@ function InventoryPage() {
   );
 }
 
-function InventoryRow({ row, index, onUpdate, onRemove }) {
+function InventoryRow({ row, index, onUpdate, onRemove, onOpenUnits }) {
   const [descOpen, setDescOpen] = useState(false);
+  const extras = (row.units || []).filter(u => !u.base);
+  const inactiveCount = extras.filter(u => !u.active).length;
   return (
     <>
       <tr className={"inv-row" + (!row.available ? " is-unavail" : "")}>
@@ -202,6 +257,18 @@ function InventoryRow({ row, index, onUpdate, onRemove }) {
             onChange={e => onUpdate({ unit: e.target.value })}
             placeholder="per lb"
           />
+          <button
+            type="button"
+            className={"inv-unitsChip" + (extras.length > 0 ? " is-multi" : "")}
+            onClick={onOpenUnits}
+            title={extras.length > 0 ? "Edit units" : "Add another unit"}
+          >
+            {extras.length === 0
+              ? <><span className="inv-unitsChip-plus">+</span><span>Add unit</span></>
+              : <><span className="inv-unitsChip-count">{extras.length + 1}</span>
+                  <span>units{inactiveCount > 0 ? ` · ${inactiveCount} off` : ""}</span></>
+            }
+          </button>
         </td>
         <td className="col-qty">
           <input
@@ -256,6 +323,186 @@ function Switch({ checked, onChange }) {
     >
       <span className="inv-switch-thumb"></span>
     </button>
+  );
+}
+
+/* Units drawer — per-product unit editor.
+ * Base row: BASE badge, label + price editable, conversion locked at 1, no delete.
+ * Extra rows: label, conversion-to-base, price, active toggle, delete.
+ * Validation surfaces inline; server enforces label uniqueness + active >= 1. */
+function UnitsDrawer({ product, onClose, onSave }) {
+  const [units, setUnits] = useState(() => product.units.map(u => ({ ...u })));
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const update = (id, patch) => {
+    setUnits(us => us.map(u => u.id === id ? { ...u, ...patch } : u));
+    setError(null);
+  };
+  const remove = (id) => {
+    setUnits(us => us.filter(u => u.id !== id));
+    setError(null);
+  };
+  const addUnit = () => {
+    setUnits(us => [...us, {
+      id: newUnitId(), label: "", conv: 1, price: 0, active: true, base: false,
+    }]);
+    setError(null);
+  };
+
+  const dirty = useMemo(
+    () => JSON.stringify(units) !== JSON.stringify(product.units),
+    [units, product.units]
+  );
+
+  const handleSave = () => {
+    const labels = units.map(u => u.label.trim().toLowerCase());
+    const dupe = labels.find((l, i) => l && labels.indexOf(l) !== i);
+    if (dupe) { setError(`Two units share the label "${dupe}". Labels must be unique within a product.`); return; }
+    const blank = units.find(u => !u.label.trim());
+    if (blank) { setError("Every unit needs a label."); return; }
+    const badConv = units.find(u => !u.base && (!(u.conv > 0)));
+    if (badConv) { setError(`Conversion-to-base must be greater than zero (check "${badConv.label}").`); return; }
+    if (!units.some(u => u.active)) { setError("At least one unit must stay active."); return; }
+    onSave(units);
+  };
+
+  const baseUnit = units.find(u => u.base);
+  const extras = units.filter(u => !u.base);
+
+  return (
+    <>
+      <div className="drawer-scrim" onClick={onClose} aria-hidden="true" />
+      <aside
+        className="drawer units-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Units for ${product.name}`}
+      >
+        <header className="drawer-head">
+          <div>
+            <div className="eyebrow">edit units</div>
+            <h2 className="drawer-title">{product.name || "Untitled product"}</h2>
+            <div className="units-drawer-sub">
+              Customers pick a unit when ordering. Inventory decrements in the base unit.
+            </div>
+          </div>
+          <button type="button" className="drawer-close" onClick={onClose} aria-label="Close drawer">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 6l12 12 M18 6 6 18"/>
+            </svg>
+          </button>
+        </header>
+
+        <div className="drawer-body">
+          {error && <div role="alert" className="drawer-error">{error}</div>}
+
+          <div className="units-list">
+            <div className="units-list-head">
+              <span className="units-col-label">Label</span>
+              <span className="units-col-conv" title="How many base units this equals. Base unit = 1.">
+                Conversion
+              </span>
+              <span className="units-col-price">Price</span>
+              <span className="units-col-active">Active</span>
+              <span className="units-col-trash" />
+            </div>
+
+            {baseUnit && (
+              <UnitRow
+                unit={baseUnit}
+                onUpdate={(patch) => update(baseUnit.id, patch)}
+              />
+            )}
+            {extras.map(u => (
+              <UnitRow
+                key={u.id}
+                unit={u}
+                onUpdate={(patch) => update(u.id, patch)}
+                onRemove={() => remove(u.id)}
+              />
+            ))}
+
+            <button type="button" className="units-addRow" onClick={addUnit}>
+              <span className="inv-addRow-plus">+</span>
+              <span>Add another unit</span>
+            </button>
+          </div>
+
+          <div className="units-help">
+            <strong>Conversion-to-base</strong> is how much of the base unit one of this unit equals.
+            If the base is <em>per bunch</em> and a pound of basil is roughly four bunches, the pound row's
+            conversion is <span className="mono">4.0</span>. If the base is <em>per pint</em> and a quart is two pints,
+            the quart row is <span className="mono">2.0</span>.
+          </div>
+        </div>
+
+        <footer className="drawer-foot">
+          <div style={{ flex: 1 }} />
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className={"btn btn-primary" + (dirty ? " is-dirty" : "")} onClick={handleSave} disabled={!dirty}>
+            {dirty ? "Save units" : "Saved"}
+          </button>
+        </footer>
+      </aside>
+    </>
+  );
+}
+
+function UnitRow({ unit, onUpdate, onRemove }) {
+  return (
+    <div className={"units-row" + (unit.base ? " is-base" : "") + (!unit.active ? " is-inactive" : "")}>
+      <div className="units-col-label">
+        <input
+          type="text"
+          className="inv-cell"
+          value={unit.label}
+          onChange={e => onUpdate({ label: e.target.value })}
+          placeholder={unit.base ? "per lb" : "e.g. per pound"}
+        />
+        {unit.base && <span className="units-baseBadge">BASE</span>}
+      </div>
+      <div className="units-col-conv">
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          className="inv-cell inv-num"
+          value={unit.conv}
+          onChange={e => onUpdate({ conv: parseFloat(e.target.value) || 0 })}
+          disabled={unit.base}
+          title={unit.base ? "Base unit is always 1.0" : ""}
+        />
+      </div>
+      <div className="units-col-price">
+        <div className="inv-priceWrap">
+          <span className="inv-priceSym">$</span>
+          <input
+            type="number"
+            step="0.25"
+            min="0"
+            className="inv-cell inv-num"
+            value={unit.price}
+            onChange={e => onUpdate({ price: parseFloat(e.target.value) || 0 })}
+          />
+        </div>
+      </div>
+      <div className="units-col-active">
+        <Switch checked={unit.active} onChange={v => onUpdate({ active: v })}/>
+      </div>
+      <div className="units-col-trash">
+        {!unit.base && (
+          <button type="button" className="inv-trash" onClick={onRemove} aria-label="Delete unit">
+            <IconTrash/>
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
