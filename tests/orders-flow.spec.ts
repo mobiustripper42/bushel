@@ -398,10 +398,13 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
       await expect(detail.locator(".callout-warn")).toBeVisible();
       const oversoldLine = detail.locator(".ord-detail-list li.is-oversold");
       await expect(oversoldLine.locator(".ord-li-unit")).toHaveText(/· lb$/);
-      // Inventory dropped to 1 base unit before submit; order needed 4
-      // (2 lb × conv 2). Flag should read "Only 1 bunch available — 3 ..."
-      // (qty_available is in base units, the customer-side base label).
-      await expect(oversoldLine.locator(".ord-li-flag")).toContainText(/oversold/i);
+      // place_order decrements optimistically (DEC-012); inventory was 1
+      // base unit at place_order time, the 4-base-unit order (2 lb × conv 2)
+      // ran it to -3. The display clamps qty_available to 0 — there's no
+      // such thing as "negative lb available." shortBy = (4 - 0) / 2 = 2 lb.
+      await expect(oversoldLine.locator(".ord-li-flag")).toHaveText(
+        "Only 0 lb available — 2 lb oversold",
+      );
 
       await adminCtx.close();
     });

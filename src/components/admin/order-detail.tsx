@@ -4,6 +4,15 @@ function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// Compact qty render for the oversold flag: integers as-is, fractionals
+// trimmed to 2 decimals with trailing zeros removed (so "1.5 lb" not
+// "1.50 lb"). Used for per-unit availability + shortBy figures that can
+// land fractional for non-base units (e.g. 1 bunch left ÷ 2 base/lb = 0.5 lb).
+function fmtQty(n: number): string {
+  if (Number.isInteger(n)) return n.toString();
+  return n.toFixed(2).replace(/\.?0+$/, "");
+}
+
 export function OrderDetail({ order }: { order: OrderRowData }) {
   return (
     <div className="ord-detail">
@@ -15,9 +24,22 @@ export function OrderDetail({ order }: { order: OrderRowData }) {
               // 6.5f: oversold math is unit-aware. A line of 5 lb (conv=2)
               // consumes 10 base units, so qty_available=8 is oversold by 2
               // base units — not "5 > 8 = false" from the old integer compare.
+              // Display is framed in the selected unit (matches the line's
+              // qty + unitLabel) so the message reads as a single coherent
+              // statement: "2× · lb / Only 0.5 lb available — 1.5 lb oversold".
               const baseRequested = i.qty * i.conversionToBase;
               const oversold = baseRequested > i.qtyAvailable;
-              const shortBy = oversold ? baseRequested - i.qtyAvailable : 0;
+              // Clamp available to ≥ 0. Under DEC-012's optimistic decrement,
+              // qty_available is allowed to go negative after a runaway order —
+              // showing "Only -1.5 lb available" is nonsensical to Annabel.
+              // shortBy measures the gap between order qty and the *clamped*
+              // available, so the message stays coherent: full order qty when
+              // inventory is already exhausted, partial when some was on hand.
+              const availableBase = Math.max(0, i.qtyAvailable);
+              const availableInUnit = availableBase / i.conversionToBase;
+              const shortByInUnit = oversold
+                ? (baseRequested - availableBase) / i.conversionToBase
+                : 0;
               return (
                 <li key={i.productId} className={oversold ? "is-oversold" : ""}>
                   <span className="ord-li-qty mono">{i.qty}×</span>
@@ -27,8 +49,8 @@ export function OrderDetail({ order }: { order: OrderRowData }) {
                   </span>
                   {oversold && (
                     <span className="ord-li-flag">
-                      Only {i.qtyAvailable} {i.unit} available — {shortBy} {i.unit}
-                      {shortBy !== 1 ? "s" : ""} oversold
+                      Only {fmtQty(availableInUnit)} {i.unitLabel} available —{" "}
+                      {fmtQty(shortByInUnit)} {i.unitLabel} oversold
                     </span>
                   )}
                   <span className="ord-li-amt mono">
