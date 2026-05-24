@@ -287,6 +287,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 
 - Main session: Sonnet by default. Switch to Opus when stuck.
 - Agents: model in agent frontmatter. Don't override unless task warrants.
+- **New agents:** default to Sonnet. Add `model: opus` frontmatter only for architecture-level agents.
 
 ## PR Workflow
 
@@ -349,6 +350,8 @@ Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.
 
 **Tag rule:** tags only ever applied on `main`. In staging-flow projects (which bushel currently isn't — see above), bumps on `staging` are untagged; the tag lands when `/promote-staging` ff-merges.
 
+**Detection:** these skills check `package.json` exists at the repo root before bumping. If it doesn't (template/markdown-only project), they no-op silently.
+
 ### `<VersionTag />` component
 
 Build-time version display at `src/components/VersionTag.tsx`. Reads `process.env.NEXT_PUBLIC_APP_VERSION` + `process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`. Renders e.g. `v1.2.3 (a1b2c3)`.
@@ -366,6 +369,17 @@ import { VersionTag } from "@/components/VersionTag";
 ### CHANGELOG.md
 
 Auto-maintained by `/retro` and `/bump-major` (DEC-013 — `/its-dead` no longer touches it). Don't edit by hand mid-flow — the skills always prepend after the `# Changelog` header. The first bump creates the file if absent.
+
+Format (Keep-a-Changelog inspired but simpler):
+```
+# Changelog
+
+## [1.2.3] - 2026-05-05
+- PR #42: Add login form
+
+## [1.2.2] - 2026-05-04
+- PR #41: Fix dashboard query
+```
 
 ## Workflow Notes
 - **Diagnostic commands** (build, lint, type, test): run directly.
