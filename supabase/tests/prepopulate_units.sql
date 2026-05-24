@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================
 -- 6.5e — prepopulate_inventory_from_last_week() under multi-unit
@@ -135,12 +135,9 @@ values ('eeee0000-0000-0000-0000-bbbb00000004'::uuid,
         'eeee0000-0000-0000-0000-aaaa00000002'::uuid,
         'pinch', 0.25, 50, true, 'testchives-pinch-eeee0000', 1);
 
--- Re-run the function and confirm the new untouched unit's price is unchanged.
--- Wipe products' qty back to a known state so the qty assertion stays simple.
-update public.products set qty_available = 25.00 where id = 'eeee0000-0000-0000-0000-aaaa00000002'::uuid;
-update public.products set qty_available = 17.00 where id = 'eeee0000-0000-0000-0000-aaaa00000001'::uuid;
-
--- Re-invoke; discard the returned rowset by tossing it into a temp table.
+-- Re-invoke; discard the returned rowset. The first call already touched
+-- units that had last-week orders; this second call is about asserting
+-- that a unit added AFTER last week's orders is left alone.
 create temporary table prepop_result_2 as
   select * from public.prepopulate_inventory_from_last_week();
 
@@ -149,6 +146,28 @@ select is(
    where id = 'eeee0000-0000-0000-0000-bbbb00000004'::uuid),
   50,
   'unit with no last-week order keeps its current price (untouched)'
+);
+
+-- ============================================================
+-- 4b. Deactivated unit invariant: a unit that's been turned off
+--     by admin (is_active = false) stays deactivated even when it
+--     had last-week orders. Pins the 6.5e scope decision NOT to
+--     silently re-enable units that Annabel deliberately disabled.
+-- ============================================================
+update public.product_units
+   set is_active = false
+ where id = 'eeee0000-0000-0000-0000-bbbb00000002'::uuid;  -- basil lb
+
+-- Run pre-populate again. The lb unit had a last-week order, so its
+-- price would update if it were reactivated. is_active must NOT change.
+create temporary table prepop_result_3 as
+  select * from public.prepopulate_inventory_from_last_week();
+
+select is(
+  (select is_active from public.product_units
+   where id = 'eeee0000-0000-0000-0000-bbbb00000002'::uuid),
+  false,
+  'deactivated unit stays deactivated through pre-populate (6.5e scope pin)'
 );
 
 -- ============================================================

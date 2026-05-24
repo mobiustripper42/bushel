@@ -21,6 +21,11 @@
 -- match products.qty_available's numeric(10,2). Callers using data.length
 -- (the action does) are unaffected.
 
+-- `drop function` is required (not `create or replace`) because the return
+-- signature changes from (uuid, integer) → (uuid, numeric). Postgres rejects
+-- a column-type change inside `create or replace`. In bushel's solo-Annabel
+-- context the brief drop window between this statement and the create below
+-- has no concurrent-caller risk.
 drop function if exists public.prepopulate_inventory_from_last_week();
 
 create or replace function public.prepopulate_inventory_from_last_week()

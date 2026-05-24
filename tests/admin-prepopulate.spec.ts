@@ -15,6 +15,7 @@ function rowByName(page: Page, name: string) {
 // Fixed UUIDs so the seed is idempotent across re-runs.
 const LAST_WEEK_ORDER_ID = "eeeeeeee-0000-0000-0000-000000000001";
 const LAST_WEEK_ORDER_ITEM_ID = "ffffffff-0000-0000-0000-000000000001";
+const LAST_WEEK_MULTI_ORDER_ID = "eeeeeeee-0000-0000-0000-000000000002";
 const LAST_WEEK_QTY = 3;
 
 function lastWeekDate(): string {
@@ -69,12 +70,20 @@ test.describe("admin inventory — pre-populate from last week", () => {
 
   test.afterEach(async () => {
     const supabase = admin();
-    await supabase.from("orders").delete().eq("id", LAST_WEEK_ORDER_ID);
-    // Reset Kale qty back to the canonical seed value
+    // Defensive cleanup covers both the single-unit and multi-unit fixture
+    // ids in case an inner afterEach throws between order-delete and
+    // resetProductUnits. Orders first (cascade order_items), then units —
+    // order_items.product_unit_id is ON DELETE RESTRICT, so swapped order
+    // would leak a partial state into the next test.
+    await supabase
+      .from("orders")
+      .delete()
+      .in("id", [LAST_WEEK_ORDER_ID, LAST_WEEK_MULTI_ORDER_ID]);
     await supabase
       .from("products")
       .update({ qty_available: TEST_PRODUCTS.kale.qty_available })
       .eq("id", TEST_PRODUCTS.kale.id);
+    await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents);
   });
 
   test("button restores last week's ordered qty onto current inventory", async ({ page }) => {
@@ -115,8 +124,6 @@ test.describe("admin inventory — pre-populate from last week", () => {
     const LB_QTY = 1;
     // 2 * 1 + 1 * 2 = 4 base units restored
     const EXPECTED_RESTORED_QTY = BUNCH_QTY * 1 + LB_QTY * LB_CONV;
-
-    const LAST_WEEK_MULTI_ORDER_ID = "eeeeeeee-0000-0000-0000-000000000002";
 
     test.beforeEach(async () => {
       const supabase = admin();
