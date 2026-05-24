@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { weekOfMondayNY } from "@/lib/week";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
+  admin,
   customerOrderUrl,
   resetCustomerOrderState,
   resetProductUnits,
@@ -106,6 +108,45 @@ test.describe("/c/[token] · per-product unit picker", () => {
 
     // 2 × $6.00 = $12.00 — sticky/summary totals reflect Eggs only.
     await expect(page.locator(".summary-total")).toContainText("12.00");
+  });
+
+  test("submit payload snapshots the selected unit's unit_price_cents (not the base)", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+    const row = kaleRow(page);
+    // Switch to lb (selected unit's price = $5.00) and order 2.
+    await row.locator("label.unit-option").filter({ hasText: "lb" }).click();
+    await row.getByRole("button", { name: "increase" }).click();
+    await row.getByRole("button", { name: "increase" }).click();
+    await expect(row.locator(".stepper-val")).toHaveValue("2");
+
+    await page.locator(".submit-btn").click();
+    await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+
+    const sb = admin();
+    const { data: customer } = await sb
+      .from("customers")
+      .select("id")
+      .eq("token", TEST_CUSTOMERS.farmStand.token)
+      .single();
+    const { data: order } = await sb
+      .from("orders")
+      .select("id")
+      .eq("customer_id", customer!.id)
+      .eq("week_of", weekOfMondayNY())
+      .single();
+    const { data: lineItem } = await sb
+      .from("order_items")
+      .select("qty, unit_price_cents")
+      .eq("order_id", order!.id)
+      .eq("product_id", KALE.id)
+      .single();
+
+    // The selected unit (lb) was $5.00 — base bunch is $3.00. Recording the
+    // selected unit's price is the 6.5c contract; full unit_id + fractional
+    // decrement land in 6.5d.
+    expect(lineItem?.unit_price_cents).toBe(KALE_LB_PRICE);
+    expect(lineItem?.qty).toBe(2);
   });
 
   test("long product name is fully visible at 375px (resolves #144)", async ({ page }, testInfo) => {

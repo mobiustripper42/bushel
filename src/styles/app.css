@@ -1163,6 +1163,12 @@
   background: var(--leaf-50);
   color: var(--leaf-700);
 }
+/* The native radio is visually hidden, so keyboard focus would otherwise
+   be invisible. Hoist the focus ring onto the label via :has(). */
+.unit-option:has(input:focus-visible) {
+  outline: 2px solid var(--leaf-600);
+  outline-offset: 2px;
+}
 .unit-option.is-disabled {
   opacity: 0.45;
   cursor: not-allowed;

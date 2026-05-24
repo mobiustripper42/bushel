@@ -345,7 +345,11 @@ export function OrderForm({
                   // the stepper never offers a quantity that would oversell.
                   const perUnitMax = Math.floor(p.qty_available / conv);
                   const out = p.qty_available === 0;
-                  const remaining = out ? 0 : perUnitMax - current;
+                  // Math.max guards the rare case where the selected unit's
+                  // perUnitMax dropped below the in-cart qty mid-session
+                  // (inventory reduced under our feet). Don't render
+                  // "only -2 lbs left".
+                  const remaining = out ? 0 : Math.max(0, perUnitMax - current);
                   const showPicker = p.units.length >= 2;
                   return (
                     <div
