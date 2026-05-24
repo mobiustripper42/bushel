@@ -1061,7 +1061,11 @@
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;
   gap: 12px;
-  align-items: center;
+  /* align-items: start gives the name + meta + picker stack room to grow
+     while keeping the thumb pinned to the top. Stepper top-aligns too so
+     it sits next to the price (visually paired) instead of drifting down
+     when a long name wraps. 6.5c restructure (#144). */
+  align-items: start;
   padding: 12px 14px;
   border-top: 1px solid var(--ink-200);
 }
@@ -1096,26 +1100,83 @@
     );
 }
 
-.item-body { min-width: 0; }
-.item-line1 {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 12px;
+.item-body {
+  min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .item-name {
   font-weight: 600; color: var(--ink-900);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  /* min-width: 0 lets the ellipsis actually trigger inside the .item-line1
-     flex container — without it the name fights the price for space and
-     crowds the stepper at 375px. 6.1 review. */
-  min-width: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+  /* Wrap freely — name owns its row now, no longer competing with the
+     price for horizontal space. Closes #144. */
+  overflow-wrap: anywhere;
 }
-.item-price { font-size: 0.92rem; white-space: nowrap; flex-shrink: 0; }
+.item-meta-row {
+  display: flex; align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  flex-wrap: wrap;
+}
+.item-price { white-space: nowrap; flex-shrink: 0; }
 .item-price .mono { font-weight: 600; color: var(--ink-900); }
 .item-per { color: var(--ink-500); }
-.item-line2 { font-size: 0.82rem; }
 .item-meta { color: var(--ink-500); }
 .item-meta.meta-low { color: var(--leaf-700); font-weight: 600; }
 .item-meta.meta-sold-out { color: var(--rose-600); font-weight: 600; }
+
+.item-stepper { padding-top: 2px; }
+
+/* Per-product unit picker (6.5c — multi-unit products). The native radio
+   stays in-DOM for a11y but is visually hidden; the .unit-option label is
+   the click target. Mirrors the .window pickup-window pattern. */
+.unit-picker {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.unit-option {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 9px;
+  background: var(--paper);
+  border: 1px solid var(--ink-300);
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  color: var(--ink-700);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.unit-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.unit-option:hover:not(.is-disabled) { border-color: var(--leaf-600); }
+.unit-option.is-selected {
+  border-color: var(--leaf-600);
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+}
+/* The native radio is visually hidden, so keyboard focus would otherwise
+   be invisible. Hoist the focus ring onto the label via :has(). */
+.unit-option:has(input:focus-visible) {
+  outline: 2px solid var(--leaf-600);
+  outline-offset: 2px;
+}
+.unit-option.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.unit-option-label { font-weight: 600; }
+.unit-option-price { font-weight: 600; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.unit-option.is-selected .unit-option-price { color: var(--leaf-700); }
+.unit-option.is-disabled .unit-option-price { color: var(--ink-500); }
 
 .stepper {
   position: relative;

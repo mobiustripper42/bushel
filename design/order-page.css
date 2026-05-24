@@ -75,7 +75,9 @@
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;
   gap: 12px;
-  align-items: center;
+  /* Top-align so the name + meta + picker stack grows downward and the
+     stepper stays paired with the price. 6.5c restructure (#144). */
+  align-items: start;
   padding: 12px 14px;
   border-top: 1px solid var(--ink-200);
 }
@@ -103,31 +105,80 @@
 }
 .item-row.is-sold-out .item-thumb { opacity: 0.55; }
 
-.item-body { min-width: 0; }
-.item-line1 {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 8px;
-  margin-bottom: 2px;
-  flex-wrap: wrap;
+.item-body {
+  min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .item-name {
   font-weight: 600; font-size: 1rem; color: var(--ink-900);
-  min-width: 0;
+  line-height: 1.25;
+  /* Wraps freely now that price has moved below — closes #144. */
+  overflow-wrap: anywhere;
+}
+.item-meta-row {
+  display: flex; align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  flex-wrap: wrap;
 }
 .item-price {
-  font-size: 0.88rem; color: var(--ink-700);
+  color: var(--ink-700);
   white-space: nowrap; flex-shrink: 0;
 }
 .item-price .mono { font-weight: 600; color: var(--ink-900); }
 .item-per { color: var(--ink-500); }
 
-.item-line2 { font-size: 0.82rem; }
 .item-meta { color: var(--ink-500); }
 .meta-low { color: var(--amber-600); font-weight: 600; }
 .meta-sold-out {
   color: var(--ink-500); font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem;
 }
+
+/* Per-product unit picker (6.5c). Native radio in-DOM for a11y; the
+   label is the visual pill and the click target. */
+.unit-picker {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.unit-option {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 5px 9px;
+  background: var(--paper);
+  border: 1px solid var(--ink-300);
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  color: var(--ink-700);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.unit-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.unit-option:hover:not(.is-disabled) { border-color: var(--leaf-600); }
+.unit-option.is-selected {
+  border-color: var(--leaf-600);
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+}
+.unit-option:has(input:focus-visible) {
+  outline: 2px solid var(--leaf-600);
+  outline-offset: 2px;
+}
+.unit-option.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.unit-option-label { font-weight: 600; }
+.unit-option-price { font-weight: 600; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.unit-option.is-selected .unit-option-price { color: var(--leaf-700); }
+.unit-option.is-disabled .unit-option-price { color: var(--ink-500); }
 
 /* Stepper */
 .stepper {

@@ -243,3 +243,53 @@ export async function resetProductUnits(productId: string, basePriceCents: numbe
     slug: `${nameSlug}-${id8}`,
   });
 }
+
+// Replaces a product's entire unit set in one call. The list is interpreted as
+// the desired post-state; existing units are wiped first to avoid label/slug
+// collisions. Units are inserted in array order so `sort_order` follows the
+// caller's intent. Use this in beforeEach to set up a multi-unit fixture; pair
+// with `resetProductUnits` in afterEach to restore the single-base default.
+export type UnitSeed = {
+  label: string;
+  conversion_to_base: number;
+  unit_price_cents: number;
+  is_active?: boolean;
+};
+export async function setProductUnits(
+  productId: string,
+  units: UnitSeed[],
+): Promise<void> {
+  const sb = admin();
+  const { data: product } = await sb
+    .from("products")
+    .select("name")
+    .eq("id", productId)
+    .single();
+  if (!product) return;
+
+  await sb.from("product_units").delete().eq("product_id", productId);
+
+  const nameSlug = product.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const id8 = productId.slice(0, 8);
+
+  const rows = units.map((u, idx) => {
+    const labelSlug = u.label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return {
+      product_id: productId,
+      label: u.label,
+      conversion_to_base: u.conversion_to_base,
+      unit_price_cents: u.unit_price_cents,
+      is_active: u.is_active ?? true,
+      sort_order: idx,
+      slug: `${nameSlug}-${labelSlug}-${id8}`,
+    };
+  });
+
+  await sb.from("product_units").insert(rows);
+}

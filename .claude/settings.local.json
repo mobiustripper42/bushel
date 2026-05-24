@@ -71,7 +71,10 @@
       "Bash(kill -9 306301)",
       "Bash(vercel env *)",
       "Bash(awk NR>=170 && NR<=182 *)",
-      "Bash(kill -9 3368201)"
+      "Bash(kill -9 3368201)",
+      "Bash(awk '/^## Phase 6.5/,/^## Phase 7/' docs/PROJECT_PLAN.md)",
+      "Bash(kill 2777394 2777433)",
+      "Bash(pkill -f \"next-server\")"
     ]
   }
 }

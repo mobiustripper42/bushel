@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { placeOrder } from "@/actions/place-order";
-import type { ProductRow } from "@/lib/customer/queries";
+import type { ProductRow, ProductUnitRow } from "@/lib/customer/queries";
 
 type Customer = {
   id: string;
@@ -200,6 +200,10 @@ export function OrderForm({
   weekLabel,
 }: Props) {
   const [qty, setQty] = useState<Record<string, number>>({});
+  // selectedUnit[productId] → product_units.id. Unset entries fall back to the
+  // product's first active unit at render time. Switching units zeros qty for
+  // that product (per #153 AC) — see the radio onChange handler below.
+  const [selectedUnit, setSelectedUnit] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<Mode>("delivery");
   const [pickupNote, setPickupNote] = useState("");
   const [deliveryPreference, setDeliveryPreference] = useState(
@@ -224,10 +228,26 @@ export function OrderForm({
     () => products.filter((p) => (qty[p.id] ?? 0) > 0),
     [products, qty],
   );
+
+  // Resolve a product's currently-selected unit. The selectedUnit map is
+  // sparse — products the user hasn't touched fall through to the first
+  // active unit, which 6.5a guarantees exists. Stale ids (e.g. an admin
+  // deactivated a unit mid-session) silently revert to the same default.
+  const unitFor = (p: ProductRow): ProductUnitRow | null => {
+    const id = selectedUnit[p.id] ?? p.units[0]?.id;
+    return p.units.find((u) => u.id === id) ?? p.units[0] ?? null;
+  };
+
   const subtotalCents = useMemo(
     () =>
-      itemsWithQty.reduce((sum, p) => sum + (qty[p.id] ?? 0) * p.price_cents, 0),
-    [itemsWithQty, qty],
+      itemsWithQty.reduce((sum, p) => {
+        const u = unitFor(p);
+        const price = u?.unit_price_cents ?? p.price_cents;
+        return sum + (qty[p.id] ?? 0) * price;
+      }, 0),
+    // unitFor reads selectedUnit; rebuild the subtotal when either map shifts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [itemsWithQty, qty, selectedUnit],
   );
   const itemCount = useMemo(
     () => itemsWithQty.reduce((sum, p) => sum + (qty[p.id] ?? 0), 0),
@@ -242,11 +262,19 @@ export function OrderForm({
     if (lineCount === 0 || submittingRef.current) return;
     submittingRef.current = true;
     setSubmitError(null);
-    const payloadItems = itemsWithQty.map((p) => ({
-      product_id: p.id,
-      qty: qty[p.id] ?? 0,
-      unit_price_cents: p.price_cents,
-    }));
+    // unit_price_cents snapshots the *selected* unit's price. The qty value
+    // is in selected-unit quantities — the place_order RPC still interprets
+    // it as base units (6.5d closes that gap with fractional decrement +
+    // product_unit_id pass-through). For single-unit products the two are
+    // identical and behavior is unchanged.
+    const payloadItems = itemsWithQty.map((p) => {
+      const u = unitFor(p);
+      return {
+        product_id: p.id,
+        qty: qty[p.id] ?? 0,
+        unit_price_cents: u?.unit_price_cents ?? p.price_cents,
+      };
+    });
     startTransition(async () => {
       try {
         const result = await placeOrder({
@@ -308,45 +336,98 @@ export function OrderForm({
               <div className="item-list">
                 {products.map((p) => {
                   const current = qty[p.id] ?? 0;
+                  const selected = unitFor(p);
+                  const conv = selected?.conversion_to_base ?? 1;
+                  const label = selected?.label ?? p.unit;
+                  const priceCents = selected?.unit_price_cents ?? p.price_cents;
+                  // Per-unit max: number of selected-unit chunks that fit in
+                  // current base inventory. Floors fractional remainders so
+                  // the stepper never offers a quantity that would oversell.
+                  const perUnitMax = Math.floor(p.qty_available / conv);
                   const out = p.qty_available === 0;
-                  const remaining = out ? 0 : p.qty_available - current;
+                  // Math.max guards the rare case where the selected unit's
+                  // perUnitMax dropped below the in-cart qty mid-session
+                  // (inventory reduced under our feet). Don't render
+                  // "only -2 lbs left".
+                  const remaining = out ? 0 : Math.max(0, perUnitMax - current);
+                  const showPicker = p.units.length >= 2;
                   return (
                     <div
                       key={p.id}
-                      className={"item-row" + (out ? " is-sold-out" : "")}
+                      className={
+                        "item-row" +
+                        (out ? " is-sold-out" : "") +
+                        (showPicker ? " has-picker" : "")
+                      }
                     >
                       <div className="item-thumb" aria-hidden="true">
                         <div className="item-thumb-inner"></div>
                       </div>
                       <div className="item-body">
-                        <div className="item-line1">
-                          <div className="item-name">{p.name}</div>
-                          <div className="item-price">
-                            <span className="mono">${formatPrice(p.price_cents)}</span>
-                            <span className="item-per"> / {p.unit}</span>
-                          </div>
-                        </div>
-                        <div className="item-line2">
+                        <div className="item-name">{p.name}</div>
+                        <div className="item-meta-row">
+                          <span className="item-price">
+                            <span className="mono">${formatPrice(priceCents)}</span>
+                            <span className="item-per"> / {label}</span>
+                          </span>
                           {out ? (
                             <span className="item-meta meta-sold-out">Sold out</span>
                           ) : remaining <= 3 ? (
                             <span className="item-meta meta-low">
-                              only {remaining} {p.unit}
+                              only {remaining} {label}
                               {remaining !== 1 ? "s" : ""} left
                             </span>
                           ) : (
                             <span className="item-meta">
-                              {remaining} {p.unit}
+                              {remaining} {label}
                               {remaining !== 1 ? "s" : ""} available
                             </span>
                           )}
                         </div>
+                        {showPicker ? (
+                          <div
+                            className="unit-picker"
+                            role="radiogroup"
+                            aria-label={`${p.name} unit`}
+                          >
+                            {p.units.map((u) => {
+                              const disabled = p.qty_available < u.conversion_to_base;
+                              const isSel = u.id === selected?.id;
+                              return (
+                                <label
+                                  key={u.id}
+                                  className={
+                                    "unit-option" +
+                                    (isSel ? " is-selected" : "") +
+                                    (disabled ? " is-disabled" : "")
+                                  }
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`unit-${p.id}`}
+                                    value={u.id}
+                                    checked={isSel}
+                                    disabled={disabled}
+                                    onChange={() => {
+                                      setSelectedUnit((s) => ({ ...s, [p.id]: u.id }));
+                                      setItemQty(p.id, 0);
+                                    }}
+                                  />
+                                  <span className="unit-option-label">{u.label}</span>
+                                  <span className="unit-option-price mono">
+                                    ${formatPrice(u.unit_price_cents)}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                       <div className="item-stepper">
                         <Stepper
                           value={current}
                           onChange={(n) => setItemQty(p.id, n)}
-                          max={p.qty_available}
+                          max={perUnitMax}
                         />
                       </div>
                     </div>
