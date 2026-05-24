@@ -97,7 +97,8 @@ export async function getCurrentWeekOrder(customerId: string, weekOf: string) {
         id,
         qty,
         unit_price_cents,
-        products ( name, unit )
+        products ( name, unit ),
+        product_units ( label )
       )
     `,
     )
