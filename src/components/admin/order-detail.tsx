@@ -12,18 +12,23 @@ export function OrderDetail({ order }: { order: OrderRowData }) {
           <div className="ord-detail-label">Line items</div>
           <ul className="ord-detail-list">
             {order.items.map((i) => {
-              const oversold = i.qty > i.qtyAvailable;
-              const shortBy = oversold ? i.qty - i.qtyAvailable : 0;
+              // 6.5f: oversold math is unit-aware. A line of 5 lb (conv=2)
+              // consumes 10 base units, so qty_available=8 is oversold by 2
+              // base units — not "5 > 8 = false" from the old integer compare.
+              const baseRequested = i.qty * i.conversionToBase;
+              const oversold = baseRequested > i.qtyAvailable;
+              const shortBy = oversold ? baseRequested - i.qtyAvailable : 0;
               return (
                 <li key={i.productId} className={oversold ? "is-oversold" : ""}>
                   <span className="ord-li-qty mono">{i.qty}×</span>
                   <span className="ord-li-name">
                     {i.name}
-                    <span className="ord-li-unit"> · {i.unit}</span>
+                    <span className="ord-li-unit"> · {i.unitLabel}</span>
                   </span>
                   {oversold && (
                     <span className="ord-li-flag">
-                      Only {i.qtyAvailable} available — {shortBy} oversold
+                      Only {i.qtyAvailable} {i.unit} available — {shortBy} {i.unit}
+                      {shortBy !== 1 ? "s" : ""} oversold
                     </span>
                   )}
                   <span className="ord-li-amt mono">

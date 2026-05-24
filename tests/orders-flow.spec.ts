@@ -10,6 +10,9 @@ import {
   clearOrdersForWeek,
   seedOrder,
   resetCustomerOrderState,
+  resetProductUnits,
+  setProductQty,
+  setProductUnits,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
 import { EXPORT_COLUMNS } from "@/lib/admin/export-orders";
@@ -257,5 +260,150 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     expect(lastText).not.toContain(TEST_PRODUCTS.kale.name);
 
     await adminCtx.close();
+  });
+
+  // 6.5f — multi-unit cross-cutting end-to-end. Exercises the full path:
+  // admin seeds units → customer picks a non-base unit → place_order does
+  // unit-aware decrement + per-unit price snapshot → admin orders detail
+  // displays the correct unit label per line.
+  test.describe("multi-unit end-to-end (6.5f)", () => {
+    const LB_CONV = 2;
+    const BUNCH_PRICE = TEST_PRODUCTS.kale.price_cents; // $3.00 base
+    const LB_PRICE = 500;                                // $5.00 per lb
+
+    test.beforeEach(async () => {
+      await setProductUnits(TEST_PRODUCTS.kale.id, [
+        { label: TEST_PRODUCTS.kale.unit, conversion_to_base: 1, unit_price_cents: BUNCH_PRICE },
+        { label: "lb",                    conversion_to_base: LB_CONV, unit_price_cents: LB_PRICE },
+      ]);
+    });
+
+    test.afterEach(async () => {
+      await resetProductUnits(TEST_PRODUCTS.kale.id, BUNCH_PRICE);
+      await setProductQty(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.qty_available);
+    });
+
+    test("happy path: customer orders lb → admin sees correct unit label + price + decrement", async ({
+      browser,
+    }) => {
+      // Customer picks lb, orders 2.
+      const customerCtx = await browser.newContext();
+      const customerPage = await customerCtx.newPage();
+      await customerPage.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+      const kaleRow = customerPage.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+      await kaleRow.locator("label.unit-option").filter({ hasText: "lb" }).click();
+      await kaleRow.getByRole("button", { name: "increase" }).click();
+      await kaleRow.getByRole("button", { name: "increase" }).click();
+      await customerPage.locator(".submit-btn").click();
+      await customerPage.waitForURL(/\/c\/[^/]+\/confirmed$/);
+
+      // /confirmed shows "lb", not the base "bunch".
+      const confirmList = customerPage.locator(".confirm-list");
+      await expect(confirmList).toContainText(/lb/);
+      await expect(confirmList).not.toContainText(/bunch/);
+      await customerCtx.close();
+
+      // Find the order id.
+      const sb = admin();
+      const ids = await customerIds();
+      const { data: order } = await sb
+        .from("orders")
+        .select("id")
+        .eq("customer_id", ids.farmStand)
+        .eq("week_of", thisWeek)
+        .single();
+      expect(order?.id).toBeTruthy();
+
+      // Inventory decremented by qty * conversion_to_base = 2 * 2 = 4.
+      const { data: kale } = await sb
+        .from("products")
+        .select("qty_available")
+        .eq("id", TEST_PRODUCTS.kale.id)
+        .single();
+      expect(Number(kale?.qty_available)).toBeCloseTo(
+        TEST_PRODUCTS.kale.qty_available - 2 * LB_CONV,
+        2,
+      );
+
+      // Admin orders expand row → line shows "lb", $5.00 line price.
+      const adminCtx = await browser.newContext({ storageState: ADMIN_STORAGE_STATE });
+      const adminPage = await adminCtx.newPage();
+      await adminPage.goto("/admin/orders");
+      const row = adminPage.locator(`tr.ord-row[data-order-id="${order!.id}"]`);
+      await row.click();
+
+      const detail = adminPage.locator("tr.ord-detail-row .ord-detail");
+      await expect(detail).toBeVisible();
+      const lineItem = detail.locator(".ord-detail-list li").first();
+      await expect(lineItem.locator(".ord-li-name")).toContainText(TEST_PRODUCTS.kale.name);
+      // The unit segment is " · lb", not " · bunch" — the line corresponds to
+      // the customer's lb selection. Be precise so a bug that falls back to
+      // the base unit doesn't pass.
+      await expect(lineItem.locator(".ord-li-unit")).toHaveText(/· lb$/);
+      await expect(lineItem.locator(".ord-li-unit")).not.toHaveText(/bunch/);
+      // 2 lb × $5.00 = $10.00 (selected unit's price, not base).
+      await expect(lineItem.locator(".ord-li-amt")).toHaveText("$10.00");
+
+      await adminCtx.close();
+    });
+
+    test("oversell-by-unit: customer orders past per-unit availability → admin sees recon pin + correct label", async ({
+      browser,
+    }) => {
+      // Tight inventory: 3 base units = 1.5 lb at conv=2 → 1 lb is OK but
+      // 2 lb tips over. Stepper max is 1 lb (floor(3/2)=1), so the customer
+      // can't normally order 2 lb. Set qty_available so 2 lb is the
+      // stepper's max BUT the order WILL still trigger the oversold path
+      // when stock is reduced after page render. Cleanest setup: render
+      // page with qty=4 (max=2 lb), then drop qty to 1 before submit so
+      // the place_order RPC oversells.
+      await setProductQty(TEST_PRODUCTS.kale.id, 4);
+
+      const customerCtx = await browser.newContext();
+      const customerPage = await customerCtx.newPage();
+      await customerPage.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+      const kaleRow = customerPage.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+      await kaleRow.locator("label.unit-option").filter({ hasText: "lb" }).click();
+      await kaleRow.getByRole("button", { name: "increase" }).click();
+      await kaleRow.getByRole("button", { name: "increase" }).click();
+      await expect(kaleRow.locator(".stepper-val")).toHaveValue("2");
+
+      // Drop inventory under the customer's feet — emulates a parallel
+      // customer or an admin edit between page render and submit.
+      await setProductQty(TEST_PRODUCTS.kale.id, 1);
+
+      await customerPage.locator(".submit-btn").click();
+      await customerPage.waitForURL(/\/c\/[^/]+\/confirmed$/);
+      await customerCtx.close();
+
+      const sb = admin();
+      const ids = await customerIds();
+      const { data: order } = await sb
+        .from("orders")
+        .select("id, needs_reconciliation")
+        .eq("customer_id", ids.farmStand)
+        .eq("week_of", thisWeek)
+        .single();
+      expect(order?.needs_reconciliation).toBe(true);
+
+      // Admin orders detail → recon callout + per-line "lb oversold" message.
+      const adminCtx = await browser.newContext({ storageState: ADMIN_STORAGE_STATE });
+      const adminPage = await adminCtx.newPage();
+      await adminPage.goto("/admin/orders");
+      const row = adminPage.locator(`tr.ord-row[data-order-id="${order!.id}"]`);
+      await row.click();
+      const detail = adminPage.locator("tr.ord-detail-row .ord-detail");
+      await expect(detail.locator(".callout-warn")).toBeVisible();
+      const oversoldLine = detail.locator(".ord-detail-list li.is-oversold");
+      await expect(oversoldLine.locator(".ord-li-unit")).toHaveText(/· lb$/);
+      // Inventory dropped to 1 base unit before submit; order needed 4
+      // (2 lb × conv 2). Flag should read "Only 1 bunch available — 3 ..."
+      // (qty_available is in base units, the customer-side base label).
+      await expect(oversoldLine.locator(".ord-li-flag")).toContainText(/oversold/i);
+
+      await adminCtx.close();
+    });
   });
 });
