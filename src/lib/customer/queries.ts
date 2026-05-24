@@ -7,17 +7,42 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
-export type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+export type ProductUnitRow = Database["public"]["Tables"]["product_units"]["Row"];
+export type ProductRow = Database["public"]["Tables"]["products"]["Row"] & {
+  // Active units only, sorted by (sort_order nulls last, created_at). The base
+  // unit (conversion_to_base = 1) is the implicit default for the customer
+  // picker. 6.5a guarantees every product has at least one active unit.
+  units: ProductUnitRow[];
+};
 
 export async function getAvailableProducts(): Promise<ProductRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select("*, product_units(*)")
     .eq("is_available", true)
     .order("sort_order", { ascending: true });
   if (error) throw new Error(`getAvailableProducts: ${error.message}`);
-  return data ?? [];
+  if (!data) return [];
+  return data.map((row) => {
+    const allUnits = (row.product_units ?? []) as ProductUnitRow[];
+    const units = allUnits
+      .filter((u) => u.is_active)
+      .sort((a, b) => {
+        const ao = a.sort_order;
+        const bo = b.sort_order;
+        if (ao === null && bo === null) return a.created_at.localeCompare(b.created_at);
+        if (ao === null) return 1;
+        if (bo === null) return -1;
+        return ao - bo;
+      });
+    // Strip the raw join field so the returned row matches ProductRow exactly.
+    const { product_units: _product_units, ...rest } = row as typeof row & {
+      product_units: ProductUnitRow[];
+    };
+    void _product_units;
+    return { ...rest, units };
+  });
 }
 
 // Reads the ordering_schedule singleton. Customer page uses this to decide

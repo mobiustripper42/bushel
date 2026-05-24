@@ -5,6 +5,10 @@
 const { useState, useMemo, useEffect, useRef } = React;
 
 // ───── Data ──────────────────────────────────────────────────────────
+// `units` is optional: when present and length ≥ 2 the row renders a
+// per-product unit picker (6.5c). Each unit declares its own price and a
+// conversion to the base unit (the first entry — conv=1). Inventory is
+// tracked in base units; per-unit availability is floor(avail / conv).
 const INVENTORY = [
 { id: "tomato", name: "Heirloom tomatoes", unit: "lb", price: 5.50, avail: 24 },
 { id: "kale", name: "Dino kale", unit: "bunch", price: 4.50, avail: 18 },
@@ -12,7 +16,12 @@ const INVENTORY = [
 { id: "beets", name: "Red beets", unit: "lb", price: 3.25, avail: 22 },
 { id: "carrots", name: "Rainbow carrots", unit: "bunch", price: 4.75, avail: 11 },
 { id: "shallots", name: "Shallots", unit: "lb", price: 6.00, avail: 8 },
-{ id: "basil", name: "Genovese basil", unit: "bunch", price: 3.50, avail: 6 },
+{ id: "basil", name: "Genovese basil", unit: "bunch", price: 3.50, avail: 6,
+  units: [
+    { id: "bunch", label: "bunch", price: 3.50, conv: 1 },
+    { id: "lb",    label: "lb",    price: 9.00, conv: 4 }
+  ]
+},
 { id: "flowers", name: "Mixed bouquet", unit: "stem", price: 12.00, avail: 7 },
 { id: "garlic", name: "Music garlic", unit: "head", price: 2.50, avail: 0 }];
 
@@ -59,39 +68,68 @@ function Stepper({ value, onChange, max, disabled }) {
 
 }
 
-function ItemRow({ item, qty, onQty, soldOut }) {
+function ItemRow({ item, qty, onQty, soldOut, selectedUnitId, onUnitChange }) {
   const out = soldOut || item.avail === 0;
-  const remaining = out ? 0 : item.avail - qty;
+  const hasPicker = Array.isArray(item.units) && item.units.length >= 2;
+  const selected = hasPicker
+    ? item.units.find((u) => u.id === selectedUnitId) || item.units[0]
+    : { label: item.unit, price: item.price, conv: 1 };
+  const perUnitMax = Math.floor(item.avail / selected.conv);
+  const remaining = out ? 0 : perUnitMax - qty;
   return (
-    <div className={"item-row" + (out ? " is-sold-out" : "")}>
+    <div className={"item-row" + (out ? " is-sold-out" : "") + (hasPicker ? " has-picker" : "")}>
       <div className="item-thumb" aria-hidden="true">
         <div className="item-thumb-inner"></div>
       </div>
       <div className="item-body">
-        <div className="item-line1">
-          <div className="item-name">{item.name}</div>
-          <div className="item-price">
-            <span className="mono">${item.price.toFixed(2)}</span>
-            <span className="item-per"> / {item.unit}</span>
-          </div>
-        </div>
-        <div className="item-line2">
+        <div className="item-name">{item.name}</div>
+        <div className="item-meta-row">
+          <span className="item-price">
+            <span className="mono">${selected.price.toFixed(2)}</span>
+            <span className="item-per"> / {selected.label}</span>
+          </span>
           {out ?
           <span className="item-meta meta-sold-out">Sold out</span> :
           remaining <= 3 ?
-          <span className="item-meta meta-low">only {remaining} {item.unit}{remaining !== 1 ? "s" : ""} left</span> :
+          <span className="item-meta meta-low">only {remaining} {selected.label}{remaining !== 1 ? "s" : ""} left</span> :
 
-          <span className="item-meta">{remaining} {item.unit}{remaining !== 1 ? "s" : ""} available</span>
+          <span className="item-meta">{remaining} {selected.label}{remaining !== 1 ? "s" : ""} available</span>
           }
         </div>
+        {hasPicker &&
+          <div className="unit-picker" role="radiogroup" aria-label={`${item.name} unit`}>
+            {item.units.map((u) => {
+              const disabled = item.avail < u.conv;
+              const isSel = u.id === selected.id;
+              return (
+                <label
+                  key={u.id}
+                  className={
+                    "unit-option" +
+                    (isSel ? " is-selected" : "") +
+                    (disabled ? " is-disabled" : "")
+                  }>
+                  <input
+                    type="radio"
+                    name={`unit-${item.id}`}
+                    value={u.id}
+                    checked={isSel}
+                    disabled={disabled}
+                    onChange={() => onUnitChange(u.id)} />
+                  <span className="unit-option-label">{u.label}</span>
+                  <span className="unit-option-price mono">${u.price.toFixed(2)}</span>
+                </label>);
+            })}
+          </div>
+        }
       </div>
       <div className="item-stepper">
         <Stepper
           value={qty}
           onChange={onQty}
-          max={item.avail}
+          max={perUnitMax}
           disabled={out} />
-        
+
       </div>
     </div>);
 
@@ -115,6 +153,7 @@ function OrderPage({ tweaks }) {
     tomato: 4, kale: 6, lettuce: 0, beets: 2, carrots: 0,
     shallots: 0, basil: 0, flowers: 0, garlic: 0
   });
+  const [selectedUnit, setSelectedUnit] = useState({ basil: "bunch" });
   const [mode, setMode] = useState(tweaks.mode || "delivery");
   const [window, setWindow] = useState("w1");
   const [notes, setNotes] = useState("");
@@ -206,7 +245,12 @@ function OrderPage({ tweaks }) {
                   key={i.id}
                   item={i}
                   qty={qty[i.id] || 0}
-                  onQty={(n) => setItemQty(i.id, n)} />
+                  onQty={(n) => setItemQty(i.id, n)}
+                  selectedUnitId={selectedUnit[i.id]}
+                  onUnitChange={(unitId) => {
+                    setSelectedUnit((s) => ({ ...s, [i.id]: unitId }));
+                    setItemQty(i.id, 0);
+                  }} />
 
                 )}
               </div>
