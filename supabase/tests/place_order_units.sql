@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 
 -- ============================================================
 -- 6.5d — place_order RPC under multi-unit (DEC-032)
@@ -230,6 +230,38 @@ select is(
      )),
   'dddd0000-0000-0000-0000-eeee00000001'::uuid,
   'trigger filled in product_unit_id from the first active unit'
+);
+
+-- ============================================================
+-- 8. Product with NO active units + payload that omits product_unit_id
+--    raises a distinct "no active units" error (not the misleading
+--    "product_unit_id <NULL> does not belong to product …" path).
+-- ============================================================
+insert into public.customers (id, name, token)
+values ('dddd0000-0000-0000-0000-000000000005'::uuid, 'No Units Customer', 'token-no-units-65d');
+
+insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000004'::uuid, 'Phantom', 'unit', 100, 5.00, 4, 'Herbs');
+
+-- Wipe all units (including the trigger-spawned default) so the product
+-- has zero active units, which is the case the error path covers.
+delete from public.product_units where product_id = 'dddd0000-0000-0000-0000-aaaa00000004'::uuid;
+
+select throws_like(
+  $$ select public.place_order(
+       'dddd0000-0000-0000-0000-000000000005'::uuid,
+       '2026-06-01'::date,
+       'delivery', '111 No Units Way', '', '', '',
+       jsonb_build_array(
+         jsonb_build_object(
+           'product_id', 'dddd0000-0000-0000-0000-aaaa00000004'::text,
+           'qty',        1,
+           'unit_price_cents', 100
+         )
+       )
+     ) $$,
+  '%has no active units%',
+  'product with zero active units raises a targeted error (not the unit-mismatch message)'
 );
 
 select * from finish();

@@ -81,6 +81,12 @@ begin
        where product_id = v_product_id and is_active = true
        order by sort_order nulls last, created_at
        limit 1;
+      -- Distinct error path from the cross-product-id case below so the
+      -- message points at the right remedy: re-activate (or seed) a unit
+      -- on this product, not "fix the unit_id in your payload."
+      if v_unit_id is null then
+        raise exception 'place_order: product % has no active units', v_product_id;
+      end if;
     end if;
 
     -- Snapshot from product_units, not from the client payload. If a unit
