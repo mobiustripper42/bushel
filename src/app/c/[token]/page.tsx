@@ -43,7 +43,12 @@ export default async function CustomerTokenPage({
     return <ClosedShell customerName={greetingName} />;
   }
 
-  const anyOrderable = products.some((p) => p.qty_available > 0);
+  // 6.5d: orderable means at least one active unit fits in current base
+  // inventory. A product with only a conv=4 unit and qty_available=2 is
+  // effectively sold out even though qty_available > 0.
+  const anyOrderable = products.some((p) =>
+    p.units.some((u) => p.qty_available >= u.conversion_to_base),
+  );
   if (!anyOrderable) {
     return <AllSoldOutShell customerName={greetingName} />;
   }

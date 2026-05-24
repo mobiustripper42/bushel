@@ -110,11 +110,11 @@ test.describe("/c/[token] · per-product unit picker", () => {
     await expect(page.locator(".summary-total")).toContainText("12.00");
   });
 
-  test("submit payload snapshots the selected unit's unit_price_cents (not the base)", async ({ page }) => {
+  test("submit payload records selected unit's price + id + fractional decrement (6.5d contract)", async ({ page }) => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
 
     const row = kaleRow(page);
-    // Switch to lb (selected unit's price = $5.00) and order 2.
+    // Switch to lb (price $5.00, conv=2) and order 2 lb.
     await row.locator("label.unit-option").filter({ hasText: "lb" }).click();
     await row.getByRole("button", { name: "increase" }).click();
     await row.getByRole("button", { name: "increase" }).click();
@@ -137,16 +137,31 @@ test.describe("/c/[token] · per-product unit picker", () => {
       .single();
     const { data: lineItem } = await sb
       .from("order_items")
-      .select("qty, unit_price_cents")
+      .select("qty, unit_price_cents, product_unit_id, product_units(label)")
       .eq("order_id", order!.id)
       .eq("product_id", KALE.id)
       .single();
 
-    // The selected unit (lb) was $5.00 — base bunch is $3.00. Recording the
-    // selected unit's price is the 6.5c contract; full unit_id + fractional
-    // decrement land in 6.5d.
+    // 6.5d: order_items.unit_price_cents pulled from product_units at RPC
+    // time, product_unit_id matches the lb row (not the bunch fallback),
+    // and qty stays in selected-unit units.
     expect(lineItem?.unit_price_cents).toBe(KALE_LB_PRICE);
     expect(lineItem?.qty).toBe(2);
+    expect(
+      (lineItem as unknown as { product_units: { label: string } })
+        ?.product_units?.label,
+    ).toBe("lb");
+
+    // qty_available decremented by qty * conversion_to_base.
+    const { data: kale } = await sb
+      .from("products")
+      .select("qty_available")
+      .eq("id", KALE.id)
+      .single();
+    expect(Number(kale?.qty_available)).toBeCloseTo(
+      KALE.qty_available - 2 * KALE_LB_CONV,
+      2,
+    );
   });
 
   test("long product name is fully visible at 375px (resolves #144)", async ({ page }, testInfo) => {
