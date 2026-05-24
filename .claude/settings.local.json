@@ -74,7 +74,8 @@
       "Bash(kill -9 3368201)",
       "Bash(awk '/^## Phase 6.5/,/^## Phase 7/' docs/PROJECT_PLAN.md)",
       "Bash(kill 2777394 2777433)",
-      "Bash(pkill -f \"next-server\")"
+      "Bash(pkill -f \"next-server\")",
+      "Bash(pkill -f next-server)"
     ]
   }
 }

@@ -18,6 +18,7 @@ Promote to a GitHub `phase:N` issue when the trigger fires (real-world signal, d
 - **Weekly inventory snapshots / history** — beyond pre-fill. Vague. Trigger: real use case ("what did I have on hand 6 weeks ago?").
 - **Per-customer reminder preferences (incl. email channel)** (DEC-020) — `notification_preference` enum was replaced by `send_weekly_link` in migration 20260510. Email channel needs a real design.
 - **Cron auto-close opt-in** (DEC-030) — infrastructure exists; Annabel hasn't asked. Trigger: Annabel mentions wanting orders to close automatically Wednesday night.
+- **Whole-only vs. fractional units** (DEC-032 follow-on) — some units only make sense as whole counts (a "bag of lettuce", a "head of garlic") and others reasonably split (half-pound of basil). Add a `product_units.is_whole_only` boolean (default true matching current integer-qty behavior). When false, the customer stepper / qty input on that unit accepts decimals; `order_items.qty` would need to widen from `integer` to `numeric(10,2)` and the place_order decrement math is already numeric-safe. Trigger: real customer wants to order a half-pound of something. Dependency: 6.5c picker (#153) shipped, 6.5d fractional decrement (#154) shipped.
 
 ## Promoted
 

@@ -262,15 +262,15 @@ export function OrderForm({
     if (lineCount === 0 || submittingRef.current) return;
     submittingRef.current = true;
     setSubmitError(null);
-    // unit_price_cents snapshots the *selected* unit's price. The qty value
-    // is in selected-unit quantities — the place_order RPC still interprets
-    // it as base units (6.5d closes that gap with fractional decrement +
-    // product_unit_id pass-through). For single-unit products the two are
-    // identical and behavior is unchanged.
+    // Payload identifies the selected unit; place_order looks up the
+    // canonical unit_price_cents + conversion_to_base from product_units
+    // at RPC time (6.5d). unit_price_cents is sent for display continuity
+    // but the RPC ignores it — strict "price at moment of order" semantics.
     const payloadItems = itemsWithQty.map((p) => {
       const u = unitFor(p);
       return {
         product_id: p.id,
+        product_unit_id: u!.id,
         qty: qty[p.id] ?? 0,
         unit_price_cents: u?.unit_price_cents ?? p.price_cents,
       };
@@ -344,7 +344,12 @@ export function OrderForm({
                   // current base inventory. Floors fractional remainders so
                   // the stepper never offers a quantity that would oversell.
                   const perUnitMax = Math.floor(p.qty_available / conv);
-                  const out = p.qty_available === 0;
+                  // 6.5d: a product is "out" when no active unit fits in the
+                  // remaining base inventory — qty_available=2 with only a
+                  // conv=4 unit active is sold out, not "0 lbs left".
+                  const out =
+                    p.qty_available === 0 ||
+                    !p.units.some((u) => p.qty_available >= u.conversion_to_base);
                   // Math.max guards the rare case where the selected unit's
                   // perUnitMax dropped below the in-cart qty mid-session
                   // (inventory reduced under our feet). Don't render

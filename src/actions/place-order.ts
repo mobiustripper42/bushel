@@ -13,6 +13,11 @@ import { weekOfMondayNY } from "@/lib/week";
 
 export type PlaceOrderItem = {
   product_id: string;
+  // 6.5d: identifies which unit of the product is being ordered. The
+  // place_order RPC looks up unit_price_cents + conversion_to_base from
+  // product_units at order time — the unit_price_cents field on the
+  // payload is now informational only (the RPC ignores it).
+  product_unit_id: string;
   qty: number;
   unit_price_cents: number;
 };
