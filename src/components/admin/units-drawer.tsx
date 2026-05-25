@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { saveProductUnits, type UnitInput } from "@/actions/save-product-units";
+import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
 
 export type ProductUnitState = {
   id: string;
@@ -93,6 +94,11 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
     }
     return false;
   }, [units, initialUnits, deletedIds]);
+
+  // #129 — guard against losing in-progress unit edits when Annabel clicks
+  // the sidebar nav (or browser-backs) mid-edit. Suspend while saving so
+  // the success path (onSaved → unmount) doesn't bounce.
+  useUnsavedChangesGuard(dirty && !saving);
 
   function update(id: string, patch: Partial<ProductUnitState>) {
     setUnits((us) => us.map((u) => (u.id === id ? { ...u, ...patch } : u)));

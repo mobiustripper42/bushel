@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { saveIntroNote } from "@/actions/save-intro-note";
+import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
 
 type IntroNoteCardProps = {
   initialValue: string;
@@ -15,6 +16,9 @@ export function IntroNoteCard({ initialValue }: IntroNoteCardProps) {
   const [error, setError] = useState<string | null>(null);
 
   const dirty = value !== saved;
+  // #129 — guard unsaved typing. Save handler updates `saved`, so dirty
+  // flips back to false on success and the guard disarms.
+  useUnsavedChangesGuard(dirty && !pending);
 
   // Sync if a server-side change updates initialValue (e.g. another tab
   // saves, or revalidatePath after our own save). We only overwrite local

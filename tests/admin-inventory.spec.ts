@@ -143,6 +143,45 @@ test.describe("admin inventory", () => {
     await page.reload();
     await expect(rowByName(page, "Test Carrots")).toHaveCount(0);
   });
+
+  // #129 — guard fires on in-app navigation when the form is dirty;
+  // saving clears dirty so the next nav is silent. Native beforeunload
+  // can't be triggered without leaving the page in Playwright, but the
+  // click-capture path uses window.confirm(), interceptable via
+  // page.on("dialog").
+  test("unsaved-changes guard: confirm prompt fires on sidebar nav, save clears it", async ({ page }) => {
+    await page.goto("/admin/inventory");
+
+    const kale = rowByName(page, TEST_PRODUCTS.kale.name);
+    await kale.getByRole("spinbutton", { name: /quantity/i }).fill("17");
+    await expect(saveButton(page, 1)).toBeEnabled();
+
+    const dismissPrompt = (dialog: import("@playwright/test").Dialog) => dialog.dismiss();
+    page.on("dialog", dismissPrompt);
+    await page.locator(".admin-nav").getByRole("link", { name: /customers/i }).click();
+    await expect(page).toHaveURL(/\/admin\/inventory/);
+    page.off("dialog", dismissPrompt);
+
+    // Save → dirty resets → next nav is silent.
+    await saveButton(page, 1).click();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+
+    const failOnPrompt = (dialog: import("@playwright/test").Dialog) => {
+      throw new Error(`Unexpected dialog after save: ${dialog.message()}`);
+    };
+    page.on("dialog", failOnPrompt);
+    await page.locator(".admin-nav").getByRole("link", { name: /customers/i }).click();
+    await expect(page).toHaveURL(/\/admin\/customers/);
+    page.off("dialog", failOnPrompt);
+
+    // Restore baseline qty for downstream specs.
+    await page.goto("/admin/inventory");
+    await rowByName(page, TEST_PRODUCTS.kale.name)
+      .getByRole("spinbutton", { name: /quantity/i })
+      .fill(String(TEST_PRODUCTS.kale.qty_available));
+    await saveButton(page, 1).click();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+  });
 });
 
 test.describe("admin inventory — open-for-orders meta pill", () => {

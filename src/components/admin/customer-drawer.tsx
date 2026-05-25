@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { saveCustomer } from "@/actions/save-customer";
 import { deactivateCustomer } from "@/actions/deactivate-customer";
 import { reactivateCustomer } from "@/actions/reactivate-customer";
+import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
 
 export type CustomerDrawerState = {
   id: string | null;
@@ -37,6 +38,11 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
   const [reactivating, startReactivating] = useTransition();
   const isNew = !initial.id;
   const isInactive = !isNew && !initial.is_active;
+  // #129 — guard against leaving with unsaved edits. Suspend during
+  // saving/deleting/reactivating so the success path (which fires
+  // onSaved → unmount) doesn't bounce against the guard.
+  const dirty = JSON.stringify(c) !== JSON.stringify(initial);
+  useUnsavedChangesGuard(dirty && !saving && !deleting && !reactivating);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
