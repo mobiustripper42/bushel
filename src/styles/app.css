@@ -1046,11 +1046,7 @@
 }
 
 .inv { margin-bottom: 36px; }
-.inv-head {
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin-bottom: 10px;
-}
-.inv-count { font-size: 0.82rem; color: var(--ink-500); }
+.inv-head { margin-bottom: 10px; }
 
 .item-list {
   background: var(--paper);
