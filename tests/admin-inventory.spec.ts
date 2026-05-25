@@ -154,7 +154,12 @@ test.describe("admin inventory", () => {
   // and confirm the new order persists. The try/finally + admin-client
   // reset guarantees other specs see the seeded order even if an assertion
   // here fails mid-test (cleanup-via-drag would otherwise leak).
-  test("drag-to-reorder: grip drag updates row order, persists across reload", async ({ page }) => {
+  test("drag-to-reorder: grip drag updates row order, persists across reload", async ({ page }, testInfo) => {
+    // Native HTML5 DnD doesn't work on touch viewports — mobile project
+    // (iPhone-13 WebKit) is desktop-only for this interaction. Touch-friendly
+    // reorder is tracked in the #143 follow-up issue (#168) alongside the
+    // above/below drop-precision UX.
+    test.skip(testInfo.project.name === "mobile", "HTML5 drag is desktop-only; touch reorder is a follow-up (#168).");
     try {
       await page.goto("/admin/inventory");
 
