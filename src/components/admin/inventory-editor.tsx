@@ -22,7 +22,7 @@ export type ScheduleSummary = {
 };
 
 export type CustomerStats = {
-  active: number;
+  subscribed: number;
   orderedThisWeek: number;
 };
 
@@ -200,7 +200,7 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
           <StatusDot open={scheduleDescription.open} /> {scheduleDescription.label}
         </MetaPill>
         <MetaPill label="Customers">
-          {customerStats.active} active · {customerStats.orderedThisWeek} ordered
+          {customerStats.subscribed} subscribed · {customerStats.orderedThisWeek} ordered
         </MetaPill>
       </MetaRow>
 

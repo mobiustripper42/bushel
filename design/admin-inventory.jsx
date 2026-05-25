@@ -122,7 +122,7 @@ function InventoryPage() {
         </div>
         <div className="inv-meta-pill">
           <span className="inv-meta-key">Customers</span>
-          <span className="inv-meta-val">38 active · 12 ordered</span>
+          <span className="inv-meta-val">38 subscribed · 12 ordered</span>
         </div>
       </div>
 

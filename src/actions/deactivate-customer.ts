@@ -11,5 +11,6 @@ export async function deactivateCustomer(id: string): Promise<{ error: string | 
     .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/customers");
+  revalidatePath("/admin/inventory");
   return { error: null };
 }

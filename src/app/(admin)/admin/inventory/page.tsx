@@ -7,7 +7,7 @@ import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
 export default async function InventoryPage() {
   const supabase = await createClient();
   const weekOf = weekOfMondayNY();
-  const [productsRes, unitsRes, scheduleRes, activeCustomersRes, weekOrdersRes] = await Promise.all([
+  const [productsRes, unitsRes, scheduleRes, subscribedCustomersRes, weekOrdersRes] = await Promise.all([
     supabase
       .from("products")
       .select("*")
@@ -26,7 +26,8 @@ export default async function InventoryPage() {
     supabase
       .from("customers")
       .select("id", { count: "exact", head: true })
-      .eq("is_active", true),
+      .eq("is_active", true)
+      .eq("send_weekly_link", true),
     supabase
       .from("orders")
       .select("customer_id", { count: "exact", head: true })
@@ -40,7 +41,7 @@ export default async function InventoryPage() {
     productsRes.error ??
     unitsRes.error ??
     scheduleRes.error ??
-    activeCustomersRes.error ??
+    subscribedCustomersRes.error ??
     weekOrdersRes.error;
   if (firstError || !scheduleRes.data) {
     return (
@@ -63,7 +64,7 @@ export default async function InventoryPage() {
   };
 
   const customerStats: CustomerStats = {
-    active: activeCustomersRes.count ?? 0,
+    subscribed: subscribedCustomersRes.count ?? 0,
     orderedThisWeek: weekOrdersRes.count ?? 0,
   };
 
