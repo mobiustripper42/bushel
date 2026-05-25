@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { saveCustomer } from "@/actions/save-customer";
 import { deactivateCustomer } from "@/actions/deactivate-customer";
+import { reactivateCustomer } from "@/actions/reactivate-customer";
 
 export type CustomerDrawerState = {
   id: string | null;
@@ -18,6 +19,8 @@ export type CustomerDrawerState = {
   priority: string;
   send_weekly_link: boolean;
   token: string;
+  // #61 — when false, the drawer swaps "Delete customer" for "Reactivate".
+  is_active: boolean;
 };
 
 type Props = {
@@ -31,7 +34,9 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const [deleting, startDeleting] = useTransition();
+  const [reactivating, startReactivating] = useTransition();
   const isNew = !initial.id;
+  const isInactive = !isNew && !initial.is_active;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -96,6 +101,24 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
     });
   }
 
+  function handleReactivate() {
+    if (!c.id) return;
+    startReactivating(async () => {
+      let result;
+      try {
+        result = await reactivateCustomer(c.id!);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Reactivate failed. Try again.");
+        return;
+      }
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onSaved();
+    });
+  }
+
   return (
     <>
       <div className="drawer-scrim" onClick={onClose} aria-hidden="true" />
@@ -107,7 +130,9 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
       >
         <header className="drawer-head">
           <div>
-            <div className="eyebrow">{isNew ? "new customer" : "edit customer"}</div>
+            <div className="eyebrow">
+              {isNew ? "new customer" : isInactive ? "deactivated customer" : "edit customer"}
+            </div>
             <h2 className="drawer-title">
               {isNew ? "Add a new customer" : initial.name || "—"}
             </h2>
@@ -205,7 +230,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
         </div>
 
         <footer className="drawer-foot">
-          {!isNew && (
+          {!isNew && !isInactive && (
             <Button
               variant="destructive"
               onClick={handleDelete}
@@ -214,11 +239,20 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
               {deleting ? "Deactivating…" : "Delete customer"}
             </Button>
           )}
+          {isInactive && (
+            <Button
+              variant="primary"
+              onClick={handleReactivate}
+              disabled={reactivating || saving || deleting}
+            >
+              {reactivating ? "Reactivating…" : "Reactivate customer"}
+            </Button>
+          )}
           <div style={{ flex: 1 }} />
-          <Button variant="ghost" onClick={onClose} disabled={saving || deleting}>
+          <Button variant="ghost" onClick={onClose} disabled={saving || deleting || reactivating}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving || deleting}>
+          <Button variant="primary" onClick={handleSave} disabled={saving || deleting || reactivating}>
             {saving ? "Saving…" : isNew ? "Add customer" : "Save changes"}
           </Button>
         </footer>

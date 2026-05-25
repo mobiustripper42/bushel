@@ -338,6 +338,7 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 .switch.is-on .switch-thumb { transform: translateX(16px); }
+.switch.is-disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── Sticky save bar ─────────────────────────────────────── */
 .save-bar {
@@ -712,6 +713,22 @@
 .cust-table tbody tr.cust-row:first-child td { border-top: 0; }
 .cust-table tbody tr.cust-row.is-unsub td { background: var(--ink-100); color: var(--ink-500); }
 .cust-table tbody tr.cust-row.is-unsub .cust-name { color: var(--ink-700); }
+/* #61 — deactivated rows. Distinct from is-unsub so Annabel reads
+   "deactivated" (the account is gone) differently from "unsubscribed"
+   (the customer is still active, just paused for this week). */
+.cust-table tbody tr.cust-row.is-inactive td {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ink-100) 0 6px,
+    transparent 6px 12px
+  );
+  color: var(--ink-500);
+}
+.cust-table tbody tr.cust-row.is-inactive .cust-name {
+  color: var(--ink-500);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-300);
+}
 
 .col-c-name     { width: 22%; min-width: 180px; }
 .col-c-contact  { width: 200px; }

@@ -60,8 +60,16 @@ const SEED_CUSTOMERS = [
     business_name: null,
     email: "chef@saucybrewworks.com", phone: "216-555-0273",
     address: "2885 Detroit Ave, Cleveland, OH 44113",
-    priority: 200, subscribed: false,
+    priority: 200, subscribed: false, is_active: true,
     token: "d4k1n8-sbw",
+  },
+  {
+    id: "c08", name: "Old Pickup Stand",
+    business_name: null,
+    email: null, phone: "216-555-0301",
+    address: "5921 Detroit Ave, Cleveland, OH 44102",
+    priority: 100, subscribed: false, is_active: false,
+    token: "x9p3v6-ops",
   },
 ];
 
@@ -70,11 +78,17 @@ function CustomersPage() {
   const [drawer, setDrawer] = useState(null); // null | customer object (id: null = new)
   const [confirmRegen, setConfirmRegen] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [showDeactivated, setShowDeactivated] = useState(false);
+
+  const isActive = (c) => c.is_active !== false;
+  const activeRows = rows.filter(isActive);
+  const deactivatedCount = rows.length - activeRows.length;
+  const visibleRows = showDeactivated ? rows : activeRows;
 
   const openEdit = (c) => setDrawer(c);
   const openNew  = () => setDrawer({
     id: null, name: "", business_name: "", email: "", phone: "",
-    address: "", priority: "100", subscribed: true, token: "",
+    address: "", priority: "100", subscribed: true, is_active: true, token: "",
   });
 
   const saveDrawer = (data) => {
@@ -107,10 +121,22 @@ function CustomersPage() {
     <div className="cust-page">
       <div className="admin-page-head">
         <div>
-          <div className="eyebrow" style={{marginBottom: 6}}>{rows.length} accounts · {rows.filter(r=>r.subscribed).length} subscribed</div>
+          <div className="eyebrow" style={{marginBottom: 6}}>{activeRows.length} accounts · {activeRows.filter(r=>r.subscribed).length} subscribed</div>
           <h1 className="admin-page-title">Customers</h1>
         </div>
         <div className="admin-page-actions">
+          {deactivatedCount > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              aria-pressed={showDeactivated}
+              onClick={() => setShowDeactivated(v => !v)}
+            >
+              {showDeactivated
+                ? `Hide deactivated (${deactivatedCount})`
+                : `Show deactivated (${deactivatedCount})`}
+            </button>
+          )}
           <button type="button" className="btn btn-secondary" disabled title="Coming later">Export CSV</button>
           <button type="button" className="btn btn-primary" onClick={openNew}>+ Add customer</button>
         </div>
@@ -130,8 +156,16 @@ function CustomersPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(c => (
-              <tr key={c.id} className={"cust-row" + (!c.subscribed ? " is-unsub" : "")} onClick={() => openEdit(c)}>
+            {visibleRows.map(c => (
+              <tr
+                key={c.id}
+                className={
+                  "cust-row" +
+                  (!isActive(c) ? " is-inactive" : "") +
+                  (!c.subscribed ? " is-unsub" : "")
+                }
+                onClick={() => openEdit(c)}
+              >
                 <td className="col-c-name">
                   <div className="cust-name">{c.name}</div>
                   {c.business_name && <div className="cust-biz">{c.business_name}</div>}

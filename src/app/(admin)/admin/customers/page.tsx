@@ -3,10 +3,12 @@ import { CustomersPage, type CustomerRow } from "@/components/admin/customers-pa
 
 export default async function AdminCustomersPage() {
   const supabase = await createClient();
+  // #61: fetch all customers (active + deactivated). Default view filters
+  // to active client-side; the page-header toggle reveals the rest.
   const { data, error } = await supabase
     .from("customers")
-    .select("id, name, business_name, email, phone, delivery_address, priority, send_weekly_link, token")
-    .eq("is_active", true)
+    .select("id, name, business_name, email, phone, delivery_address, priority, send_weekly_link, token, is_active")
+    .order("is_active", { ascending: false })
     .order("priority", { ascending: true })
     .order("name", { ascending: true });
 
