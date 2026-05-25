@@ -243,7 +243,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
             <Button
               variant="primary"
               onClick={handleReactivate}
-              disabled={reactivating || saving}
+              disabled={reactivating || saving || deleting}
             >
               {reactivating ? "Reactivating…" : "Reactivate customer"}
             </Button>

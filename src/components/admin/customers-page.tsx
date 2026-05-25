@@ -178,7 +178,9 @@ export function CustomersPage({ customers }: Props) {
             {visibleCustomers.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--ink-500)" }}>
-                  No active customers. Add one to get started.
+                  {showDeactivated
+                    ? "No customers."
+                    : "No active customers. Add one to get started."}
                 </td>
               </tr>
             )}

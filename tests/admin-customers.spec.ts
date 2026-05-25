@@ -201,9 +201,9 @@ test.describe("admin customers", () => {
 
   // #61 — deactivated customers are hidden by default; a header toggle reveals
   // them with a distinct "is-inactive" treatment, and the drawer swaps
-  // "Delete customer" for "Reactivate customer". The afterEach in this
-  // describe (resetTestCustomers) restores is_active=true on both seed rows
-  // so the bare deactivate doesn't leak.
+  // "Delete customer" for "Reactivate customer". The next test's beforeEach
+  // (resetTestCustomers) restores is_active=true on both seed rows so the
+  // bare deactivate doesn't leak.
   test("Show deactivated reveals inactive rows; drawer Reactivate restores them", async ({ page }) => {
     const supabase = admin();
     await supabase
