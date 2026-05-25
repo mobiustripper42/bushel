@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { InventoryEditor } from "@/components/admin/inventory-editor";
+import { InventoryEditor, type ScheduleSummary, type CustomerStats } from "@/components/admin/inventory-editor";
 import type { InventoryRowState } from "@/components/admin/inventory-row";
 import type { ProductUnitState } from "@/components/admin/units-drawer";
-import { weekOfLabel } from "@/lib/week";
+import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
 
 export default async function InventoryPage() {
   const supabase = await createClient();
-  const [productsRes, unitsRes] = await Promise.all([
+  const weekOf = weekOfMondayNY();
+  const [productsRes, unitsRes, scheduleRes, activeCustomersRes, weekOrdersRes] = await Promise.all([
     supabase
       .from("products")
       .select("*")
@@ -17,6 +18,19 @@ export default async function InventoryPage() {
       .select("id, product_id, label, conversion_to_base, unit_price_cents, is_active, sort_order")
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("id"),
+    supabase
+      .from("ordering_schedule")
+      .select("is_open, weekly_open_day, weekly_open_time, weekly_close_day, weekly_close_time")
+      .eq("is_singleton", true)
+      .single(),
+    supabase
+      .from("customers")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true),
+    supabase
+      .from("orders")
+      .select("customer_id", { count: "exact", head: true })
+      .eq("week_of", weekOf),
   ]);
 
   if (productsRes.error || unitsRes.error) {
@@ -29,6 +43,22 @@ export default async function InventoryPage() {
       </main>
     );
   }
+
+  const scheduleRow = scheduleRes.data;
+  const schedule: ScheduleSummary = scheduleRow
+    ? {
+        isOpen: scheduleRow.is_open,
+        openDay: scheduleRow.weekly_open_day,
+        openTime: scheduleRow.weekly_open_time,
+        closeDay: scheduleRow.weekly_close_day,
+        closeTime: scheduleRow.weekly_close_time,
+      }
+    : { isOpen: false, openDay: null, openTime: null, closeDay: null, closeTime: null };
+
+  const customerStats: CustomerStats = {
+    active: activeCustomersRes.count ?? 0,
+    orderedThisWeek: weekOrdersRes.count ?? 0,
+  };
 
   const unitsByProductId: Record<string, ProductUnitState[]> = {};
   for (const u of unitsRes.data ?? []) {
@@ -60,6 +90,8 @@ export default async function InventoryPage() {
         initialRows={initialRows}
         initialUnits={unitsByProductId}
         weekLabel={weekOfLabel()}
+        schedule={schedule}
+        customerStats={customerStats}
       />
     </main>
   );

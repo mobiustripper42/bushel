@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { ADMIN_STORAGE_STATE, TEST_PRODUCTS } from "./helpers";
+import { ADMIN_STORAGE_STATE, TEST_PRODUCTS, setOrderingSchedule } from "./helpers";
 
 function rowByName(page: Page, name: string) {
   return page.locator(`tr[data-row-name="${name}"]`);
@@ -24,7 +24,8 @@ test.describe("admin inventory", () => {
     await expect(page.locator(".page-head").getByText(/week of/i)).toBeVisible();
     await expect(page.getByText(/this week's list/i)).toBeVisible();
     await expect(page.locator(".meta-row").getByText("Open for orders")).toBeVisible();
-    await expect(page.locator(".meta-row").getByText("Cutoff")).toBeVisible();
+    await expect(page.locator(".meta-row").getByText("Customers")).toBeVisible();
+    await expect(page.locator(".meta-row").getByText(/cutoff/i)).toHaveCount(0);
     await expect(page.getByRole("table")).toBeVisible();
     await expect(rowByName(page, TEST_PRODUCTS.kale.name)).toBeVisible();
     await expect(rowByName(page, TEST_PRODUCTS.eggs.name)).toBeVisible();
@@ -141,5 +142,62 @@ test.describe("admin inventory", () => {
 
     await page.reload();
     await expect(rowByName(page, "Test Carrots")).toHaveCount(0);
+  });
+});
+
+test.describe("admin inventory — open-for-orders meta pill", () => {
+  test.use({ storageState: ADMIN_STORAGE_STATE });
+
+  // Restore the singleton row to the post-seed default — is_open=true with
+  // weekly fields null — so other specs (admin-settings, customer-closed)
+  // start from the same state they normally do. Tests below opt into a
+  // weekly schedule explicitly when they need one.
+  const DEFAULT_SCHEDULE = {
+    is_open: true,
+    weekly_open_day: null,
+    weekly_open_time: null,
+    weekly_close_day: null,
+    weekly_close_time: null,
+  };
+
+  test.afterEach(async () => {
+    await setOrderingSchedule(DEFAULT_SCHEDULE);
+  });
+
+  const pill = (page: Page) =>
+    page.locator(".meta-row .meta-pill", { hasText: "Open for orders" });
+
+  test("renders 'Open · {open} – {close}' when is_open + schedule set", async ({ page }) => {
+    await setOrderingSchedule({
+      is_open: true,
+      weekly_open_day: 0,
+      weekly_open_time: "08:00:00",
+      weekly_close_day: 2,
+      weekly_close_time: "18:00:00",
+    });
+    await page.goto("/admin/inventory");
+    await expect(pill(page)).toContainText("Open · Sun 8am – Tue 6pm");
+    await expect(pill(page).locator(".status-dot.is-open")).toBeVisible();
+  });
+
+  test("renders 'Open · manual' when is_open but no weekly schedule", async ({ page }) => {
+    await setOrderingSchedule({
+      is_open: true,
+      weekly_open_day: null,
+      weekly_open_time: null,
+      weekly_close_day: null,
+      weekly_close_time: null,
+    });
+    await page.goto("/admin/inventory");
+    await expect(pill(page)).toContainText("Open · manual");
+    await expect(pill(page).locator(".status-dot.is-open")).toBeVisible();
+  });
+
+  test("renders 'Closed' when is_open=false (with red dot)", async ({ page }) => {
+    await setOrderingSchedule({ is_open: false });
+    await page.goto("/admin/inventory");
+    await expect(pill(page)).toContainText("Closed");
+    await expect(pill(page).locator(".status-dot.is-open")).toHaveCount(0);
+    await expect(pill(page).locator(".status-dot")).toBeVisible();
   });
 });

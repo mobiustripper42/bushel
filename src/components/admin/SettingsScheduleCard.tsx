@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveSchedule } from "@/actions/save-schedule";
 import { toggleOrdering, type ToggleOrderingAction } from "@/actions/toggle-ordering";
+import { DAYS, formatTime } from "@/lib/schedule-format";
 
 type ScheduleRow = {
   is_open: boolean;
@@ -12,15 +13,6 @@ type ScheduleRow = {
   weekly_close_day: number | null;
   weekly_close_time: string | null;
 };
-
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-function formatTime(t: string): string {
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "pm" : "am";
-  const h12 = h % 12 || 12;
-  return m === 0 ? `${h12}${ampm}` : `${h12}:${String(m).padStart(2, "0")}${ampm}`;
-}
 
 export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
   const hasWeekly =

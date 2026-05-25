@@ -165,6 +165,20 @@ export async function setOrderingOpen(open: boolean): Promise<void> {
     .eq("is_singleton", true);
 }
 
+// Patches the singleton ordering_schedule row. Pass only the fields you want
+// to change. Used by the inventory meta-pill tests to walk all three open
+// states (closed / open manual / open via schedule).
+export async function setOrderingSchedule(patch: {
+  is_open?: boolean;
+  weekly_open_day?: number | null;
+  weekly_open_time?: string | null;
+  weekly_close_day?: number | null;
+  weekly_close_time?: string | null;
+}): Promise<void> {
+  const sb = admin();
+  await sb.from("ordering_schedule").update(patch).eq("is_singleton", true);
+}
+
 // Drops every is_available=true product to qty_available = 0 — exercises
 // DEC-031's "everything sold out" empty state. The dev DB usually contains
 // products beyond TEST_PRODUCTS (real seed data), so zeroing only the test
