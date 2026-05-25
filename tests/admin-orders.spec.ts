@@ -42,7 +42,8 @@ test.describe("admin orders list", () => {
     await expect(row).toHaveCount(1);
     await expect(row.locator(".ord-cust-name")).toHaveText(TEST_CUSTOMERS.farmStand.name);
     await expect(row.locator(".ord-total")).toHaveText("$12.00");
-    await expect(row.locator(".ord-items-count")).toContainText("2");
+    // #159: items count = sum of qty (2 × kale + 1 × eggs = 3), not line count.
+    await expect(row.locator(".ord-items-count")).toContainText("3");
     await expect(row.locator(".chip-ful")).toHaveText("Pickup");
   });
 

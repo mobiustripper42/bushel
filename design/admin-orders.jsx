@@ -157,7 +157,7 @@ function OrdersPage() {
                       <div className="ord-when">{o.placed}</div>
                     </td>
                     <td className="col-o-items">
-                      <div className="ord-items-count"><strong>{o.items.length}</strong> items</div>
+                      <div className="ord-items-count"><strong>{o.items.reduce((sum, i) => sum + i.qty, 0)}</strong> items</div>
                       <div className="ord-items-prev">{itemsPreview}</div>
                     </td>
                     <td className="col-o-ful">

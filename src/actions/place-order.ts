@@ -8,6 +8,7 @@ import {
   lookupCustomerByToken,
 } from "@/lib/customer/session";
 import { sendAdminOrderAlert } from "@/lib/notifications/admin-telegram";
+import { totalItemCount } from "@/lib/order-items";
 import type { Json } from "@/lib/supabase/types";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -75,7 +76,7 @@ export async function placeOrder(
   await sendAdminOrderAlert({
     customerName: customer.name,
     weekOf: weekOfMondayNY(),
-    lineItemCount: payload.items.length,
+    itemCount: totalItemCount(payload.items),
     totalCents: total,
     adminOrdersUrl: `${adminBaseUrl()}/admin/orders`,
   });

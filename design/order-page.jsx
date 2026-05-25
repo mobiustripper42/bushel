@@ -237,7 +237,6 @@ function OrderPage({ tweaks }) {
             <section className="inv">
               <div className="inv-head">
                 <Eyebrow>availability</Eyebrow>
-                <span className="inv-count">{inventory.filter((i) => i.avail > 0).length} items</span>
               </div>
               <div className="item-list">
                 {inventory.map((i) =>
@@ -352,7 +351,7 @@ function OrderPage({ tweaks }) {
             <section className="submit-block" style={{ fontFamily: "-apple-system" }}>
               <div className="submit-summary">
                 <div className="summary-line">
-                  <span className="summary-label">{lineCount} item{lineCount !== 1 ? "s" : ""}</span>
+                  <span className="summary-label">{itemCount} item{itemCount !== 1 ? "s" : ""}</span>
                   <span className="summary-total mono">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="summary-sub">
