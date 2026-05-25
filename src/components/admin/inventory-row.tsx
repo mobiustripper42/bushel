@@ -74,7 +74,8 @@ export function InventoryRow({
         data-row-name={row.name}
         draggable={dragArmed}
         onDragStart={(e) => {
-          // Some browsers require setData for the drag to actually start.
+          // Firefox refuses to start a drag without setData; the value
+          // isn't read on drop (the editor's draggingId is source of truth).
           e.dataTransfer.effectAllowed = "move";
           e.dataTransfer.setData("text/plain", row.id);
           onDragStart?.();

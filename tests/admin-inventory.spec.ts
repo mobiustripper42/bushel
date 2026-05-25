@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { ADMIN_STORAGE_STATE, TEST_PRODUCTS, setOrderingSchedule } from "./helpers";
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_PRODUCTS,
+  resetProductSortOrder,
+  setOrderingSchedule,
+} from "./helpers";
 
 function rowByName(page: Page, name: string) {
   return page.locator(`tr[data-row-name="${name}"]`);
@@ -146,43 +151,44 @@ test.describe("admin inventory", () => {
 
   // #143 — drag the grip on the left of a row to reorder. Default fixture
   // is Kale (1), Eggs (2), Honey (3); drag Honey above Kale, save, reload,
-  // and confirm the new order persists. Restores the original sort order
-  // at the end so other specs see the seeded state.
+  // and confirm the new order persists. The try/finally + admin-client
+  // reset guarantees other specs see the seeded order even if an assertion
+  // here fails mid-test (cleanup-via-drag would otherwise leak).
   test("drag-to-reorder: grip drag updates row order, persists across reload", async ({ page }) => {
-    await page.goto("/admin/inventory");
+    try {
+      await page.goto("/admin/inventory");
 
-    // Order in the DOM matches insertion order; assert the baseline first
-    // so a fixture-leak from another spec doesn't masquerade as a pass.
-    const rowOrder = async () =>
-      page.locator("tr.data-row").evaluateAll((els) =>
-        els.map((el) => (el as HTMLElement).dataset.rowName),
-      );
-    await expect.poll(rowOrder).toEqual(["Kale", "Eggs", "Honey"]);
+      const rowOrder = async () =>
+        page.locator("tr.data-row").evaluateAll((els) =>
+          els.map((el) => (el as HTMLElement).dataset.rowName),
+        );
+      // Baseline assertion guards against fixture leak from another spec.
+      await expect.poll(rowOrder).toEqual(["Kale", "Eggs", "Honey"]);
 
-    // Arm the drag on Honey's grip, then drag the row onto Kale's row.
-    // Playwright's dragTo dispatches dragstart/dragover/drop in sequence —
-    // exactly what the armed-handle pattern expects.
-    const honeyRow = rowByName(page, TEST_PRODUCTS.honey.name);
-    const kaleRow = rowByName(page, TEST_PRODUCTS.kale.name);
-    await honeyRow.locator(".row-handle-grip").dispatchEvent("mousedown");
-    await honeyRow.dragTo(kaleRow);
-    await honeyRow.dispatchEvent("dragend");
+      // Arm the drag on Honey's grip, then drag the row onto Kale's row.
+      // Playwright's dragTo dispatches dragstart/dragover/drop in sequence —
+      // exactly what the armed-handle pattern expects.
+      const honeyRow = rowByName(page, TEST_PRODUCTS.honey.name);
+      const kaleRow = rowByName(page, TEST_PRODUCTS.kale.name);
+      await honeyRow.locator(".row-handle-grip").dispatchEvent("mousedown");
+      await honeyRow.dragTo(kaleRow);
+      await honeyRow.dispatchEvent("dragend");
 
-    await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
-    await expect(saveButton(page, 3)).toBeEnabled();
+      await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
+      // "Save 3 changes" is correct — every row's sort_order shifted to a
+      // new (10, 20, 30, …) slot. The "3 changes" copy is technically right
+      // but reads oddly for a one-row drag; follow-up issue tracks tightening
+      // the dirty copy for reorders.
+      await expect(saveButton(page, 3)).toBeEnabled();
 
-    await saveButton(page, 3).click();
-    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+      await saveButton(page, 3).click();
+      await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
 
-    await page.reload();
-    await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
-
-    // Restore the original order so downstream specs aren't surprised.
-    await kaleRow.locator(".row-handle-grip").dispatchEvent("mousedown");
-    await kaleRow.dragTo(honeyRow);
-    await kaleRow.dispatchEvent("dragend");
-    await saveButton(page).click();
-    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+      await page.reload();
+      await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
+    } finally {
+      await resetProductSortOrder();
+    }
   });
 });
 

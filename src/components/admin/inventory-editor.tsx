@@ -132,13 +132,18 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
   // the on-screen order. Same convention as addRow's `maxOrder + 10`.
   function reorderRows(fromId: string, toId: string) {
     if (fromId === toId) return;
+    // Defensive: drop targets if dragend was dropped by the browser (rare —
+    // cross-window drops, some WebView edge cases). Without this, a row can
+    // stick at 40% opacity until the next re-render.
+    setDraggingId(null);
+    setDropTargetId(null);
     setRows((rs) => {
       const fromIdx = rs.findIndex((r) => r.id === fromId);
-      const toIdx = rs.findIndex((r) => r.id === toId);
-      if (fromIdx === -1 || toIdx === -1) return rs;
+      if (fromIdx === -1) return rs;
       const next = rs.slice();
       const [moved] = next.splice(fromIdx, 1);
       const insertAt = next.findIndex((r) => r.id === toId);
+      if (insertAt === -1) return rs;
       next.splice(insertAt, 0, moved);
       return next.map((r, i) => ({ ...r, sort_order: (i + 1) * 10 }));
     });
