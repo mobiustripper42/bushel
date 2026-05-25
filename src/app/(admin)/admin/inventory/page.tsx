@@ -33,27 +33,34 @@ export default async function InventoryPage() {
       .eq("week_of", weekOf),
   ]);
 
-  if (productsRes.error || unitsRes.error) {
+  // Every query is load-bearing for the pills / table — failing silently on
+  // schedule or counts would render a plausible-but-wrong "Closed · 0 active"
+  // state. Short-circuit on any error so Annabel sees a loud failure instead.
+  const firstError =
+    productsRes.error ??
+    unitsRes.error ??
+    scheduleRes.error ??
+    activeCustomersRes.error ??
+    weekOrdersRes.error;
+  if (firstError || !scheduleRes.data) {
     return (
       <main style={{ padding: "28px 32px", maxWidth: 1200 }}>
         <h1 className="page-title">Inventory</h1>
         <p style={{ color: "var(--rose-600)", marginTop: 16 }}>
-          {productsRes.error?.message ?? unitsRes.error?.message}
+          {firstError?.message ?? "ordering_schedule singleton row missing"}
         </p>
       </main>
     );
   }
 
   const scheduleRow = scheduleRes.data;
-  const schedule: ScheduleSummary = scheduleRow
-    ? {
-        isOpen: scheduleRow.is_open,
-        openDay: scheduleRow.weekly_open_day,
-        openTime: scheduleRow.weekly_open_time,
-        closeDay: scheduleRow.weekly_close_day,
-        closeTime: scheduleRow.weekly_close_time,
-      }
-    : { isOpen: false, openDay: null, openTime: null, closeDay: null, closeTime: null };
+  const schedule: ScheduleSummary = {
+    isOpen: scheduleRow.is_open,
+    openDay: scheduleRow.weekly_open_day,
+    openTime: scheduleRow.weekly_open_time,
+    closeDay: scheduleRow.weekly_close_day,
+    closeTime: scheduleRow.weekly_close_time,
+  };
 
   const customerStats: CustomerStats = {
     active: activeCustomersRes.count ?? 0,
