@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { ADMIN_STORAGE_STATE, TEST_PRODUCTS, setOrderingSchedule } from "./helpers";
+import {
+  ADMIN_STORAGE_STATE,
+  TEST_PRODUCTS,
+  resetProductSortOrder,
+  setOrderingSchedule,
+} from "./helpers";
 
 function rowByName(page: Page, name: string) {
   return page.locator(`tr[data-row-name="${name}"]`);
@@ -142,6 +147,53 @@ test.describe("admin inventory", () => {
 
     await page.reload();
     await expect(rowByName(page, "Test Carrots")).toHaveCount(0);
+  });
+
+  // #143 — drag the grip on the left of a row to reorder. Default fixture
+  // is Kale (1), Eggs (2), Honey (3); drag Honey above Kale, save, reload,
+  // and confirm the new order persists. The try/finally + admin-client
+  // reset guarantees other specs see the seeded order even if an assertion
+  // here fails mid-test (cleanup-via-drag would otherwise leak).
+  test("drag-to-reorder: grip drag updates row order, persists across reload", async ({ page }, testInfo) => {
+    // Native HTML5 DnD doesn't work on touch viewports — mobile project
+    // (iPhone-13 WebKit) is desktop-only for this interaction. Touch-friendly
+    // reorder is tracked in the #143 follow-up issue (#168) alongside the
+    // above/below drop-precision UX.
+    test.skip(testInfo.project.name === "mobile", "HTML5 drag is desktop-only; touch reorder is a follow-up (#168).");
+    try {
+      await page.goto("/admin/inventory");
+
+      const rowOrder = async () =>
+        page.locator("tr.data-row").evaluateAll((els) =>
+          els.map((el) => (el as HTMLElement).dataset.rowName),
+        );
+      // Baseline assertion guards against fixture leak from another spec.
+      await expect.poll(rowOrder).toEqual(["Kale", "Eggs", "Honey"]);
+
+      // Arm the drag on Honey's grip, then drag the row onto Kale's row.
+      // Playwright's dragTo dispatches dragstart/dragover/drop in sequence —
+      // exactly what the armed-handle pattern expects.
+      const honeyRow = rowByName(page, TEST_PRODUCTS.honey.name);
+      const kaleRow = rowByName(page, TEST_PRODUCTS.kale.name);
+      await honeyRow.locator(".row-handle-grip").dispatchEvent("mousedown");
+      await honeyRow.dragTo(kaleRow);
+      await honeyRow.dispatchEvent("dragend");
+
+      await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
+      // "Save 3 changes" is correct — every row's sort_order shifted to a
+      // new (10, 20, 30, …) slot. The "3 changes" copy is technically right
+      // but reads oddly for a one-row drag; follow-up issue tracks tightening
+      // the dirty copy for reorders.
+      await expect(saveButton(page, 3)).toBeEnabled();
+
+      await saveButton(page, 3).click();
+      await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+
+      await page.reload();
+      await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
+    } finally {
+      await resetProductSortOrder();
+    }
   });
 });
 

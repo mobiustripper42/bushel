@@ -25,6 +25,15 @@ type Props = {
   onUpdate: (patch: Partial<InventoryRowState>) => void;
   onRemove: () => void;
   onOpenUnits?: () => void;
+  // Drag-to-reorder (#143). The row is only `draggable` while the grip is
+  // armed (onMouseDown on grip → arm; onDragEnd → disarm) so clicks into
+  // fields don't accidentally start a drag.
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: () => void;
+  onDragOverRow?: () => void;
+  onDropRow?: () => void;
+  onDragEnd?: () => void;
 };
 
 function priceToString(cents: number): string {
@@ -38,21 +47,64 @@ export function InventoryRow({
   onUpdate,
   onRemove,
   onOpenUnits,
+  isDragging = false,
+  isDropTarget = false,
+  onDragStart,
+  onDragOverRow,
+  onDropRow,
+  onDragEnd,
 }: Props) {
   const [descOpen, setDescOpen] = useState(false);
+  const [dragArmed, setDragArmed] = useState(false);
   const qtyClass =
     row.qty_available === 0 ? " is-zero" : row.qty_available <= 3 ? " is-low" : "";
   const extras = Math.max(0, unitsCount - 1);
 
+  const rowClass =
+    "data-row" +
+    (!row.is_available ? " is-disabled" : "") +
+    (isDragging ? " is-dragging" : "") +
+    (isDropTarget ? " is-drop-target" : "");
+
   return (
     <>
       <tr
-        className={"data-row" + (!row.is_available ? " is-disabled" : "")}
+        className={rowClass}
         data-row-id={row.id}
         data-row-name={row.name}
+        draggable={dragArmed}
+        onDragStart={(e) => {
+          // Firefox refuses to start a drag without setData; the value
+          // isn't read on drop (the editor's draggingId is source of truth).
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", row.id);
+          onDragStart?.();
+        }}
+        onDragOver={(e) => {
+          if (!onDragOverRow) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          onDragOverRow();
+        }}
+        onDrop={(e) => {
+          if (!onDropRow) return;
+          e.preventDefault();
+          onDropRow();
+          setDragArmed(false);
+        }}
+        onDragEnd={() => {
+          setDragArmed(false);
+          onDragEnd?.();
+        }}
       >
         <td className="row-handle">
-          <span className="row-handle-grip" title="Drag to reorder">
+          <span
+            className="row-handle-grip"
+            title="Drag to reorder"
+            onMouseDown={() => setDragArmed(true)}
+            onMouseUp={() => setDragArmed(false)}
+            style={{ cursor: "grab" }}
+          >
             <svg viewBox="0 0 12 18" width="10" height="14" aria-hidden="true">
               <circle cx="3" cy="3" r="1.5" fill="currentColor" />
               <circle cx="9" cy="3" r="1.5" fill="currentColor" />

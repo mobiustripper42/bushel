@@ -165,6 +165,23 @@ export async function setOrderingOpen(open: boolean): Promise<void> {
     .eq("is_singleton", true);
 }
 
+// Reset TEST_PRODUCTS sort_order back to seeded values (kale=1, eggs=2,
+// honey=3). Use in a try/finally around drag-reorder specs so a mid-test
+// failure can't poison the order other specs see. Global setup already
+// upserts these values, but it only runs once per playwright invocation —
+// in-run leakage needs this finer-grained reset.
+export async function resetProductSortOrder(): Promise<void> {
+  const sb = admin();
+  const seeded: Array<{ id: string; sort_order: number }> = [
+    { id: TEST_PRODUCTS.kale.id,  sort_order: 1 },
+    { id: TEST_PRODUCTS.eggs.id,  sort_order: 2 },
+    { id: TEST_PRODUCTS.honey.id, sort_order: 3 },
+  ];
+  for (const row of seeded) {
+    await sb.from("products").update({ sort_order: row.sort_order }).eq("id", row.id);
+  }
+}
+
 // Patches the singleton ordering_schedule row. Pass only the fields you want
 // to change. Used by the inventory meta-pill tests to walk all three open
 // states (closed / open manual / open via schedule).
