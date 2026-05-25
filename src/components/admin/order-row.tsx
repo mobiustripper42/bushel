@@ -5,6 +5,7 @@ import { useState, useTransition, Fragment } from "react";
 import { advanceOrderStatus } from "@/actions/advance-order-status";
 import { OrderDetail } from "@/components/admin/order-detail";
 import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/orders-queries";
+import { totalItemCount } from "@/lib/order-items";
 
 type Props = {
   order: OrderRowData;
@@ -136,7 +137,7 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
         </td>
         <td className="col-o-items">
           <div className="ord-items-count">
-            <strong>{view.items.length}</strong> items
+            <strong>{totalItemCount(view.items)}</strong> items
           </div>
           <div className="ord-items-prev">{itemsPreview(view.items)}</div>
         </td>

@@ -20,7 +20,7 @@ export async function sendAdminOrderAlert(input: AdminOrderAlertInput): Promise<
     // don't spam Vercel logs on every order. Real misconfiguration on a
     // configured env surfaces via the .ok check below.
     console.debug(
-      `[admin-alert] skipped (not configured) — ${input.customerName}, ${input.lineItemCount} items`,
+      `[admin-alert] skipped (not configured) — ${input.customerName}, ${input.itemCount} items`,
     );
     return;
   }

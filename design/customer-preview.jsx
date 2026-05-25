@@ -12,7 +12,7 @@ function CustomerPreview() {
     { id: "flowers", name: "Mixed bouquet",    unit: "stem",   price: 12.00, avail: 6 },
   ];
   const total = items.reduce((s, i) => s + (qty[i.id] || 0) * i.price, 0);
-  const lineCount = items.reduce((s, i) => s + (qty[i.id] > 0 ? 1 : 0), 0);
+  const itemCount = items.reduce((s, i) => s + (qty[i.id] || 0), 0);
 
   const setN = (id, n) => setQty(q => ({ ...q, [id]: Math.max(0, n) }));
 
@@ -61,7 +61,7 @@ function CustomerPreview() {
         padding: "14px 18px 16px", background: "var(--paper)", borderTop: "1px solid var(--ink-200)"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-          <div style={{ fontSize: "0.82rem", color: "var(--ink-500)" }}>{lineCount} item{lineCount !== 1 ? "s" : ""}</div>
+          <div style={{ fontSize: "0.82rem", color: "var(--ink-500)" }}>{itemCount} item{itemCount !== 1 ? "s" : ""}</div>
           <div style={{ fontFamily: "var(--serif)", fontSize: "1.5rem", fontWeight: 600 }}>${total.toFixed(2)}</div>
         </div>
         <button className="btn btn-primary" style={{ width: "100%" }}>Place order</button>

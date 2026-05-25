@@ -5,7 +5,7 @@
 export type AdminOrderAlertInput = {
   customerName: string;
   weekOf: string;
-  lineItemCount: number;
+  itemCount: number;
   totalCents: number;
   adminOrdersUrl: string;
 };
@@ -22,12 +22,12 @@ function formatDollars(cents: number): string {
 export function adminOrderAlertText({
   customerName,
   weekOf,
-  lineItemCount,
+  itemCount,
   totalCents,
   adminOrdersUrl,
 }: AdminOrderAlertInput): string {
   const total = formatDollars(totalCents);
-  const itemsLabel = lineItemCount === 1 ? "1 line" : `${lineItemCount} lines`;
+  const itemsLabel = itemCount === 1 ? "1 item" : `${itemCount} items`;
   return [
     `New order — ${customerName}, ${total}`,
     "",

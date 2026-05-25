@@ -329,9 +329,6 @@ export function OrderForm({
             <section className="inv">
               <div className="inv-head">
                 <div className="eyebrow">availability</div>
-                <span className="inv-count">
-                  {products.filter((p) => p.qty_available > 0).length} items
-                </span>
               </div>
               <div className="item-list">
                 {products.map((p) => {
@@ -526,7 +523,7 @@ export function OrderForm({
               <div className="submit-summary">
                 <div className="summary-line">
                   <span className="summary-label">
-                    {lineCount} item{lineCount !== 1 ? "s" : ""}
+                    {itemCount} item{itemCount !== 1 ? "s" : ""}
                   </span>
                   <span className="summary-total mono">
                     ${formatPrice(subtotalCents)}

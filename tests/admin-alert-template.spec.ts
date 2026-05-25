@@ -4,14 +4,17 @@ import { adminOrderAlertText } from "@/lib/notifications/admin-alert-template";
 
 // Pure-function unit tests for the Telegram message body sent to the operator
 // when a customer submits an order (Phase 4.3, DEC-033).
+//
+// #159: items count = sum of qty across lines (5 lb basil + 10 lettuce = 15),
+// labelled "items" not "lines".
 
 test.describe("adminOrderAlertText", () => {
-  test("single-line-item order — singular wording", () => {
+  test("single-item order — singular wording", () => {
     expect(
       adminOrderAlertText({
         customerName: "Hannah",
         weekOf: "2026-05-11",
-        lineItemCount: 1,
+        itemCount: 1,
         totalCents: 3000,
         adminOrdersUrl: "https://order.baybranchfarm.com/admin/orders",
       }),
@@ -21,7 +24,7 @@ test.describe("adminOrderAlertText", () => {
         "",
         "Customer: Hannah",
         "Week of: 2026-05-11",
-        "Items: 1 line",
+        "Items: 1 item",
         "Total: $30.00",
         "",
         "https://order.baybranchfarm.com/admin/orders",
@@ -29,15 +32,15 @@ test.describe("adminOrderAlertText", () => {
     );
   });
 
-  test("multi-line-item order — plural wording", () => {
+  test("multi-item order — plural wording", () => {
     const body = adminOrderAlertText({
       customerName: "Hannah",
       weekOf: "2026-05-11",
-      lineItemCount: 5,
+      itemCount: 15,
       totalCents: 4320,
       adminOrdersUrl: "https://order.baybranchfarm.com/admin/orders",
     });
-    expect(body).toContain("Items: 5 lines");
+    expect(body).toContain("Items: 15 items");
     expect(body).toContain("Total: $43.20");
     expect(body).toContain("New order — Hannah, $43.20");
   });
@@ -46,7 +49,7 @@ test.describe("adminOrderAlertText", () => {
     const body = adminOrderAlertText({
       customerName: "Tom",
       weekOf: "2026-05-11",
-      lineItemCount: 2,
+      itemCount: 2,
       totalCents: 305,
       adminOrdersUrl: "x",
     });
@@ -57,7 +60,7 @@ test.describe("adminOrderAlertText", () => {
     const body = adminOrderAlertText({
       customerName: "Tom",
       weekOf: "2026-05-11",
-      lineItemCount: 2,
+      itemCount: 2,
       totalCents: 1000,
       adminOrdersUrl: "x",
     });
@@ -68,7 +71,7 @@ test.describe("adminOrderAlertText", () => {
     const body = adminOrderAlertText({
       customerName: "Big Order Co",
       weekOf: "2026-05-11",
-      lineItemCount: 25,
+      itemCount: 25,
       totalCents: 123456,
       adminOrdersUrl: "x",
     });
@@ -79,7 +82,7 @@ test.describe("adminOrderAlertText", () => {
     const body = adminOrderAlertText({
       customerName: "Hannah",
       weekOf: "2026-05-11",
-      lineItemCount: 1,
+      itemCount: 1,
       totalCents: 100,
       adminOrdersUrl: "https://order.baybranchfarm.com/admin/orders",
     });
