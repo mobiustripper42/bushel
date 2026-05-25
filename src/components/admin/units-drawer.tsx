@@ -66,14 +66,6 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !saving) onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, saving]);
-
   const baseId = useMemo(() => pickBaseId(initialUnits), [initialUnits]);
 
   const dirty = useMemo(() => {
@@ -97,8 +89,28 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
 
   // #129 — guard against losing in-progress unit edits when Annabel clicks
   // the sidebar nav (or browser-backs) mid-edit. Suspend while saving so
-  // the success path (onSaved → unmount) doesn't bounce.
-  useUnsavedChangesGuard(dirty && !saving);
+  // the success path (onSaved → unmount) doesn't bounce. The in-drawer
+  // close paths (scrim / X / Cancel / Escape) bypass the hook because
+  // they don't navigate — wrap onClose to prompt explicitly.
+  const guardActive = dirty && !saving;
+  useUnsavedChangesGuard(guardActive);
+
+  function tryClose() {
+    if (guardActive && !window.confirm("You have unsaved changes — leave anyway?")) {
+      return;
+    }
+    onClose();
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !saving) tryClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // tryClose closes over guardActive/onClose; saving is also a dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, saving, guardActive]);
 
   function update(id: string, patch: Partial<ProductUnitState>) {
     setUnits((us) => us.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -193,7 +205,7 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
 
   return (
     <>
-      <div className="drawer-scrim" onClick={() => !saving && onClose()} aria-hidden="true" />
+      <div className="drawer-scrim" onClick={() => !saving && tryClose()} aria-hidden="true" />
       <aside
         className="drawer units-drawer"
         role="dialog"
@@ -211,7 +223,7 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
           <button
             type="button"
             className="drawer-close"
-            onClick={onClose}
+            onClick={tryClose}
             aria-label="Close drawer"
             disabled={saving}
           >
@@ -264,7 +276,7 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
 
         <footer className="drawer-foot">
           <div style={{ flex: 1 }} />
-          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="ghost" onClick={tryClose} disabled={saving}>Cancel</Button>
           <Button variant="primary" onClick={handleSave} disabled={!dirty || saving} dirty={dirty}>
             {saving ? "Saving…" : dirty ? "Save units" : "Saved"}
           </Button>

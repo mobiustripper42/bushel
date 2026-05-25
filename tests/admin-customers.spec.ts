@@ -246,4 +246,31 @@ test.describe("admin customers", () => {
     await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).not.toHaveClass(/is-inactive/);
     await expect(page.getByRole("button", { name: /show deactivated/i })).toHaveCount(0);
   });
+
+  // #129 — drawer is the most complex consumer of the unsaved-changes
+  // guard (dirty is derived via JSON stringification). The drawer's
+  // scrim/X/Cancel/Escape are NOT navigations, so the hook's click and
+  // popstate listeners don't catch them — the drawer wraps onClose to
+  // prompt explicitly when dirty. Smoke-test the scrim path.
+  test("unsaved-changes guard: editing the drawer prompts on close", async ({ page }) => {
+    await page.goto("/admin/customers");
+    const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
+    await row.click();
+    await expect(drawer(page)).toBeVisible();
+
+    // Type into Phone — drawer is now dirty.
+    await drawer(page).getByLabel(/phone/i).fill("216-555-0900");
+
+    // Cancel button uses the same tryClose path as scrim/X/Escape.
+    const dismissPrompt = (dialog: import("@playwright/test").Dialog) => dialog.dismiss();
+    page.on("dialog", dismissPrompt);
+    await drawer(page).getByRole("button", { name: /^cancel$/i }).click();
+    await expect(drawer(page)).toBeVisible();
+    page.off("dialog", dismissPrompt);
+
+    // Save clears dirty; close is silent.
+    await drawer(page).getByRole("button", { name: /save changes/i }).click();
+    await expect(drawer(page)).toHaveCount(0);
+    // resetTestCustomers (next test's beforeEach) clears the phone edit.
+  });
 });
