@@ -198,4 +198,52 @@ test.describe("admin customers", () => {
       .getAttribute("aria-checked");
     expect(flipped).not.toBe(initial);
   });
+
+  // #61 — deactivated customers are hidden by default; a header toggle reveals
+  // them with a distinct "is-inactive" treatment, and the drawer swaps
+  // "Delete customer" for "Reactivate customer". The afterEach in this
+  // describe (resetTestCustomers) restores is_active=true on both seed rows
+  // so the bare deactivate doesn't leak.
+  test("Show deactivated reveals inactive rows; drawer Reactivate restores them", async ({ page }) => {
+    const supabase = admin();
+    await supabase
+      .from("customers")
+      .update({ is_active: false })
+      .eq("token", TEST_CUSTOMERS.restaurant.token);
+
+    await page.goto("/admin/customers");
+
+    // Default view: restaurant is hidden.
+    await expect(rowByName(page, TEST_CUSTOMERS.farmStand.name)).toBeVisible();
+    await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).toHaveCount(0);
+
+    // Eyebrow reflects active count only — 1 active row, not 2 accounts.
+    await expect(page.getByText(/1 account · /)).toBeVisible();
+
+    // Toggle appears with the deactivated count.
+    const toggle = page.getByRole("button", { name: /show deactivated \(1\)/i });
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+
+    const restaurantRow = rowByName(page, TEST_CUSTOMERS.restaurant.name);
+    await expect(restaurantRow).toBeVisible();
+    await expect(restaurantRow).toHaveClass(/is-inactive/);
+    await expect(restaurantRow).toHaveAttribute("data-row-state", "inactive");
+    // Subscribed switch is disabled on a deactivated row.
+    await expect(restaurantRow.getByRole("switch")).toBeDisabled();
+
+    // Drawer on the inactive row swaps Delete → Reactivate.
+    await restaurantRow.locator(".cust-name").click();
+    await expect(drawer(page)).toBeVisible();
+    await expect(drawer(page).getByText(/deactivated customer/i)).toBeVisible();
+    await expect(drawer(page).getByRole("button", { name: /^delete customer$/i })).toHaveCount(0);
+
+    await drawer(page).getByRole("button", { name: /^reactivate customer$/i }).click();
+    await expect(drawer(page)).toHaveCount(0);
+
+    // Row is back in the default view; toggle is gone (no more deactivated).
+    await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).toBeVisible();
+    await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).not.toHaveClass(/is-inactive/);
+    await expect(page.getByRole("button", { name: /show deactivated/i })).toHaveCount(0);
+  });
 });

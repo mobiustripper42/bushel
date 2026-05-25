@@ -20,6 +20,7 @@ export type CustomerRow = {
   priority: number;
   send_weekly_link: boolean;
   token: string;
+  is_active: boolean;
 };
 
 type Props = { customers: CustomerRow[] };
@@ -35,6 +36,7 @@ function emptyDrawerState(): CustomerDrawerState {
     priority: "100",
     send_weekly_link: true,
     token: "",
+    is_active: true,
   };
 }
 
@@ -49,6 +51,7 @@ function rowToDrawerState(row: CustomerRow): CustomerDrawerState {
     priority: String(row.priority),
     send_weekly_link: row.send_weekly_link,
     token: row.token,
+    is_active: row.is_active,
   };
 }
 
@@ -62,7 +65,12 @@ export function CustomersPage({ customers }: Props) {
   const [regenBusy, setRegenBusy] = useState(false);
   const [, startToggle] = useTransition();
 
-  const subscribedCount = customers.filter((c) => c.send_weekly_link).length;
+  const [showDeactivated, setShowDeactivated] = useState(false);
+
+  const activeCustomers = customers.filter((c) => c.is_active);
+  const subscribedCount = activeCustomers.filter((c) => c.send_weekly_link).length;
+  const deactivatedCount = customers.length - activeCustomers.length;
+  const visibleCustomers = showDeactivated ? customers : activeCustomers;
 
   function handleSaved() {
     setDrawer(null);
@@ -120,9 +128,20 @@ export function CustomersPage({ customers }: Props) {
   return (
     <main style={{ padding: "28px 32px 60px", maxWidth: 1200, width: "100%" }}>
       <PageHeader
-        eyebrow={`${customers.length} account${customers.length === 1 ? "" : "s"} · ${subscribedCount} subscribed`}
+        eyebrow={`${activeCustomers.length} account${activeCustomers.length === 1 ? "" : "s"} · ${subscribedCount} subscribed`}
         title="Customers"
       >
+        {deactivatedCount > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => setShowDeactivated((v) => !v)}
+            aria-pressed={showDeactivated}
+          >
+            {showDeactivated
+              ? `Hide deactivated (${deactivatedCount})`
+              : `Show deactivated (${deactivatedCount})`}
+          </Button>
+        )}
         <Button variant="secondary" disabled title="Coming later">
           Export CSV
         </Button>
@@ -156,19 +175,24 @@ export function CustomersPage({ customers }: Props) {
             </tr>
           </thead>
           <tbody>
-            {customers.length === 0 && (
+            {visibleCustomers.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--ink-500)" }}>
                   No active customers. Add one to get started.
                 </td>
               </tr>
             )}
-            {customers.map((c) => (
+            {visibleCustomers.map((c) => (
               <tr
                 key={c.id}
-                className={"cust-row" + (!c.send_weekly_link ? " is-unsub" : "")}
+                className={
+                  "cust-row" +
+                  (!c.is_active ? " is-inactive" : "") +
+                  (!c.send_weekly_link ? " is-unsub" : "")
+                }
                 data-row-id={c.id}
                 data-row-name={c.name}
+                data-row-state={c.is_active ? "active" : "inactive"}
                 onClick={() => setDrawer(rowToDrawerState(c))}
               >
                 <td className="col-c-name">
@@ -217,6 +241,7 @@ export function CustomersPage({ customers }: Props) {
                     checked={c.send_weekly_link}
                     onChange={() => handleToggle(c)}
                     ariaLabel={`Subscribed: ${c.name}`}
+                    disabled={!c.is_active}
                   />
                 </td>
                 <td className="col-c-actions">
