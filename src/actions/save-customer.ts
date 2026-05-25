@@ -61,6 +61,7 @@ export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerRe
       .eq("id", input.id);
     if (error) return { error: error.message };
     revalidatePath("/admin/customers");
+    revalidatePath("/admin/inventory");
     return { error: null, customerId: input.id };
   }
 
@@ -72,6 +73,7 @@ export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerRe
       .single();
     if (!error) {
       revalidatePath("/admin/customers");
+      revalidatePath("/admin/inventory");
       return { error: null, customerId: data.id };
     }
     // 23505 = unique_violation in Postgres

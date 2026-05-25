@@ -14,5 +14,6 @@ export async function toggleSubscribed(
     .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/customers");
+  revalidatePath("/admin/inventory");
   return { error: null };
 }

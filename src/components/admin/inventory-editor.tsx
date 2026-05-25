@@ -11,19 +11,47 @@ import { InventoryRow, type InventoryRowState } from "@/components/admin/invento
 import { PrepopulateButton } from "@/components/admin/prepopulate-button";
 import { UnitsDrawer, type ProductUnitState } from "@/components/admin/units-drawer";
 import { saveInventory } from "@/actions/save-inventory";
+import { formatTime, shortDay } from "@/lib/schedule-format";
+
+export type ScheduleSummary = {
+  isOpen: boolean;
+  openDay: number | null;
+  openTime: string | null;
+  closeDay: number | null;
+  closeTime: string | null;
+};
+
+export type CustomerStats = {
+  subscribed: number;
+  orderedThisWeek: number;
+};
 
 type Props = {
   initialRows: InventoryRowState[];
   initialUnits: Record<string, ProductUnitState[]>;
   weekLabel: string;
+  schedule: ScheduleSummary;
+  customerStats: CustomerStats;
 };
+
+function describeSchedule(s: ScheduleSummary): { open: boolean; label: string } {
+  const hasWeekly =
+    s.openDay != null && s.openTime != null && s.closeDay != null && s.closeTime != null;
+  if (!s.isOpen) return { open: false, label: "Closed" };
+  if (!hasWeekly) return { open: true, label: "Open · manual" };
+  return {
+    open: true,
+    label: `Open · ${shortDay(s.openDay!)} ${formatTime(s.openTime!)} – ${shortDay(s.closeDay!)} ${formatTime(s.closeTime!)}`,
+  };
+}
 
 let nextLocalId = 1;
 function newLocalId(): string {
   return `new-${Date.now()}-${nextLocalId++}`;
 }
 
-export function InventoryEditor({ initialRows, initialUnits, weekLabel }: Props) {
+export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule, customerStats }: Props) {
+  const scheduleDescription = describeSchedule(schedule);
   const router = useRouter();
   const [rows, setRows] = useState<InventoryRowState[]>(initialRows);
   const [baseline, setBaseline] = useState<InventoryRowState[]>(initialRows);
@@ -169,10 +197,11 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel }: Props)
 
       <MetaRow>
         <MetaPill label="Open for orders">
-          <StatusDot open /> Sun 8am – Tue 6pm
+          <StatusDot open={scheduleDescription.open} /> {scheduleDescription.label}
         </MetaPill>
-        <MetaPill label="Customers">38 active · 12 ordered yet</MetaPill>
-        <MetaPill label="Cutoff">Tue 6:00pm · 28h left</MetaPill>
+        <MetaPill label="Customers">
+          {customerStats.subscribed} subscribed · {customerStats.orderedThisWeek} ordered
+        </MetaPill>
       </MetaRow>
 
       {error && (

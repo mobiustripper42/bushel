@@ -118,15 +118,11 @@ function InventoryPage() {
       <div className="inv-meta">
         <div className="inv-meta-pill">
           <span className="inv-meta-key">Open for orders</span>
-          <span className="inv-meta-val"><span className="status-dot is-open" style={{boxShadow: "0 0 0 2px rgba(121,196,78,0.18)"}}></span> Sun 8am – Tue 6pm</span>
+          <span className="inv-meta-val"><span className="status-dot is-open" style={{boxShadow: "0 0 0 2px rgba(121,196,78,0.18)"}}></span> Open · Sun 8am – Tue 6pm</span>
         </div>
         <div className="inv-meta-pill">
           <span className="inv-meta-key">Customers</span>
-          <span className="inv-meta-val">38 active · 12 ordered yet</span>
-        </div>
-        <div className="inv-meta-pill">
-          <span className="inv-meta-key">Cutoff</span>
-          <span className="inv-meta-val">Tue 6:00pm · 28h left</span>
+          <span className="inv-meta-val">38 subscribed · 12 ordered</span>
         </div>
       </div>
 
