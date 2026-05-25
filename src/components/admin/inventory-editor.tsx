@@ -59,6 +59,8 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const [unitsOpenFor, setUnitsOpenFor] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   const baselineMap = useMemo(() => {
     const m = new Map<string, InventoryRowState>();
@@ -122,6 +124,24 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
   function handleDiscard() {
     setRows(baseline);
     setDeletedIds([]);
+    setError(null);
+  }
+
+  // Drag-to-reorder (#143). Splice `from` to land immediately before `to`,
+  // then rewrite sort_order to (10, 20, 30, …) so the saved order matches
+  // the on-screen order. Same convention as addRow's `maxOrder + 10`.
+  function reorderRows(fromId: string, toId: string) {
+    if (fromId === toId) return;
+    setRows((rs) => {
+      const fromIdx = rs.findIndex((r) => r.id === fromId);
+      const toIdx = rs.findIndex((r) => r.id === toId);
+      if (fromIdx === -1 || toIdx === -1) return rs;
+      const next = rs.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      const insertAt = next.findIndex((r) => r.id === toId);
+      next.splice(insertAt, 0, moved);
+      return next.map((r, i) => ({ ...r, sort_order: (i + 1) * 10 }));
+    });
     setError(null);
   }
 
@@ -247,6 +267,21 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
                   onUpdate={(patch) => update(row.id, patch)}
                   onRemove={() => remove(row.id)}
                   onOpenUnits={row.isNew ? undefined : () => setUnitsOpenFor(row.id)}
+                  isDragging={draggingId === row.id}
+                  isDropTarget={dropTargetId === row.id && draggingId !== row.id}
+                  onDragStart={() => setDraggingId(row.id)}
+                  onDragOverRow={() => {
+                    if (draggingId && draggingId !== row.id) setDropTargetId(row.id);
+                  }}
+                  onDropRow={() => {
+                    if (draggingId) reorderRows(draggingId, row.id);
+                    setDraggingId(null);
+                    setDropTargetId(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId(null);
+                    setDropTargetId(null);
+                  }}
                 />
               );
             })}

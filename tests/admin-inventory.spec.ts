@@ -143,6 +143,47 @@ test.describe("admin inventory", () => {
     await page.reload();
     await expect(rowByName(page, "Test Carrots")).toHaveCount(0);
   });
+
+  // #143 — drag the grip on the left of a row to reorder. Default fixture
+  // is Kale (1), Eggs (2), Honey (3); drag Honey above Kale, save, reload,
+  // and confirm the new order persists. Restores the original sort order
+  // at the end so other specs see the seeded state.
+  test("drag-to-reorder: grip drag updates row order, persists across reload", async ({ page }) => {
+    await page.goto("/admin/inventory");
+
+    // Order in the DOM matches insertion order; assert the baseline first
+    // so a fixture-leak from another spec doesn't masquerade as a pass.
+    const rowOrder = async () =>
+      page.locator("tr.data-row").evaluateAll((els) =>
+        els.map((el) => (el as HTMLElement).dataset.rowName),
+      );
+    await expect.poll(rowOrder).toEqual(["Kale", "Eggs", "Honey"]);
+
+    // Arm the drag on Honey's grip, then drag the row onto Kale's row.
+    // Playwright's dragTo dispatches dragstart/dragover/drop in sequence —
+    // exactly what the armed-handle pattern expects.
+    const honeyRow = rowByName(page, TEST_PRODUCTS.honey.name);
+    const kaleRow = rowByName(page, TEST_PRODUCTS.kale.name);
+    await honeyRow.locator(".row-handle-grip").dispatchEvent("mousedown");
+    await honeyRow.dragTo(kaleRow);
+    await honeyRow.dispatchEvent("dragend");
+
+    await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
+    await expect(saveButton(page, 3)).toBeEnabled();
+
+    await saveButton(page, 3).click();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+
+    await page.reload();
+    await expect.poll(rowOrder).toEqual(["Honey", "Kale", "Eggs"]);
+
+    // Restore the original order so downstream specs aren't surprised.
+    await kaleRow.locator(".row-handle-grip").dispatchEvent("mousedown");
+    await kaleRow.dragTo(honeyRow);
+    await kaleRow.dispatchEvent("dragend");
+    await saveButton(page).click();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+  });
 });
 
 test.describe("admin inventory — open-for-orders meta pill", () => {

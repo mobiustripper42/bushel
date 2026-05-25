@@ -52,6 +52,22 @@ function InventoryPage() {
   const [rows, setRows] = useState(SEED_ROWS);
   const [originalRows] = useState(SEED_ROWS);
   const [unitsOpenFor, setUnitsOpenFor] = useState(null); // product id, or null
+  const [draggingId, setDraggingId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
+
+  const reorderRows = (fromId, toId) => {
+    if (fromId === toId) return;
+    setRows(rs => {
+      const fromIdx = rs.findIndex(r => r.id === fromId);
+      if (fromIdx === -1) return rs;
+      const next = rs.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      const insertAt = next.findIndex(r => r.id === toId);
+      if (insertAt === -1) return rs;
+      next.splice(insertAt, 0, moved);
+      return next;
+    });
+  };
 
   const dirty = useMemo(
     () => JSON.stringify(rows) !== JSON.stringify(originalRows),
@@ -149,6 +165,21 @@ function InventoryPage() {
                 onUpdate={(patch) => update(row.id, patch)}
                 onRemove={() => remove(row.id)}
                 onOpenUnits={() => setUnitsOpenFor(row.id)}
+                isDragging={draggingId === row.id}
+                isDropTarget={dropTargetId === row.id && draggingId !== row.id}
+                onDragStart={() => setDraggingId(row.id)}
+                onDragOverRow={() => {
+                  if (draggingId && draggingId !== row.id) setDropTargetId(row.id);
+                }}
+                onDropRow={() => {
+                  if (draggingId) reorderRows(draggingId, row.id);
+                  setDraggingId(null);
+                  setDropTargetId(null);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDropTargetId(null);
+                }}
               />
             ))}
           </tbody>
@@ -184,15 +215,55 @@ function InventoryPage() {
   );
 }
 
-function InventoryRow({ row, index, onUpdate, onRemove, onOpenUnits }) {
+function InventoryRow({
+  row, index, onUpdate, onRemove, onOpenUnits,
+  isDragging, isDropTarget,
+  onDragStart, onDragOverRow, onDropRow, onDragEnd,
+}) {
   const [descOpen, setDescOpen] = useState(false);
+  const [dragArmed, setDragArmed] = useState(false);
   const extras = (row.units || []).filter(u => !u.base);
   const inactiveCount = extras.filter(u => !u.active).length;
+  const rowClass =
+    "inv-row" +
+    (!row.available ? " is-unavail" : "") +
+    (isDragging ? " is-dragging" : "") +
+    (isDropTarget ? " is-drop-target" : "");
   return (
     <>
-      <tr className={"inv-row" + (!row.available ? " is-unavail" : "")}>
+      <tr
+        className={rowClass}
+        draggable={dragArmed}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", row.id);
+          onDragStart && onDragStart();
+        }}
+        onDragOver={(e) => {
+          if (!onDragOverRow) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          onDragOverRow();
+        }}
+        onDrop={(e) => {
+          if (!onDropRow) return;
+          e.preventDefault();
+          onDropRow();
+          setDragArmed(false);
+        }}
+        onDragEnd={() => {
+          setDragArmed(false);
+          onDragEnd && onDragEnd();
+        }}
+      >
         <td className="col-handle">
-          <span className="inv-handle" title="Drag to reorder">
+          <span
+            className="inv-handle"
+            title="Drag to reorder"
+            style={{ cursor: "grab" }}
+            onMouseDown={() => setDragArmed(true)}
+            onMouseUp={() => setDragArmed(false)}
+          >
             <svg viewBox="0 0 12 18" width="10" height="14" aria-hidden="true">
               <circle cx="3" cy="3" r="1.5" fill="currentColor"/>
               <circle cx="9" cy="3" r="1.5" fill="currentColor"/>
