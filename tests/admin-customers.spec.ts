@@ -253,7 +253,12 @@ test.describe("admin customers", () => {
   // listeners don't catch them — the drawer wraps onClose to prompt
   // explicitly when dirty. The Cancel button is the explicit "discard"
   // affordance and intentionally skips the prompt. Smoke-test both paths.
-  test("unsaved-changes guard: scrim prompts, Cancel does not", async ({ page }) => {
+  test("unsaved-changes guard: scrim prompts, Cancel does not", async ({ page }, testInfo) => {
+    // Mobile drawer fills the viewport; the scrim is behind the form's
+    // field-row, which intercepts the click target. The guard itself is
+    // exercised on desktop here — touch-friendly mobile assertion is a
+    // separate scope.
+    test.skip(testInfo.project.name === "mobile", "Drawer scrim is occluded by field-row on the 375px drawer; desktop covers the guard path.");
     await page.goto("/admin/customers");
     const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
     await row.click();

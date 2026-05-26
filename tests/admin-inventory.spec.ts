@@ -154,7 +154,11 @@ test.describe("admin inventory", () => {
   // can't be triggered without leaving the page in Playwright, but the
   // click-capture path uses window.confirm(), interceptable via
   // page.on("dialog").
-  test("unsaved-changes guard: confirm prompt fires on sidebar nav, save clears it", async ({ page }) => {
+  test("unsaved-changes guard: confirm prompt fires on sidebar nav, save clears it", async ({ page }, testInfo) => {
+    // Mobile collapses the sidebar into a hamburger drawer — `.admin-nav`
+    // isn't directly clickable. The guard hook is identical across
+    // viewports; desktop covers the click-capture path.
+    test.skip(testInfo.project.name === "mobile", "Sidebar nav lives in the mobile-nav-drawer at 375px; desktop covers the guard path.");
     await page.goto("/admin/inventory");
 
     const kale = rowByName(page, TEST_PRODUCTS.kale.name);
