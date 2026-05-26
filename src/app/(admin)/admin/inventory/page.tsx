@@ -7,7 +7,7 @@ import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
 export default async function InventoryPage() {
   const supabase = await createClient();
   const weekOf = weekOfMondayNY();
-  const [productsRes, unitsRes, scheduleRes, subscribedCustomersRes, weekOrdersRes] = await Promise.all([
+  const [productsRes, unitsRes, scheduleRes, subscribedCustomersRes, weekOrdersRes, weekItemsRes] = await Promise.all([
     supabase
       .from("products")
       .select("*")
@@ -32,6 +32,17 @@ export default async function InventoryPage() {
       .from("orders")
       .select("customer_id", { count: "exact", head: true })
       .eq("week_of", weekOf),
+    // Sold-this-week per product (base units). Aggregated client-side rather
+    // than via PostgREST RPC because the multi-unit join (qty * conversion)
+    // pushes us past what `.select(..., count: "exact")` can express. Volume
+    // is small — single-digit customers × handful of items per order.
+    // No `orders.status` filter today — there's no cancellation flow in V1.
+    // If one lands (DEC-012 reconciliation could grow one), add the filter
+    // here so cancelled items don't count as sold.
+    supabase
+      .from("order_items")
+      .select("product_id, qty, product_units(conversion_to_base), orders!inner(week_of)")
+      .eq("orders.week_of", weekOf),
   ]);
 
   // Every query is load-bearing for the pills / table — failing silently on
@@ -42,7 +53,8 @@ export default async function InventoryPage() {
     unitsRes.error ??
     scheduleRes.error ??
     subscribedCustomersRes.error ??
-    weekOrdersRes.error;
+    weekOrdersRes.error ??
+    weekItemsRes.error;
   if (firstError || !scheduleRes.data) {
     return (
       <main style={{ padding: "28px 32px", maxWidth: 1200 }}>
@@ -80,6 +92,20 @@ export default async function InventoryPage() {
     });
   }
 
+  // Sold this week per product, in base units (qty * conversion_to_base).
+  // Falls back to conv=1 when product_units join is absent — pre-6.5a data
+  // had no unit row attached; the 6.5a safety-net trigger now fills it on
+  // insert, but historical rows remain.
+  const soldByProductId: Record<string, number> = {};
+  for (const row of (weekItemsRes.data ?? []) as Array<{
+    product_id: string;
+    qty: number;
+    product_units: { conversion_to_base: number } | null;
+  }>) {
+    const conv = Number(row.product_units?.conversion_to_base ?? 1);
+    soldByProductId[row.product_id] = (soldByProductId[row.product_id] ?? 0) + row.qty * conv;
+  }
+
   const initialRows: InventoryRowState[] = (productsRes.data ?? []).map((p) => ({
     id: p.id,
     name: p.name,
@@ -97,6 +123,7 @@ export default async function InventoryPage() {
       <InventoryEditor
         initialRows={initialRows}
         initialUnits={unitsByProductId}
+        soldByProductId={soldByProductId}
         weekLabel={weekOfLabel()}
         schedule={schedule}
         customerStats={customerStats}

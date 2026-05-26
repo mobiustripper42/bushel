@@ -27,8 +27,16 @@ export function OrderDetail({ order }: { order: OrderRowData }) {
               // Display is framed in the selected unit (matches the line's
               // qty + unitLabel) so the message reads as a single coherent
               // statement: "2× · lb / Only 0.5 lb available — 1.5 lb oversold".
+              //
+              // Gate on order.needsReconciliation. qtyAvailable is the current
+              // (post-decrement) inventory read at list-load time, so once a
+              // product hits zero every prior order that touched it would
+              // light up as "oversold" without this gate — even orders that
+              // fit at placement. needs_reconciliation is set by place_order
+              // only on the order that actually pushed qty_available negative,
+              // so it's the order-time truth signal.
               const baseRequested = i.qty * i.conversionToBase;
-              const oversold = baseRequested > i.qtyAvailable;
+              const oversold = order.needsReconciliation && baseRequested > i.qtyAvailable;
               // Clamp available to ≥ 0. Under DEC-012's optimistic decrement,
               // qty_available is allowed to go negative after a runaway order —
               // showing "Only -1.5 lb available" is nonsensical to Annabel.

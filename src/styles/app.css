@@ -259,6 +259,11 @@
 }
 .field-num.is-low { color: var(--amber-600); font-weight: 600; }
 .field-num.is-zero { color: var(--ink-500); font-weight: 600; }
+/* Sold-this-week cell is a read-only display, not an input — needs block
+   layout to inherit field-num right-align. is-zero renders an em-dash via
+   fmtSold(0), and the dim color makes the empty rows recede. */
+.field-sold { display: block; padding: 6px 10px; color: var(--ink-700); }
+.field-sold.is-zero { color: var(--ink-400); }
 
 .field-price {
   display: flex; align-items: center;

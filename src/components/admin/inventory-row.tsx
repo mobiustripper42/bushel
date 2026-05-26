@@ -22,6 +22,7 @@ type Props = {
   row: InventoryRowState;
   unitsCount?: number;
   inactiveExtrasCount?: number;
+  soldThisWeek?: number;
   onUpdate: (patch: Partial<InventoryRowState>) => void;
   onRemove: () => void;
   onOpenUnits?: () => void;
@@ -40,10 +41,21 @@ function priceToString(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+// Compact qty render for the Sold cell: integers as-is, fractions trimmed
+// to 2dp with trailing zeros removed ("1.5" not "1.50"). Mirrors the
+// fmtQty in order-detail.tsx — extract to a shared helper if a third
+// consumer appears.
+function fmtSold(n: number): string {
+  if (n === 0) return "—";
+  if (Number.isInteger(n)) return n.toString();
+  return n.toFixed(2).replace(/\.?0+$/, "");
+}
+
 export function InventoryRow({
   row,
   unitsCount = 1,
   inactiveExtrasCount = 0,
+  soldThisWeek = 0,
   onUpdate,
   onRemove,
   onOpenUnits,
@@ -236,6 +248,15 @@ export function InventoryRow({
             onBlur={() => setQtyDraft(null)}
             aria-label="Quantity available"
           />
+        </td>
+        <td>
+          <span
+            className={"field-num field-sold" + (soldThisWeek === 0 ? " is-zero" : "")}
+            aria-label="Sold this week"
+            data-sold-this-week={soldThisWeek}
+          >
+            {fmtSold(soldThisWeek)}
+          </span>
         </td>
         <td style={{ width: 90, textAlign: "center" }}>
           <Switch

@@ -8,6 +8,7 @@ import {
   customerIds,
   clearOrdersForWeek,
   seedOrder,
+  setProductQty,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -220,6 +221,55 @@ test.describe("admin orders list", () => {
     const detail = page.locator("tr.ord-detail-row .ord-detail");
     await expect(detail).toBeVisible();
     await expect(detail.locator(".ord-li-name")).toContainText("Honey");
+  });
+
+  test("line-level oversold badge gates on order.needsReconciliation (orders that fit at placement stay clean once inventory hits zero)", async ({ page }) => {
+    const ids = await customerIds();
+    // Simulate the post-decrement steady state Annabel sees once Kale is sold
+    // out: qty_available=0 on the product, two orders in the system — one
+    // that fit at placement (needs_reconciliation=false) and one that
+    // overshot (needs_reconciliation=true). Pre-fix, both would flag every
+    // line as "oversold" because qty > 0 (current) is true for both.
+    try {
+      await setProductQty(TEST_PRODUCTS.kale.id, 0);
+
+      const orderFit = await seedOrder({
+        customerId: ids.farmStand,
+        weekOf: thisWeek,
+        fulfillmentType: "pickup",
+        // Default needsReconciliation=false — this order fit when placed.
+        items: [{ productId: TEST_PRODUCTS.kale.id, qty: 2, unitPriceCents: 300 }],
+      });
+      const orderOvershoot = await seedOrder({
+        customerId: ids.restaurant,
+        weekOf: thisWeek,
+        fulfillmentType: "delivery",
+        needsReconciliation: true,
+        items: [{ productId: TEST_PRODUCTS.kale.id, qty: 3, unitPriceCents: 300 }],
+      });
+
+      await page.goto("/admin/orders");
+
+      // Only one row expands at a time (orders-page tracks a single `expanded`
+      // id), so check each detail in turn. Click the customer-name cell —
+      // bare-row clicks can land on the status column which stops propagation.
+
+      // The fit order: no per-line oversold marker, no order-level callout.
+      await page.locator(`tr.ord-row[data-order-id="${orderFit}"] .ord-cust-name`).click();
+      const fitDetail = page.locator("tr.ord-detail-row .ord-detail");
+      await expect(fitDetail).toBeVisible();
+      await expect(fitDetail.locator("li.is-oversold")).toHaveCount(0);
+      await expect(fitDetail.locator(".callout-warn")).toHaveCount(0);
+
+      // The overshoot order: line marker + order-level callout both present.
+      await page.locator(`tr.ord-row[data-order-id="${orderOvershoot}"] .ord-cust-name`).click();
+      const overDetail = page.locator("tr.ord-detail-row .ord-detail");
+      await expect(overDetail).toBeVisible();
+      await expect(overDetail.locator("li.is-oversold")).toHaveCount(1);
+      await expect(overDetail.locator(".callout-warn")).toBeVisible();
+    } finally {
+      await setProductQty(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.qty_available);
+    }
   });
 
   test("expand row reveals line items, customer note, and reconciliation callout", async ({ page }) => {

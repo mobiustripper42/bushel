@@ -2,9 +2,13 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   ADMIN_STORAGE_STATE,
   TEST_PRODUCTS,
+  clearOrdersForWeek,
+  customerIds,
   resetProductSortOrder,
+  seedOrder,
   setOrderingSchedule,
 } from "./helpers";
+import { weekOfMondayNY } from "@/lib/week";
 
 function rowByName(page: Page, name: string) {
   return page.locator(`tr[data-row-name="${name}"]`);
@@ -81,6 +85,47 @@ test.describe("admin inventory", () => {
       .fill(String(TEST_PRODUCTS.kale.qty_available));
     await saveButton(page, 1).click();
     await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+  });
+
+  test("Sold column renders this week's base-unit total per product", async ({ page }) => {
+    const thisWeek = weekOfMondayNY();
+    try {
+      const ids = await customerIds();
+      // farmStand orders 2 kale, restaurant orders 1 kale + 1 honey. Kale's
+      // base unit has conv=1 (safety-net trigger seeds it), so the column
+      // shows raw qty sums: 3 kale, 1 honey, "—" for eggs and the rest.
+      await seedOrder({
+        customerId: ids.farmStand,
+        weekOf: thisWeek,
+        fulfillmentType: "pickup",
+        items: [{ productId: TEST_PRODUCTS.kale.id, qty: 2, unitPriceCents: 300 }],
+      });
+      await seedOrder({
+        customerId: ids.restaurant,
+        weekOf: thisWeek,
+        fulfillmentType: "delivery",
+        items: [
+          { productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 },
+          { productId: TEST_PRODUCTS.honey.id, qty: 1, unitPriceCents: 1200 },
+        ],
+      });
+
+      await page.goto("/admin/inventory");
+
+      const kaleSold = rowByName(page, TEST_PRODUCTS.kale.name).locator(".field-sold");
+      await expect(kaleSold).toHaveAttribute("data-sold-this-week", "3");
+      await expect(kaleSold).toHaveText("3");
+
+      const honeySold = rowByName(page, TEST_PRODUCTS.honey.name).locator(".field-sold");
+      await expect(honeySold).toHaveText("1");
+
+      // Eggs untouched — em-dash.
+      const eggsSold = rowByName(page, TEST_PRODUCTS.eggs.name).locator(".field-sold");
+      await expect(eggsSold).toHaveText("—");
+      await expect(eggsSold).toHaveClass(/is-zero/);
+    } finally {
+      await clearOrdersForWeek(thisWeek);
+    }
   });
 
   test("availability switch toggles and saves", async ({ page }) => {
