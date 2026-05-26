@@ -41,13 +41,12 @@ export async function placeOrder(
     return { error: "Session expired. Reload the page." };
   }
 
-  // #130 — page-level shell short-circuits the form for these states,
-  // but a stale cookie + a direct submit shouldn't slip through.
-  if (!customer.is_active) {
-    return { error: "This account is closed. Text Annabel to come back." };
-  }
-  if (!customer.send_weekly_link) {
-    return { error: "Your weekly order link is paused. Text Annabel to resume." };
+  // #130 — page-level shell short-circuits the form for these states.
+  // Only path that reaches here is a stale tab + a direct submit. Send
+  // them back to /c/[token] where the friendly shell copy lives; don't
+  // duplicate it in an inline error.
+  if (!customer.is_active || !customer.send_weekly_link) {
+    return { error: "This link isn't active anymore. Reload the page." };
   }
 
   if (payload.items.length === 0) {

@@ -11,9 +11,20 @@ const COOKIE = "bbf_customer_token";
 test.describe("/c/[token] route", () => {
   // /c/[token] now redirects to /confirmed if an order exists for the week;
   // these tests assert the form rendered, so reset to keep them deterministic
-  // regardless of spec ordering.
+  // regardless of spec ordering. #130 added a paused/closed shell that
+  // short-circuits before the form, so we also normalise both account-state
+  // flags here — otherwise a prior spec leaving send_weekly_link=false on a
+  // seed customer turns every "renders the form" assertion in this file
+  // into a paused-shell render.
   test.beforeEach(async () => {
     await resetCustomerOrderState();
+    const sb = admin();
+    for (const token of [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]) {
+      await sb
+        .from("customers")
+        .update({ is_active: true, send_weekly_link: true })
+        .eq("token", token);
+    }
   });
 
   test("valid token renders the page and sets the cookie", async ({ page, context }) => {
