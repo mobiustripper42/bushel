@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { AllSoldOutShell } from "@/components/customer/AllSoldOutShell";
 import { ClosedShell } from "@/components/customer/ClosedShell";
 import { OrderForm } from "@/components/customer/OrderForm";
+import { PausedShell } from "@/components/customer/PausedShell";
 import {
   getAvailableProducts,
   getCurrentWeekOrder,
@@ -20,6 +21,19 @@ export default async function CustomerTokenPage({
   const customer = await lookupCustomerByToken(token);
   if (!customer) notFound();
 
+  const greetingName = customer.business_name ?? customer.name;
+
+  // #130 — account state shells. Deactivated customers (is_active=false)
+  // see the "closed" copy; active-but-unsubscribed customers see the
+  // "paused" copy. Both short-circuit the order form so a stale link
+  // can't submit.
+  if (!customer.is_active) {
+    return <PausedShell customerName={greetingName} reason="closed" />;
+  }
+  if (!customer.send_weekly_link) {
+    return <PausedShell customerName={greetingName} reason="paused" />;
+  }
+
   // If this customer has already submitted an order for the current NY-time
   // week, the link is "your weekly order" — bounce to the confirmation rather
   // than re-showing the empty form. The server-side place_order RPC would
@@ -33,8 +47,6 @@ export default async function CustomerTokenPage({
     getLatestDeliveryPreference(customer.id),
     getOrderingScheduleStatus(),
   ]);
-
-  const greetingName = customer.business_name ?? customer.name;
 
   // DEC-031: four customer-side states keyed off ordering_schedule.is_open
   // and product inventory. Server-side `is_open` is a soft UI hint only;

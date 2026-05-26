@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PausedShell } from "@/components/customer/PausedShell";
 import { StatusShell } from "@/components/customer/StatusShell";
 import { getCurrentWeekOrder } from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
@@ -31,6 +32,17 @@ export default async function ConfirmedPage({
         </p>
       </StatusShell>
     );
+  }
+
+  // #130 — same gate as /c/[token]. A closed/paused customer revisiting
+  // /confirmed shouldn't see their prior order or any contact details
+  // beyond their own name (already on the SMS that got them here).
+  const greetingName = customer.business_name ?? customer.name;
+  if (!customer.is_active) {
+    return <PausedShell customerName={greetingName} reason="closed" />;
+  }
+  if (!customer.send_weekly_link) {
+    return <PausedShell customerName={greetingName} reason="paused" />;
   }
 
   const order = await getCurrentWeekOrder(customer.id, weekOfMondayNY());

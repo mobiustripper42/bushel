@@ -41,6 +41,14 @@ export async function placeOrder(
     return { error: "Session expired. Reload the page." };
   }
 
+  // #130 — page-level shell short-circuits the form for these states.
+  // Only path that reaches here is a stale tab + a direct submit. Send
+  // them back to /c/[token] where the friendly shell copy lives; don't
+  // duplicate it in an inline error.
+  if (!customer.is_active || !customer.send_weekly_link) {
+    return { error: "This link isn't active anymore. Reload the page." };
+  }
+
   if (payload.items.length === 0) {
     return { error: "Add at least one item before submitting." };
   }
