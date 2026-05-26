@@ -128,7 +128,10 @@ test.describe("admin inventory", () => {
 
     const added = newRow(page);
     await added.getByRole("textbox", { name: "Product name" }).fill("Test Carrots");
-    await added.getByRole("spinbutton", { name: /price/i }).fill("4.00");
+    // Price input flipped from type=number to type=text + inputMode=decimal
+    // to fix the controlled-decimal-input cursor-jump bug. Role is now
+    // textbox, not spinbutton.
+    await added.getByRole("textbox", { name: /price/i }).fill("4.00");
     await added.getByRole("textbox", { name: "Unit" }).fill("per lb");
     await added.getByRole("spinbutton", { name: /quantity/i }).fill("20");
 

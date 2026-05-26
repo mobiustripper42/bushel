@@ -79,10 +79,22 @@ test.describe("admin inventory — pre-populate from last week", () => {
       .from("orders")
       .delete()
       .in("id", [LAST_WEEK_ORDER_ID, LAST_WEEK_MULTI_ORDER_ID]);
+    // Pre-populate is now overwrite-only — every product gets its qty
+    // set to last-week-ordered-total OR 0. The test only orders against
+    // Kale, so Eggs + Honey get zeroed as a side effect; restore them
+    // so downstream specs see the seed quantities.
     await supabase
       .from("products")
       .update({ qty_available: TEST_PRODUCTS.kale.qty_available })
       .eq("id", TEST_PRODUCTS.kale.id);
+    await supabase
+      .from("products")
+      .update({ qty_available: TEST_PRODUCTS.eggs.qty_available })
+      .eq("id", TEST_PRODUCTS.eggs.id);
+    await supabase
+      .from("products")
+      .update({ qty_available: TEST_PRODUCTS.honey.qty_available })
+      .eq("id", TEST_PRODUCTS.honey.id);
     await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents);
   });
 
@@ -206,7 +218,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
       await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents);
     });
 
-    test("restores qty unit-aware AND reverts each unit's price to last-week snapshot", async ({ page }) => {
+    test("restores qty unit-aware; unit prices are NOT touched", async ({ page }) => {
       await page.goto("/admin/inventory");
 
       const qtySpin = rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i });
@@ -222,7 +234,9 @@ test.describe("admin inventory — pre-populate from last week", () => {
         rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i }),
       ).toHaveValue(String(EXPECTED_RESTORED_QTY));
 
-      // Unit prices reverted to last-week snapshot (not current).
+      // Unit prices stay at current values — pre-populate no longer
+      // restores prices from last-week snapshots (Annabel decided
+      // it's qty-only).
       const supabase = admin();
       const { data: units } = await supabase
         .from("product_units")
@@ -231,8 +245,8 @@ test.describe("admin inventory — pre-populate from last week", () => {
       const byLabel = Object.fromEntries(
         (units ?? []).map((u) => [u.label, u.unit_price_cents]),
       );
-      expect(byLabel[TEST_PRODUCTS.kale.unit]).toBe(BUNCH_SNAPSHOT_CENTS);
-      expect(byLabel["lb"]).toBe(LB_SNAPSHOT_CENTS);
+      expect(byLabel[TEST_PRODUCTS.kale.unit]).toBe(BUNCH_CURRENT_CENTS);
+      expect(byLabel["lb"]).toBe(LB_CURRENT_CENTS);
     });
   });
 });

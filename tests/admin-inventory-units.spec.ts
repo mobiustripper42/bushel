@@ -60,8 +60,8 @@ test.describe("admin inventory · units drawer", () => {
     await drawer(page).getByRole("button", { name: /add another unit/i }).click();
     const newRow = drawer(page).locator(".units-row").nth(1);
     await newRow.getByRole("textbox", { name: "Unit label" }).fill("per lb");
-    await newRow.getByRole("spinbutton", { name: "Conversion to base" }).fill("0.5");
-    await newRow.getByRole("spinbutton", { name: "Unit price" }).fill("8.00");
+    await newRow.getByRole("textbox", { name: "Conversion to base" }).fill("0.5");
+    await newRow.getByRole("textbox", { name: "Unit price" }).fill("8.00");
 
     await drawerSave(page).click();
     await expect(drawer(page)).toBeHidden();
@@ -146,12 +146,12 @@ test.describe("admin inventory · units drawer", () => {
 
     // zero conversion
     await newRow.getByRole("textbox", { name: "Unit label" }).fill("per lb");
-    await newRow.getByRole("spinbutton", { name: "Conversion to base" }).fill("0");
+    await newRow.getByRole("textbox", { name: "Conversion to base" }).fill("0");
     await drawerSave(page).click();
     await expect(drawer(page).getByRole("alert")).toContainText(/conversion must be greater than zero/i);
 
     // all inactive
-    await newRow.getByRole("spinbutton", { name: "Conversion to base" }).fill("0.5");
+    await newRow.getByRole("textbox", { name: "Conversion to base" }).fill("0.5");
     const switches = drawer(page).getByRole("switch");
     await switches.nth(0).click();
     await switches.nth(1).click();
