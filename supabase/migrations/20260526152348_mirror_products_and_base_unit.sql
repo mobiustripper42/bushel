@@ -12,21 +12,37 @@
 -- ------------------------------------------------------------
 -- A. products UPDATE → base product_units row
 -- ------------------------------------------------------------
+-- Price always mirrors. Label only mirrors if the target label isn't
+-- already taken by another (non-base) unit row on the same product —
+-- the unique (product_id, label) constraint would otherwise fail the
+-- whole UPDATE on the products side. Existing drift cases (real prod
+-- data on 2026-05-26 had at least one) need manual resolution; the
+-- trigger silently skips the label mirror to keep saves working.
 create or replace function public.mirror_product_to_base_unit() returns trigger
 language plpgsql
 security invoker
 set search_path = public, pg_temp
 as $$
 begin
-  if new.unit is distinct from old.unit
-     or new.price_cents is distinct from old.price_cents then
+  if new.price_cents is distinct from old.price_cents then
     update public.product_units
-       set label            = new.unit,
-           unit_price_cents = new.price_cents
-     where product_id           = new.id
-       and conversion_to_base   = 1.0
-       and (label            is distinct from new.unit
-            or unit_price_cents is distinct from new.price_cents);
+       set unit_price_cents = new.price_cents
+     where product_id         = new.id
+       and conversion_to_base = 1.0
+       and unit_price_cents   is distinct from new.price_cents;
+  end if;
+  if new.unit is distinct from old.unit then
+    update public.product_units
+       set label = new.unit
+     where product_id         = new.id
+       and conversion_to_base = 1.0
+       and label              is distinct from new.unit
+       and not exists (
+         select 1 from public.product_units sib
+          where sib.product_id = new.id
+            and sib.label      = new.unit
+            and sib.conversion_to_base <> 1.0
+       );
   end if;
   return new;
 end;
@@ -67,14 +83,16 @@ create trigger mirror_base_unit_to_product_trigger
   on public.product_units
   for each row execute function public.mirror_base_unit_to_product();
 
--- Bring any pre-existing drift into alignment now. Pick products as the
--- starting source for the backfill — that's what the inline editor has been
--- writing to, so it's likely the most recently-edited value Annabel saw.
-update public.product_units pu
-   set label            = p.unit,
-       unit_price_cents = p.price_cents
-  from public.products p
- where pu.product_id         = p.id
-   and pu.conversion_to_base = 1.0
-   and (pu.label            is distinct from p.unit
-        or pu.unit_price_cents is distinct from p.price_cents);
+-- Intentionally no backfill: prod data on 2026-05-26 had at least one
+-- product whose products.unit clashed with a non-base unit's label, and
+-- a blind UPDATE collides with the (product_id, label) unique constraint.
+-- Going forward the triggers keep new edits aligned; existing drift needs
+-- per-row resolution. Surface offenders with:
+--
+--   select p.id, p.name, p.unit  as products_unit,
+--          pu.label as base_label, pu.unit_price_cents
+--     from public.products p
+--     join public.product_units pu
+--       on pu.product_id = p.id and pu.conversion_to_base = 1.0
+--    where p.unit is distinct from pu.label
+--       or p.price_cents is distinct from pu.unit_price_cents;
