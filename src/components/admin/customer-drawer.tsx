@@ -268,7 +268,9 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
             </Button>
           )}
           <div style={{ flex: 1 }} />
-          <Button variant="ghost" onClick={tryClose} disabled={saving || deleting || reactivating}>
+          {/* Cancel is the explicit "discard my edits" button — skips the
+              guard intentionally. Scrim/X/Escape still prompt. */}
+          <Button variant="ghost" onClick={onClose} disabled={saving || deleting || reactivating}>
             Cancel
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={saving || deleting || reactivating}>

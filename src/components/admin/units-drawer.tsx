@@ -276,7 +276,9 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
 
         <footer className="drawer-foot">
           <div style={{ flex: 1 }} />
-          <Button variant="ghost" onClick={tryClose} disabled={saving}>Cancel</Button>
+          {/* Cancel is the explicit "discard" button — skips the guard
+              intentionally. Scrim/X/Escape still prompt. */}
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button variant="primary" onClick={handleSave} disabled={!dirty || saving} dirty={dirty}>
             {saving ? "Saving…" : dirty ? "Save units" : "Saved"}
           </Button>

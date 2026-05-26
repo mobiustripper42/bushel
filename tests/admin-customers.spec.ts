@@ -249,10 +249,11 @@ test.describe("admin customers", () => {
 
   // #129 — drawer is the most complex consumer of the unsaved-changes
   // guard (dirty is derived via JSON stringification). The drawer's
-  // scrim/X/Cancel/Escape are NOT navigations, so the hook's click and
-  // popstate listeners don't catch them — the drawer wraps onClose to
-  // prompt explicitly when dirty. Smoke-test the scrim path.
-  test("unsaved-changes guard: editing the drawer prompts on close", async ({ page }) => {
+  // scrim/X/Escape are NOT navigations, so the hook's click and popstate
+  // listeners don't catch them — the drawer wraps onClose to prompt
+  // explicitly when dirty. The Cancel button is the explicit "discard"
+  // affordance and intentionally skips the prompt. Smoke-test both paths.
+  test("unsaved-changes guard: scrim prompts, Cancel does not", async ({ page }) => {
     await page.goto("/admin/customers");
     const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
     await row.click();
@@ -261,16 +262,22 @@ test.describe("admin customers", () => {
     // Type into Phone — drawer is now dirty.
     await drawer(page).getByLabel(/phone/i).fill("216-555-0900");
 
-    // Cancel button uses the same tryClose path as scrim/X/Escape.
+    // Scrim click prompts; dismiss → drawer stays open.
     const dismissPrompt = (dialog: import("@playwright/test").Dialog) => dialog.dismiss();
     page.on("dialog", dismissPrompt);
-    await drawer(page).getByRole("button", { name: /^cancel$/i }).click();
+    await page.locator(".drawer-scrim").click();
     await expect(drawer(page)).toBeVisible();
     page.off("dialog", dismissPrompt);
 
-    // Save clears dirty; close is silent.
-    await drawer(page).getByRole("button", { name: /save changes/i }).click();
+    // Cancel button skips the prompt — explicit discard.
+    const failOnPrompt = (dialog: import("@playwright/test").Dialog) => {
+      throw new Error(`Cancel must not prompt: ${dialog.message()}`);
+    };
+    page.on("dialog", failOnPrompt);
+    await drawer(page).getByRole("button", { name: /^cancel$/i }).click();
     await expect(drawer(page)).toHaveCount(0);
-    // resetTestCustomers (next test's beforeEach) clears the phone edit.
+    page.off("dialog", failOnPrompt);
+    // resetTestCustomers (next test's beforeEach) is the safety net — but
+    // Cancel didn't persist so the row's original phone is intact already.
   });
 });
