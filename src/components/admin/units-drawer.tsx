@@ -299,6 +299,11 @@ function UnitRow({
   onUpdate: (patch: Partial<ProductUnitState>) => void;
   onRemove: () => void;
 }) {
+  // Decimal-bug: type="number" + a re-formatted controlled value fights
+  // mid-typing ("1.5" reformats to "1.50" before the 5 lands, cursor
+  // jumps). Local drafts hold the raw user input until blur.
+  const [convDraft, setConvDraft] = useState<string | null>(null);
+  const [priceDraft, setPriceDraft] = useState<string | null>(null);
   return (
     <div
       className={
@@ -322,12 +327,18 @@ function UnitRow({
       </div>
       <div className="units-col-conv">
         <input
-          type="number"
-          step="0.1"
-          min="0"
+          type="text"
+          inputMode="decimal"
           className="field-input field-num"
-          value={String(unit.conversion_to_base)}
-          onChange={(e) => onUpdate({ conversion_to_base: parseFloat(e.target.value) || 0 })}
+          value={convDraft ?? String(unit.conversion_to_base)}
+          onChange={(e) => {
+            setConvDraft(e.target.value);
+            const v = parseFloat(e.target.value);
+            if (Number.isFinite(v) && v >= 0) {
+              onUpdate({ conversion_to_base: v });
+            }
+          }}
+          onBlur={() => setConvDraft(null)}
           disabled={isBase}
           aria-label="Conversion to base"
           title={isBase ? "Base unit is always 1.0" : ""}
@@ -337,15 +348,18 @@ function UnitRow({
         <div className="field-price">
           <span className="field-price-sym">$</span>
           <input
-            type="number"
-            step="0.25"
-            min="0"
+            type="text"
+            inputMode="decimal"
             className="field-input field-num"
-            value={priceToString(unit.unit_price_cents)}
+            value={priceDraft ?? priceToString(unit.unit_price_cents)}
             onChange={(e) => {
+              setPriceDraft(e.target.value);
               const v = parseFloat(e.target.value);
-              onUpdate({ unit_price_cents: Number.isFinite(v) ? Math.round(v * 100) : 0 });
+              if (Number.isFinite(v) && v >= 0) {
+                onUpdate({ unit_price_cents: Math.round(v * 100) });
+              }
             }}
+            onBlur={() => setPriceDraft(null)}
             aria-label="Unit price"
           />
         </div>

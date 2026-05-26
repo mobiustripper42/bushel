@@ -2320,7 +2320,12 @@
   white-space: nowrap;
   transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
-.chip-tab:hover:not(:disabled) { background: var(--cream); border-color: var(--ink-300); }
+/* Hover only applies to non-selected chips. Without :not(.is-on) the
+   hover rule's higher specificity wins on background (cream/light)
+   while .chip-tab.is-on still wins on color (paper/white) — white-on-
+   white is unreadable, and iOS Safari leaves :hover sticky on tap so
+   it shows on mobile too. */
+.chip-tab:not(.is-on):hover:not(:disabled) { background: var(--cream); border-color: var(--ink-300); }
 .chip-tab.is-on {
   background: var(--ink-900); color: var(--paper); border-color: var(--ink-900);
 }

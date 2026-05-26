@@ -256,8 +256,8 @@ test.describe("admin customers", () => {
   test("unsaved-changes guard: scrim prompts, Cancel does not", async ({ page }, testInfo) => {
     // Mobile drawer fills the viewport; the scrim is behind the form's
     // field-row, which intercepts the click target. The guard itself is
-    // exercised on desktop here — touch-friendly mobile assertion is a
-    // separate scope.
+    // exercised on desktop here — mobile drawer interaction (#129) needs
+    // a touch-friendly assertion path tracked separately.
     test.skip(testInfo.project.name === "mobile", "Drawer scrim is occluded by field-row on the 375px drawer; desktop covers the guard path.");
     await page.goto("/admin/customers");
     const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);

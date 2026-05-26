@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { prepopulateFromLastWeek } from "@/actions/prepopulate-from-last-week";
 
@@ -15,13 +16,14 @@ function IconHistory() {
 }
 
 export function PrepopulateButton() {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   function handleClick() {
     if (
       !window.confirm(
-        "Restore last week's starting inventory and unit prices? Adds last week's ordered quantities back to current qty (unit-aware), and resets each unit's price to its last-week snapshot.",
+        "Reset every product's qty to last week's ordered total (or 0 if not ordered last week)? Current qty values will be replaced. Unit prices are NOT changed.",
       )
     )
       return;
@@ -30,12 +32,19 @@ export function PrepopulateButton() {
       const result = await prepopulateFromLastWeek();
       if (result.error) {
         setMessage({ kind: "error", text: result.error });
-      } else if (result.restoredCount === 0) {
+        return;
+      }
+      // Pull the restored values back into the inline editor's local state.
+      // revalidatePath alone refreshes the server cache but doesn't re-mount
+      // the client useState — router.refresh + the editor's initialRows
+      // useEffect close the loop.
+      router.refresh();
+      if (result.restoredCount === 0) {
         setMessage({ kind: "success", text: "No prior-week orders to restore from." });
       } else {
         setMessage({
           kind: "success",
-          text: `Restored qty on ${result.restoredCount} product${result.restoredCount === 1 ? "" : "s"}.`,
+          text: `${result.restoredCount} product${result.restoredCount === 1 ? "" : "s"} restored from last week; others set to 0.`,
         });
       }
     });
