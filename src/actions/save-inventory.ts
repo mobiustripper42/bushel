@@ -40,8 +40,10 @@ function validateRow(row: InventoryRowInput, index: number): string | null {
   }
   // qty allows negatives — DEC-012 optimistic oversell. Admin must be able
   // to record an oversold state by direct entry, not only via order placement.
-  if (!Number.isInteger(row.qty_available)) {
-    return `Row ${index + 1}: qty must be a whole number.`;
+  // Fractions are allowed: multi-unit decrement (qty * conversion_to_base)
+  // produces non-integer remainders, and products.qty_available is numeric(10,2).
+  if (!Number.isFinite(row.qty_available)) {
+    return `Row ${index + 1}: qty must be a number.`;
   }
   return null;
 }
@@ -69,7 +71,7 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
       description: row.description?.trim() || null,
       unit: row.unit.trim(),
       price_cents: row.price_cents,
-      qty_available: row.qty_available,
+      qty_available: Math.round(row.qty_available * 100) / 100,
       is_available: row.is_available,
       sort_order: row.sort_order,
       updated_at: now,

@@ -62,6 +62,27 @@ test.describe("admin inventory", () => {
     await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
   });
 
+  test("qty accepts fractional values (multi-unit decrement leaves fractions in products.qty_available)", async ({ page }) => {
+    await page.goto("/admin/inventory");
+
+    const kale = rowByName(page, TEST_PRODUCTS.kale.name);
+    await kale.getByRole("textbox", { name: /quantity/i }).fill("2.5");
+
+    await expect(saveButton(page, 1)).toBeEnabled();
+    await saveButton(page, 1).click();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+
+    await page.reload();
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i })).toHaveValue("2.5");
+
+    // restore
+    await rowByName(page, TEST_PRODUCTS.kale.name)
+      .getByRole("textbox", { name: /quantity/i })
+      .fill(String(TEST_PRODUCTS.kale.qty_available));
+    await saveButton(page, 1).click();
+    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+  });
+
   test("availability switch toggles and saves", async ({ page }) => {
     await page.goto("/admin/inventory");
 

@@ -220,15 +220,17 @@ export function InventoryRow({
         <td>
           <input
             type="text"
-            inputMode="numeric"
+            inputMode="decimal"
             className={"field-input field-num" + qtyClass}
             value={qtyDraft ?? String(row.qty_available)}
             onChange={(e) => {
               setQtyDraft(e.target.value);
               if (e.target.value.trim() === "") return; // don't zero on Backspace-to-empty
-              const v = parseInt(e.target.value, 10);
-              if (Number.isFinite(v) && v >= 0) {
-                onUpdate({ qty_available: v });
+              const v = parseFloat(e.target.value);
+              // Negatives allowed per DEC-012 (admin records oversold state by
+              // direct entry). Server validator agrees — Number.isFinite only.
+              if (Number.isFinite(v)) {
+                onUpdate({ qty_available: Math.round(v * 100) / 100 });
               }
             }}
             onBlur={() => setQtyDraft(null)}

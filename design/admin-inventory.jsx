@@ -339,11 +339,14 @@ function InventoryRow({
         </td>
         <td className="col-qty">
           <input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="decimal"
             className={"inv-cell inv-num" + (row.qty === 0 ? " is-zero" : row.qty <= 3 ? " is-low" : "")}
             value={row.qty}
-            onChange={e => onUpdate({ qty: parseInt(e.target.value) || 0 })}
+            onChange={e => {
+              const v = parseFloat(e.target.value);
+              onUpdate({ qty: Number.isFinite(v) ? Math.round(v * 100) / 100 : 0 });
+            }}
           />
         </td>
         <td className="col-avail">
