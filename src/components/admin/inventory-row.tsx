@@ -56,6 +56,10 @@ export function InventoryRow({
 }: Props) {
   const [descOpen, setDescOpen] = useState(false);
   const [dragArmed, setDragArmed] = useState(false);
+  // #129/decimal-bug: keep the user's raw typing while focused so React's
+  // re-render of the canonical formatted value doesn't fight mid-edit
+  // ("1.5" → reformatted to "1.50" → cursor jump → can't type the 5).
+  const [priceDraft, setPriceDraft] = useState<string | null>(null);
   const qtyClass =
     row.qty_available === 0 ? " is-zero" : row.qty_available <= 3 ? " is-low" : "";
   const extras = Math.max(0, unitsCount - 1);
@@ -156,15 +160,18 @@ export function InventoryRow({
           <div className="field-price">
             <span className="field-price-sym">$</span>
             <input
-              type="number"
-              step="0.25"
-              min="0"
+              type="text"
+              inputMode="decimal"
               className="field-input field-num"
-              value={priceToString(row.price_cents)}
+              value={priceDraft ?? priceToString(row.price_cents)}
               onChange={(e) => {
+                setPriceDraft(e.target.value);
                 const v = parseFloat(e.target.value);
-                onUpdate({ price_cents: Number.isFinite(v) ? Math.round(v * 100) : 0 });
+                if (Number.isFinite(v) && v >= 0) {
+                  onUpdate({ price_cents: Math.round(v * 100) });
+                }
               }}
+              onBlur={() => setPriceDraft(null)}
               aria-label="Price"
             />
           </div>
