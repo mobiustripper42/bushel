@@ -41,6 +41,15 @@ export async function placeOrder(
     return { error: "Session expired. Reload the page." };
   }
 
+  // #130 — page-level shell short-circuits the form for these states,
+  // but a stale cookie + a direct submit shouldn't slip through.
+  if (!customer.is_active) {
+    return { error: "This account is closed. Text Annabel to come back." };
+  }
+  if (!customer.send_weekly_link) {
+    return { error: "Your weekly order link is paused. Text Annabel to resume." };
+  }
+
   if (payload.items.length === 0) {
     return { error: "Add at least one item before submitting." };
   }
