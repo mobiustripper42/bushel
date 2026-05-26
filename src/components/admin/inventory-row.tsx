@@ -56,6 +56,13 @@ export function InventoryRow({
 }: Props) {
   const [descOpen, setDescOpen] = useState(false);
   const [dragArmed, setDragArmed] = useState(false);
+  // #129/decimal-bug: keep the user's raw typing while focused so React's
+  // re-render of the canonical formatted value doesn't fight mid-edit
+  // ("1.5" → reformatted to "1.50" → cursor jump → can't type the 5).
+  // Same draft pattern for qty so Backspace-to-empty doesn't silently
+  // zero the row via parseInt("") || 0.
+  const [priceDraft, setPriceDraft] = useState<string | null>(null);
+  const [qtyDraft, setQtyDraft] = useState<string | null>(null);
   const qtyClass =
     row.qty_available === 0 ? " is-zero" : row.qty_available <= 3 ? " is-low" : "";
   const extras = Math.max(0, unitsCount - 1);
@@ -156,15 +163,18 @@ export function InventoryRow({
           <div className="field-price">
             <span className="field-price-sym">$</span>
             <input
-              type="number"
-              step="0.25"
-              min="0"
+              type="text"
+              inputMode="decimal"
               className="field-input field-num"
-              value={priceToString(row.price_cents)}
+              value={priceDraft ?? priceToString(row.price_cents)}
               onChange={(e) => {
+                setPriceDraft(e.target.value);
                 const v = parseFloat(e.target.value);
-                onUpdate({ price_cents: Number.isFinite(v) ? Math.round(v * 100) : 0 });
+                if (Number.isFinite(v) && v >= 0) {
+                  onUpdate({ price_cents: Math.round(v * 100) });
+                }
               }}
+              onBlur={() => setPriceDraft(null)}
               aria-label="Price"
             />
           </div>
@@ -209,11 +219,19 @@ export function InventoryRow({
         </td>
         <td>
           <input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
             className={"field-input field-num" + qtyClass}
-            value={String(row.qty_available)}
-            onChange={(e) => onUpdate({ qty_available: parseInt(e.target.value, 10) || 0 })}
+            value={qtyDraft ?? String(row.qty_available)}
+            onChange={(e) => {
+              setQtyDraft(e.target.value);
+              if (e.target.value.trim() === "") return; // don't zero on Backspace-to-empty
+              const v = parseInt(e.target.value, 10);
+              if (Number.isFinite(v) && v >= 0) {
+                onUpdate({ qty_available: v });
+              }
+            }}
+            onBlur={() => setQtyDraft(null)}
             aria-label="Quantity available"
           />
         </td>

@@ -42,7 +42,7 @@ test.describe("admin inventory", () => {
     await expect(saveButton(page)).toBeDisabled();
 
     const kale = rowByName(page, TEST_PRODUCTS.kale.name);
-    await kale.getByRole("spinbutton", { name: /quantity/i }).fill("42");
+    await kale.getByRole("textbox", { name: /quantity/i }).fill("42");
 
     await expect(saveButton(page, 1)).toBeEnabled();
     await expect(page.getByRole("region", { name: /unsaved/i })).toBeVisible();
@@ -52,11 +52,11 @@ test.describe("admin inventory", () => {
     await expect(page.getByRole("region", { name: /unsaved/i })).toHaveCount(0);
 
     await page.reload();
-    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i })).toHaveValue("42");
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i })).toHaveValue("42");
 
     // restore
     await rowByName(page, TEST_PRODUCTS.kale.name)
-      .getByRole("spinbutton", { name: /quantity/i })
+      .getByRole("textbox", { name: /quantity/i })
       .fill(String(TEST_PRODUCTS.kale.qty_available));
     await saveButton(page, 1).click();
     await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
@@ -90,12 +90,12 @@ test.describe("admin inventory", () => {
     await page.goto("/admin/inventory");
 
     const kale = rowByName(page, TEST_PRODUCTS.kale.name);
-    await kale.getByRole("spinbutton", { name: /quantity/i }).fill("999");
+    await kale.getByRole("textbox", { name: /quantity/i }).fill("999");
     await expect(saveButton(page, 1)).toBeVisible();
 
     await page.getByRole("button", { name: /^Discard$/ }).click();
     await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
-    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i })).toHaveValue(
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i })).toHaveValue(
       String(TEST_PRODUCTS.kale.qty_available),
     );
   });
@@ -115,7 +115,7 @@ test.describe("admin inventory", () => {
     await expect(kale).toBeVisible();
 
     // Qty input is still wired up — Annabel can edit from a phone in a pinch.
-    const qtyInput = kale.getByRole("spinbutton", { name: /quantity/i });
+    const qtyInput = kale.getByRole("textbox", { name: /quantity/i });
     await expect(qtyInput).toBeVisible();
     await qtyInput.fill("17");
     await expect(saveButton(page, 1)).toBeEnabled();
@@ -128,9 +128,12 @@ test.describe("admin inventory", () => {
 
     const added = newRow(page);
     await added.getByRole("textbox", { name: "Product name" }).fill("Test Carrots");
-    await added.getByRole("spinbutton", { name: /price/i }).fill("4.00");
+    // Price input flipped from type=number to type=text + inputMode=decimal
+    // to fix the controlled-decimal-input cursor-jump bug. Role is now
+    // textbox, not spinbutton.
+    await added.getByRole("textbox", { name: /price/i }).fill("4.00");
     await added.getByRole("textbox", { name: "Unit" }).fill("per lb");
-    await added.getByRole("spinbutton", { name: /quantity/i }).fill("20");
+    await added.getByRole("textbox", { name: /quantity/i }).fill("20");
 
     await expect(saveButton(page, 1)).toBeEnabled();
     await saveButton(page, 1).click();
@@ -154,11 +157,15 @@ test.describe("admin inventory", () => {
   // can't be triggered without leaving the page in Playwright, but the
   // click-capture path uses window.confirm(), interceptable via
   // page.on("dialog").
-  test("unsaved-changes guard: confirm prompt fires on sidebar nav, save clears it", async ({ page }) => {
+  test("unsaved-changes guard: confirm prompt fires on sidebar nav, save clears it", async ({ page }, testInfo) => {
+    // Mobile collapses the sidebar into a hamburger drawer — `.admin-nav`
+    // isn't directly clickable. The guard hook is identical across
+    // viewports; desktop covers the click-capture path.
+    test.skip(testInfo.project.name === "mobile", "Sidebar nav lives in the mobile-nav-drawer at 375px; desktop covers the guard path.");
     await page.goto("/admin/inventory");
 
     const kale = rowByName(page, TEST_PRODUCTS.kale.name);
-    await kale.getByRole("spinbutton", { name: /quantity/i }).fill("17");
+    await kale.getByRole("textbox", { name: /quantity/i }).fill("17");
     await expect(saveButton(page, 1)).toBeEnabled();
 
     const dismissPrompt = (dialog: import("@playwright/test").Dialog) => dialog.dismiss();
@@ -182,7 +189,7 @@ test.describe("admin inventory", () => {
     // Restore baseline qty for downstream specs.
     await page.goto("/admin/inventory");
     await rowByName(page, TEST_PRODUCTS.kale.name)
-      .getByRole("spinbutton", { name: /quantity/i })
+      .getByRole("textbox", { name: /quantity/i })
       .fill(String(TEST_PRODUCTS.kale.qty_available));
     await saveButton(page, 1).click();
     await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
