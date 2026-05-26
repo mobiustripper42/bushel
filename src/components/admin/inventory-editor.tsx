@@ -11,6 +11,7 @@ import { InventoryRow, type InventoryRowState } from "@/components/admin/invento
 import { PrepopulateButton } from "@/components/admin/prepopulate-button";
 import { UnitsDrawer, type ProductUnitState } from "@/components/admin/units-drawer";
 import { saveInventory } from "@/actions/save-inventory";
+import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
 import { formatTime, shortDay } from "@/lib/schedule-format";
 
 export type ScheduleSummary = {
@@ -84,6 +85,10 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
   }, [rows, baselineMap, deletedIds]);
 
   const dirty = dirtyCount > 0;
+  // #129 — suspend the guard while a save is in flight; the success path
+  // resets baseline (dirty→false naturally) and then router.refresh, but
+  // the in-flight window is brief and shouldn't prompt.
+  useUnsavedChangesGuard(dirty && !saving);
 
   function update(id: string, patch: Partial<InventoryRowState>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));

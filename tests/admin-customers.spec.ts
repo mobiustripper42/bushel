@@ -246,4 +246,38 @@ test.describe("admin customers", () => {
     await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).not.toHaveClass(/is-inactive/);
     await expect(page.getByRole("button", { name: /show deactivated/i })).toHaveCount(0);
   });
+
+  // #129 — drawer is the most complex consumer of the unsaved-changes
+  // guard (dirty is derived via JSON stringification). The drawer's
+  // scrim/X/Escape are NOT navigations, so the hook's click and popstate
+  // listeners don't catch them — the drawer wraps onClose to prompt
+  // explicitly when dirty. The Cancel button is the explicit "discard"
+  // affordance and intentionally skips the prompt. Smoke-test both paths.
+  test("unsaved-changes guard: scrim prompts, Cancel does not", async ({ page }) => {
+    await page.goto("/admin/customers");
+    const row = rowByName(page, TEST_CUSTOMERS.farmStand.name);
+    await row.click();
+    await expect(drawer(page)).toBeVisible();
+
+    // Type into Phone — drawer is now dirty.
+    await drawer(page).getByLabel(/phone/i).fill("216-555-0900");
+
+    // Scrim click prompts; dismiss → drawer stays open.
+    const dismissPrompt = (dialog: import("@playwright/test").Dialog) => dialog.dismiss();
+    page.on("dialog", dismissPrompt);
+    await page.locator(".drawer-scrim").click();
+    await expect(drawer(page)).toBeVisible();
+    page.off("dialog", dismissPrompt);
+
+    // Cancel button skips the prompt — explicit discard.
+    const failOnPrompt = (dialog: import("@playwright/test").Dialog) => {
+      throw new Error(`Cancel must not prompt: ${dialog.message()}`);
+    };
+    page.on("dialog", failOnPrompt);
+    await drawer(page).getByRole("button", { name: /^cancel$/i }).click();
+    await expect(drawer(page)).toHaveCount(0);
+    page.off("dialog", failOnPrompt);
+    // resetTestCustomers (next test's beforeEach) is the safety net — but
+    // Cancel didn't persist so the row's original phone is intact already.
+  });
 });

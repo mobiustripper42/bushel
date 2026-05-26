@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { saveCustomer } from "@/actions/save-customer";
 import { deactivateCustomer } from "@/actions/deactivate-customer";
 import { reactivateCustomer } from "@/actions/reactivate-customer";
+import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
 
 export type CustomerDrawerState = {
   id: string | null;
@@ -37,14 +38,32 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
   const [reactivating, startReactivating] = useTransition();
   const isNew = !initial.id;
   const isInactive = !isNew && !initial.is_active;
+  // #129 — guard against leaving with unsaved edits. Suspend during
+  // saving/deleting/reactivating so the success path (which fires
+  // onSaved → unmount) doesn't bounce against the guard.
+  const dirty = JSON.stringify(c) !== JSON.stringify(initial);
+  const guardActive = dirty && !saving && !deleting && !reactivating;
+  useUnsavedChangesGuard(guardActive);
+
+  // The drawer's scrim click + X button + Escape all close without
+  // navigating, so the hook's click/popstate path doesn't catch them.
+  // Wrap onClose to prompt explicitly when dirty.
+  function tryClose() {
+    if (guardActive && !window.confirm("You have unsaved changes — leave anyway?")) {
+      return;
+    }
+    onClose();
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") tryClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    // tryClose closes over guardActive/onClose — re-bind when either changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guardActive, onClose]);
 
   function set<K extends keyof CustomerDrawerState>(key: K, value: CustomerDrawerState[K]) {
     setC((prev) => ({ ...prev, [key]: value }));
@@ -121,7 +140,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
 
   return (
     <>
-      <div className="drawer-scrim" onClick={onClose} aria-hidden="true" />
+      <div className="drawer-scrim" onClick={tryClose} aria-hidden="true" />
       <aside
         className="drawer"
         role="dialog"
@@ -141,7 +160,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
           <button
             type="button"
             className="drawer-close"
-            onClick={onClose}
+            onClick={tryClose}
             aria-label="Close drawer"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -249,6 +268,8 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
             </Button>
           )}
           <div style={{ flex: 1 }} />
+          {/* Cancel is the explicit "discard my edits" button — skips the
+              guard intentionally. Scrim/X/Escape still prompt. */}
           <Button variant="ghost" onClick={onClose} disabled={saving || deleting || reactivating}>
             Cancel
           </Button>
