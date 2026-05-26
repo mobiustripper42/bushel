@@ -36,7 +36,7 @@ Roles:
 ## Key Docs
 
 | File | Purpose |
-|------|---------|
+|------|-------|
 | `docs/SPEC.md` | What we're building — scope, V1 vs V1.5 vs V2 |
 | `docs/DECISIONS.md` | Architectural decisions (DEC-001…DEC-032) |
 | `docs/SCHEMA.md` | Finalized table shapes; gates migrations + RLS |
@@ -95,7 +95,7 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 Bushel runs against **two Supabase projects** under the bushel-billed org:
 
 | Role | Project ref | Used by |
-|------|------------|---------|
+|------|------------|-------|
 | dev/preview | `nnmfubmlvnkouxxfxxlh` | `.env.local`, Vercel Development + Preview environments, local Playwright runs |
 | production | `piaobrnrmoxnfrpnpixw` | Vercel Production environment only — `order.baybranchfarm.com` |
 
@@ -271,10 +271,12 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 
 **Dev identity:** `~/.claude/devname` (one-line file with handle, e.g. `eric`). Set once per machine.
 
+**Task model:** PROJECT_PLAN.md is read at planning, written at retro. Untouched mid-phase. Current-phase tasks live as GitHub Issues. The phase ends when its issues close.
+
 ## Agents
 
 | Agent | Model | When | Purpose |
-|-------|-------|------|---------|
+|-------|-------|------|-------|
 | @architect | Opus | Before design decisions, new dependencies, scope creep | Coherence vs SPEC + DECISIONS |
 | @code-review | Sonnet | After every commit (wired into `/kill-this`) | Catch issues early |
 | @pm | Sonnet | Start/end of sessions via skills | Track progress, flag risks |
