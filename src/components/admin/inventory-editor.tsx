@@ -30,6 +30,7 @@ export type CustomerStats = {
 type Props = {
   initialRows: InventoryRowState[];
   initialUnits: Record<string, ProductUnitState[]>;
+  soldByProductId: Record<string, number>;
   weekLabel: string;
   schedule: ScheduleSummary;
   customerStats: CustomerStats;
@@ -51,7 +52,7 @@ function newLocalId(): string {
   return `new-${Date.now()}-${nextLocalId++}`;
 }
 
-export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule, customerStats }: Props) {
+export function InventoryEditor({ initialRows, initialUnits, soldByProductId, weekLabel, schedule, customerStats }: Props) {
   const scheduleDescription = describeSchedule(schedule);
   const router = useRouter();
   const [rows, setRows] = useState<InventoryRowState[]>(initialRows);
@@ -285,6 +286,7 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
               <th style={{ width: 110 }}>Price</th>
               <th style={{ width: 130 }}>Unit</th>
               <th style={{ width: 80 }}>Qty</th>
+              <th style={{ width: 80 }} title="Sold this week (base units)">Sold</th>
               <th style={{ width: 90, textAlign: "center" }}>Available</th>
               <th className="row-actions"></th>
             </tr>
@@ -298,6 +300,7 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
                   row={row}
                   unitsCount={units.length}
                   inactiveExtrasCount={Math.max(0, units.filter((u) => !u.is_active).length)}
+                  soldThisWeek={soldByProductId[row.id] ?? 0}
                   onUpdate={(patch) => update(row.id, patch)}
                   onRemove={() => remove(row.id)}
                   onOpenUnits={row.isNew ? undefined : () => setUnitsOpenFor(row.id)}

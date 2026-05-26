@@ -152,6 +152,7 @@ function InventoryPage() {
               <th className="col-price">Price</th>
               <th className="col-unit">Unit</th>
               <th className="col-qty">Qty</th>
+              <th className="col-sold" title="Sold this week (base units)">Sold</th>
               <th className="col-avail">Available</th>
               <th className="col-actions"></th>
             </tr>
@@ -348,6 +349,15 @@ function InventoryRow({
               onUpdate({ qty: Number.isFinite(v) ? Math.round(v * 100) / 100 : 0 });
             }}
           />
+        </td>
+        <td className="col-sold">
+          <span className={"inv-num inv-sold" + ((row.sold ?? 0) === 0 ? " is-zero" : "")}>
+            {((row.sold ?? 0) === 0)
+              ? "—"
+              : Number.isInteger(row.sold)
+                ? row.sold
+                : Number(row.sold).toFixed(2).replace(/\.?0+$/, "")}
+          </span>
         </td>
         <td className="col-avail">
           <Switch checked={row.available} onChange={v => onUpdate({ available: v })}/>
