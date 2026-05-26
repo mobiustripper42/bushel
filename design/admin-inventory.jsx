@@ -48,6 +48,12 @@ function newUnitId() { return "u" + String(nextUnitId++); }
 let nextId = 11;
 function newRowId() { return "p" + String(nextId++).padStart(2, "0"); }
 
+function fmtSold(n) {
+  if (n === 0) return "—";
+  if (Number.isInteger(n)) return String(n);
+  return Number(n).toFixed(2).replace(/\.?0+$/, "");
+}
+
 function InventoryPage() {
   const [rows, setRows] = useState(SEED_ROWS);
   const [originalRows] = useState(SEED_ROWS);
@@ -352,11 +358,7 @@ function InventoryRow({
         </td>
         <td className="col-sold">
           <span className={"inv-num inv-sold" + ((row.sold ?? 0) === 0 ? " is-zero" : "")}>
-            {((row.sold ?? 0) === 0)
-              ? "—"
-              : Number.isInteger(row.sold)
-                ? row.sold
-                : Number(row.sold).toFixed(2).replace(/\.?0+$/, "")}
+            {fmtSold(row.sold ?? 0)}
           </span>
         </td>
         <td className="col-avail">

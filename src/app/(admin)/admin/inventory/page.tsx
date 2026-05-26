@@ -36,6 +36,9 @@ export default async function InventoryPage() {
     // than via PostgREST RPC because the multi-unit join (qty * conversion)
     // pushes us past what `.select(..., count: "exact")` can express. Volume
     // is small — single-digit customers × handful of items per order.
+    // No `orders.status` filter today — there's no cancellation flow in V1.
+    // If one lands (DEC-012 reconciliation could grow one), add the filter
+    // here so cancelled items don't count as sold.
     supabase
       .from("order_items")
       .select("product_id, qty, product_units(conversion_to_base), orders!inner(week_of)")
