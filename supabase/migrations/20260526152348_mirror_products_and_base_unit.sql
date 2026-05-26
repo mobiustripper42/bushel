@@ -8,6 +8,13 @@
 -- Two minimal triggers keep them in lockstep. Each trigger no-ops if the
 -- target already matches, which also kills any cascade: A updates B → B's
 -- trigger sees matching values → exits without re-updating A.
+--
+-- Concurrent-writer deadlock window: T1 updates products (locks P) → fires
+-- A → locks PU. T2 simultaneously updates the base product_units row
+-- (locks PU) → fires B → waits on P. Postgres detects and aborts one
+-- transaction; no data corruption. With a single admin + customers that
+-- write only to orders/order_items, this isn't a realistic path today.
+-- Worth re-checking if a background job ever starts touching products.
 
 -- ------------------------------------------------------------
 -- A. products UPDATE → base product_units row

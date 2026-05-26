@@ -1,3 +1,9 @@
+-- SUPERSEDED by 20260526182702_prepopulate_overwrite_qty_only.sql, which
+-- replaced the entire function body (overwrite semantics + drop price
+-- restore). This migration runs first on `db reset` and is then
+-- overwritten; keeping it preserves the audit trail of the same-day
+-- revision Annabel asked for.
+--
 -- Pre-populate qty restore: floor to a whole number.
 --
 -- 6.5e's unit-aware restore sums `qty * conversion_to_base` per product.

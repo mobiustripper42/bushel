@@ -101,16 +101,16 @@ test.describe("admin inventory — pre-populate from last week", () => {
   test("button restores last week's ordered qty onto current inventory", async ({ page }) => {
     await page.goto("/admin/inventory");
 
-    const kaleQty = rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i });
+    const kaleQty = rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i });
     await expect(kaleQty).toHaveValue("0");
 
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: /pre-populate from last week/i }).click();
 
-    await expect(page.getByText(/restored qty on/i)).toBeVisible();
+    await expect(page.getByText(/restored from last week/i)).toBeVisible();
 
     await page.reload();
-    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i }))
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i }))
       .toHaveValue(String(LAST_WEEK_QTY));
   });
 
@@ -118,7 +118,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
     await page.goto("/admin/inventory");
     page.once("dialog", (d) => d.dismiss());
     await page.getByRole("button", { name: /pre-populate from last week/i }).click();
-    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i })).toHaveValue("0");
+    await expect(rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i })).toHaveValue("0");
   });
 
   // 6.5e — pre-populate is unit-aware. Builds a multi-unit Kale (bunch base
@@ -221,17 +221,17 @@ test.describe("admin inventory — pre-populate from last week", () => {
     test("restores qty unit-aware; unit prices are NOT touched", async ({ page }) => {
       await page.goto("/admin/inventory");
 
-      const qtySpin = rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i });
+      const qtySpin = rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i });
       await expect(qtySpin).toHaveValue("0");
 
       page.once("dialog", (d) => d.accept());
       await page.getByRole("button", { name: /pre-populate from last week/i }).click();
-      await expect(page.getByText(/restored qty on/i)).toBeVisible();
+      await expect(page.getByText(/restored from last week/i)).toBeVisible();
 
       // qty_available should be 4 (2 bunch * 1 + 1 lb * 2).
       await page.reload();
       await expect(
-        rowByName(page, TEST_PRODUCTS.kale.name).getByRole("spinbutton", { name: /quantity/i }),
+        rowByName(page, TEST_PRODUCTS.kale.name).getByRole("textbox", { name: /quantity/i }),
       ).toHaveValue(String(EXPECTED_RESTORED_QTY));
 
       // Unit prices stay at current values — pre-populate no longer

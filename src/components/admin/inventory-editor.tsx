@@ -95,6 +95,16 @@ export function InventoryEditor({ initialRows, initialUnits, weekLabel, schedule
   // initialRows but useState locks in the first value. Re-sync local
   // state when the prop changes — but only when the editor is clean,
   // so an in-flight edit isn't clobbered by a concurrent refresh.
+  //
+  // initialUnits flows directly through props to InventoryRow + the
+  // UnitsDrawer; nothing in this component mirrors it into useState,
+  // so it doesn't participate in this resync.
+  //
+  // Last-write-wins across concurrent tabs: if a second admin saves
+  // mid-edit, this useEffect skips the resync (dirty=1) and the local
+  // edit survives. On the user's next save, the post-save refresh
+  // pulls in the other tab's changes. Accepted tradeoff for single-
+  // admin V1.
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
   useEffect(() => {

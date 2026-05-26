@@ -44,7 +44,7 @@ export function PrepopulateButton() {
       } else {
         setMessage({
           kind: "success",
-          text: `Restored qty on ${result.restoredCount} product${result.restoredCount === 1 ? "" : "s"}.`,
+          text: `${result.restoredCount} product${result.restoredCount === 1 ? "" : "s"} restored from last week; others set to 0.`,
         });
       }
     });
