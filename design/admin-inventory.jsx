@@ -345,7 +345,7 @@ function InventoryRow({
             value={row.qty}
             onChange={e => {
               const v = parseFloat(e.target.value);
-              onUpdate({ qty: Number.isFinite(v) && v >= 0 ? Math.round(v * 100) / 100 : 0 });
+              onUpdate({ qty: Number.isFinite(v) ? Math.round(v * 100) / 100 : 0 });
             }}
           />
         </td>

@@ -227,7 +227,9 @@ export function InventoryRow({
               setQtyDraft(e.target.value);
               if (e.target.value.trim() === "") return; // don't zero on Backspace-to-empty
               const v = parseFloat(e.target.value);
-              if (Number.isFinite(v) && v >= 0) {
+              // Negatives allowed per DEC-012 (admin records oversold state by
+              // direct entry). Server validator agrees — Number.isFinite only.
+              if (Number.isFinite(v)) {
                 onUpdate({ qty_available: Math.round(v * 100) / 100 });
               }
             }}
