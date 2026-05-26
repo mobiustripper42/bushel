@@ -23,7 +23,7 @@ export function PrepopulateButton() {
   function handleClick() {
     if (
       !window.confirm(
-        "Restore last week's starting inventory and unit prices? Adds last week's ordered quantities back to current qty (unit-aware), and resets each unit's price to its last-week snapshot.",
+        "Reset every product's qty to last week's ordered total (or 0 if not ordered last week)? Current qty values will be replaced. Unit prices are NOT changed.",
       )
     )
       return;
