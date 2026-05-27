@@ -28,21 +28,6 @@ function isDesktopOperator(): boolean {
   return window.matchMedia("(pointer: fine)").matches;
 }
 
-// The optional sideloaded extension (extensions/messages-for-web/) reads
-// {phone, body} from the URL hash on the MWS tab and fills the new-conversation
-// view. Hash transport (not postMessage) because messages.google.com sends a
-// Cross-Origin-Opener-Policy header that severs window.opener and silently
-// drops cross-tab postMessages — the extension can't be reached any other way
-// from a tab admin opens. If the extension isn't installed, the hash is just
-// inert and clipboard fallback covers the operator.
-function buildMessagesUrl(phone: string, body: string): string {
-  const payload = JSON.stringify({ phone, body });
-  // Base64 over JSON keeps the hash short and avoids URL-encoding edge cases
-  // with arbitrary body characters (newlines, ampersands, etc).
-  const encoded = btoa(unescape(encodeURIComponent(payload)));
-  return `${MESSAGES_WEB_URL}#bushel-sms=${encoded}`;
-}
-
 function formatSentAt(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString("en-US", {
@@ -93,7 +78,7 @@ export function SendRow({
       e.preventDefault();
       // Open the tab synchronously inside the click handler; some browsers
       // pop-up-block window.open if it runs after an await.
-      window.open(buildMessagesUrl(phone, body), "_blank", "noreferrer");
+      window.open(MESSAGES_WEB_URL, "_blank", "noreferrer");
 
       try {
         await navigator.clipboard.writeText(body);
