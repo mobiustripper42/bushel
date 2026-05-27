@@ -45,13 +45,20 @@
     });
   }
 
-  // Angular Material listens for native `input` events on <input> / <textarea>
-  // via its FormControl bridge — setting `.value` alone is a no-op. Assign +
-  // dispatch is enough; no React-internals trick needed.
+  // Use document.execCommand("insertText") so MWS's Angular FormControl picks
+  // up the change. Plain `.value = ...` updates the DOM property but doesn't
+  // dispatch the InputEvent that NgModel binds to, so on next render MWS
+  // clears the textarea back to the FormControl's empty state. Selecting all
+  // first replaces any existing content.
   function setInputValue(el, value) {
     el.focus();
-    el.value = value;
-    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.select();
+    const ok = document.execCommand("insertText", false, value);
+    if (!ok) {
+      // execCommand deprecated/disabled; fall back to native setter + event.
+      el.value = value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   }
 
   async function fillNewConversation(phone, body) {

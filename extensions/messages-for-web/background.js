@@ -22,7 +22,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
     chrome.storage.session
       .set({ [STORAGE_KEY]: { phone: msg.phone, body: msg.body } })
-      .then(() => sendResponse({ ok: true }))
+      .then(async () => {
+        // Force any existing MWS tab to reload so the content script re-runs
+        // and consumes the new payload. Tabs still mid-load don't need it —
+        // their initial content-script run will pick it up.
+        try {
+          const tabs = await chrome.tabs.query({
+            url: "https://messages.google.com/web/*",
+          });
+          for (const tab of tabs) {
+            if (tab.id && tab.status === "complete") {
+              chrome.tabs.reload(tab.id);
+            }
+          }
+        } catch {
+          // Tab API unavailable in odd contexts — payload's still in storage.
+        }
+        sendResponse({ ok: true });
+      })
       .catch((err) => sendResponse({ ok: false, reason: String(err) }));
     return true;
   }

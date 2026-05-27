@@ -83,9 +83,15 @@ export function SendRow({
         { type: "bushel-sms-helper:fill", phone, body },
         window.location.origin,
       );
-      // Open the tab synchronously inside the click handler; some browsers
-      // pop-up-block window.open if it runs after an await.
-      window.open(MESSAGES_WEB_URL, "_blank", "noreferrer");
+      // Named target "bushel-mws" so successive Sends reuse the same MWS tab
+      // instead of stacking new ones. Synchronous open inside the click
+      // handler to dodge popup blockers. If the named tab exists, this
+      // focuses it; the service worker's reload (triggered by the bridge
+      // deposit) forces the content script to re-run with the new payload.
+      // No noopener/noreferrer — name-target reuse requires the opener
+      // relationship, and the extension's content-script gate is the
+      // equivalent guard.
+      window.open(MESSAGES_WEB_URL, "bushel-mws");
 
       try {
         await navigator.clipboard.writeText(body);
