@@ -72,10 +72,17 @@ export function SendRow({
     if (!phone) return;
 
     if (isDesktopOperator()) {
-      // Desktop path: open MWS in a new tab with phone+body encoded in the
-      // URL hash for the extension to read. Clipboard write is a safety net
-      // so Annabel can paste manually if the extension isn't installed.
+      // Desktop path. Notify the optional Bushel SMS Helper extension via
+      // same-window postMessage — its bridge content script (on this origin)
+      // picks it up and stashes the payload in chrome.storage.session for the
+      // MWS content script to consume on tab load. Falls back silently to the
+      // clipboard path if no extension is installed (no bridge means no one
+      // listens to this postMessage, no harm done).
       e.preventDefault();
+      window.postMessage(
+        { type: "bushel-sms-helper:fill", phone, body },
+        window.location.origin,
+      );
       // Open the tab synchronously inside the click handler; some browsers
       // pop-up-block window.open if it runs after an await.
       window.open(MESSAGES_WEB_URL, "_blank", "noreferrer");

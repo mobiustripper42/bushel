@@ -1,20 +1,12 @@
 // Bushel SMS Helper — content script for messages.google.com/web/*
 //
-// Reads phone + body from the URL hash and drives the Messages-for-Web DOM
-// to open a new conversation pre-filled. Operator clicks Send manually.
-//
-// Hash format set by admin (src/components/admin/send-row.tsx):
-//   #bushel-sms=<base64(JSON.stringify({phone, body}))>
-//
-// Hash transport (not postMessage) because Messages-for-Web sends a
-// Cross-Origin-Opener-Policy header that severs window.opener and silently
-// drops cross-tab postMessages from the admin tab. The hash survives the
-// MWS redirect to /web/u/0/conversations.
+// On load, asks the service worker (via chrome.runtime.sendMessage) for a
+// pending {phone, body} payload deposited by the bridge content script on
+// the admin tab. If present, drives the MWS DOM to open a new conversation
+// and pre-fills recipient + body. Operator clicks Send manually.
 
 (function () {
   console.log("[Bushel SMS Helper] content script loaded on " + location.href);
-
-  const HASH_PREFIX = "#bushel-sms=";
 
   const SELECTORS = {
     startChat: "a[data-e2e-start-button]",
@@ -73,36 +65,21 @@
     // Do NOT submit. Operator clicks Send so she can edit / cancel.
   }
 
-  function readPayloadFromHash() {
-    const hash = location.hash || "";
-    if (!hash.startsWith(HASH_PREFIX)) return null;
-    const encoded = hash.slice(HASH_PREFIX.length);
-    try {
-      const json = decodeURIComponent(escape(atob(encoded)));
-      const obj = JSON.parse(json);
-      if (typeof obj.phone === "string" && typeof obj.body === "string") return obj;
-    } catch (e) {
-      console.warn("[Bushel SMS Helper] failed to decode hash payload", e);
+  chrome.runtime.sendMessage({ type: "consume" }, (payload) => {
+    if (chrome.runtime.lastError) {
+      console.warn(
+        "[Bushel SMS Helper] consume failed",
+        chrome.runtime.lastError.message,
+      );
+      return;
     }
-    return null;
-  }
-
-  const payload = readPayloadFromHash();
-  if (!payload) {
-    console.log("[Bushel SMS Helper] no bushel-sms hash; idle");
-    return;
-  }
-
-  // Clear the hash so the URL bar isn't littered + so a manual page reload
-  // doesn't re-fire the fill flow.
-  try {
-    history.replaceState(null, "", location.pathname + location.search);
-  } catch {
-    // Non-fatal — fill still works, URL just stays dirty.
-  }
-
-  console.log("[Bushel SMS Helper] filling for", payload.phone);
-  fillNewConversation(payload.phone, payload.body).catch((err) => {
-    console.warn("[Bushel SMS Helper] fill failed", err);
+    if (!payload) {
+      console.log("[Bushel SMS Helper] no pending fill; idle");
+      return;
+    }
+    console.log("[Bushel SMS Helper] filling for", payload.phone);
+    fillNewConversation(payload.phone, payload.body).catch((err) => {
+      console.warn("[Bushel SMS Helper] fill failed", err);
+    });
   });
 })();
