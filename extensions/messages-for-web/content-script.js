@@ -52,9 +52,8 @@
   async function fillNewConversation(phone, body) {
     const log = (...args) => console.log("[Bushel SMS Helper]", ...args);
 
-    log("step 1: find Start Chat");
-    const startChat = document.querySelector(SELECTORS.startChat);
-    if (!startChat) throw new Error("no-start-chat-trigger");
+    log("step 1: waiting for Start Chat");
+    const startChat = await waitFor(SELECTORS.startChat, 10000);
 
     log("step 2: clicking Start Chat — href:", startChat.getAttribute("href"));
     startChat.click();
