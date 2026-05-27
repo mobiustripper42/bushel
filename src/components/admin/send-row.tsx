@@ -50,29 +50,34 @@ function postToExtension(
   body: string,
 ): Promise<ExtensionReply | null> {
   return new Promise((resolve) => {
+    let settled = false;
     const handler = (event: MessageEvent) => {
       if (event.origin !== MESSAGES_WEB_ORIGIN) return;
       const data = event.data as ExtensionReply | undefined;
       if (!data || (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error")) return;
-      cleanup();
-      resolve(data);
+      settle(data);
     };
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      resolve(null);
-    }, EXTENSION_REPLY_TIMEOUT_MS);
-    function cleanup() {
+    const timeout = window.setTimeout(() => settle(null), EXTENSION_REPLY_TIMEOUT_MS);
+    function settle(reply: ExtensionReply | null) {
+      if (settled) return;
+      settled = true;
       window.removeEventListener("message", handler);
       window.clearTimeout(timeout);
+      resolve(reply);
     }
     window.addEventListener("message", handler);
     const send = () => {
+      if (settled) return;
       try {
         tab.postMessage({ type: "bushel-sms", phone, body }, MESSAGES_WEB_ORIGIN);
       } catch {
         // Tab closed or cross-origin guard tripped — let the timeout resolve.
       }
     };
+    // Send immediately, then once more after the retry delay to cover the
+    // document_idle race with the content script. The retry no-ops if the
+    // first send already produced a reply (avoids a double-fill that would
+    // clobber operator edits made between the two sends).
     send();
     window.setTimeout(send, EXTENSION_RETRY_DELAY_MS);
   });
