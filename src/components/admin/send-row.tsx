@@ -26,8 +26,13 @@ const MESSAGES_WEB_ORIGIN = "https://messages.google.com";
 // fallback covers — clipboard write happens either way as a safety net.
 //
 // 20s is sized for Messages-for-Web cold loads, which routinely take 10s+
-// before the content script reaches `document_idle` on a fresh tab.
+// before the content script reaches `document_idle` on a fresh tab. The
+// admin posts every EXTENSION_RESEND_MS until we get a reply or hit the
+// overall timeout — MWS scrubs `window.opener` defensively on load, so the
+// content script can't proactively announce itself; polling from this side
+// is the only reliable trigger across the cold-load gap.
 const EXTENSION_REPLY_TIMEOUT_MS = 20000;
+const EXTENSION_RESEND_MS = 1500;
 
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
 // or open iMessage on macOS — neither is what Annabel wants when working from
@@ -39,12 +44,9 @@ function isDesktopOperator(): boolean {
   return window.matchMedia("(pointer: fine)").matches;
 }
 
-type ExtensionMessage =
-  | { type: "bushel-sms-ready" }
+type ExtensionReply =
   | { type: "bushel-sms-ok" }
   | { type: "bushel-sms-error"; reason: string };
-
-type ExtensionReply = Exclude<ExtensionMessage, { type: "bushel-sms-ready" }>;
 
 function postToExtension(
   tab: Window,
@@ -55,38 +57,32 @@ function postToExtension(
     let settled = false;
     const handler = (event: MessageEvent) => {
       if (event.origin !== MESSAGES_WEB_ORIGIN) return;
-      const data = event.data as ExtensionMessage | undefined;
-      if (!data) return;
-      if (data.type === "bushel-sms-ready") {
-        // Content script just announced it's bound on the MWS tab. Send the
-        // request now — this is the reliable trigger; the eager send below
-        // is just belt-and-suspenders for the (unlikely) case where the
-        // script loaded before our listener attached.
-        send();
-        return;
-      }
-      if (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error") return;
+      const data = event.data as ExtensionReply | undefined;
+      if (!data || (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error")) return;
       settle(data);
     };
     const timeout = window.setTimeout(() => settle(null), EXTENSION_REPLY_TIMEOUT_MS);
+    const interval = window.setInterval(send, EXTENSION_RESEND_MS);
     function settle(reply: ExtensionReply | null) {
       if (settled) return;
       settled = true;
       window.removeEventListener("message", handler);
       window.clearTimeout(timeout);
+      window.clearInterval(interval);
       resolve(reply);
     }
     window.addEventListener("message", handler);
-    const send = () => {
+    function send() {
       if (settled) return;
       try {
         tab.postMessage({ type: "bushel-sms", phone, body }, MESSAGES_WEB_ORIGIN);
       } catch {
         // Tab closed or cross-origin guard tripped — let the timeout resolve.
       }
-    };
-    // Eager send for the race where the content script bound before we did.
-    // The primary trigger is the bushel-sms-ready handshake above.
+    }
+    // First send happens immediately; the interval covers the cold-load gap.
+    // The content script's one-shot guard ignores resends once it's started
+    // processing, so polling doesn't double-fill.
     send();
   });
 }

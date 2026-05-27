@@ -5,18 +5,20 @@
 // customer's phone + the SMS body. The operator still clicks Send.
 //
 // Contract (from src/components/admin/send-row.tsx):
-//   outbound (on load): { type: "bushel-sms-ready" }      → wakes the admin tab
-//   inbound:            { type: "bushel-sms", phone, body }
-//   outbound:           { type: "bushel-sms-ok" }
-//                       { type: "bushel-sms-error", reason: "..." }
+//   inbound:  { type: "bushel-sms", phone, body }
+//   outbound: { type: "bushel-sms-ok" }
+//             { type: "bushel-sms-error", reason: "..." }
 //
-// The ready handshake is the primary trigger. The admin tab attaches its
-// message listener, opens the MWS tab, then waits — the script announcing
-// itself solves the timing problem where MWS cold-loads take 10s+ to reach
-// `document_idle` and any eager admin-side postMessage falls on a dead tab.
+// MWS scrubs `window.opener` defensively on load (anti-tabnabbing), so the
+// content script can't proactively reach the admin tab. The admin tab polls
+// every ~1.5s for up to 20s until we reply; the one-shot `processed` guard
+// below ensures we only run the fill flow once even though many requests
+// may arrive across the cold-load window.
 
 (function () {
   console.log("[Bushel SMS Helper] content script loaded on " + location.href);
+
+  let processed = false;
   const ALLOWED_ORIGINS = [
     "https://order.baybranchfarm.com",
     "https://preview.baybranchfarm.com",
@@ -81,24 +83,16 @@
     // Do NOT submit. Operator clicks Send manually so she can edit / cancel.
   }
 
-  // Announce readiness to the opener (the bushel admin tab). Origin "*" is
-  // safe here: the payload carries no secrets, and the admin tab validates
-  // origin on every reply it processes. The admin tab uses this signal as
-  // the trigger to send the bushel-sms request, removing the MWS-cold-load
-  // race entirely.
-  if (window.opener) {
-    try {
-      window.opener.postMessage({ type: "bushel-sms-ready" }, "*");
-    } catch (e) {
-      console.warn("[Bushel SMS Helper] opener.postMessage failed", e);
-    }
-  }
-
   window.addEventListener("message", (event) => {
     if (!ALLOWED_ORIGINS.includes(event.origin)) return;
     const data = event.data;
     if (!data || data.type !== "bushel-sms") return;
     if (typeof data.phone !== "string" || typeof data.body !== "string") return;
+    // Admin tab polls every ~1.5s; ignore everything after the first one
+    // we accept. The reply still goes back so admin can settle and stop.
+    if (processed) return;
+    processed = true;
+    console.log("[Bushel SMS Helper] filling for", data.phone);
 
     const reply = (msg) => {
       if (event.source && typeof event.source.postMessage === "function") {
