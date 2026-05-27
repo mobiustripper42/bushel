@@ -76,7 +76,9 @@ function postToExtension(
       if (settled) return;
       try {
         tab.postMessage({ type: "bushel-sms", phone, body }, MESSAGES_WEB_ORIGIN);
-      } catch {
+        console.log("[Bushel admin] posted bushel-sms to MWS tab");
+      } catch (e) {
+        console.warn("[Bushel admin] tab.postMessage threw", e);
         // Tab closed or cross-origin guard tripped — let the timeout resolve.
       }
     }

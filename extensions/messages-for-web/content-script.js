@@ -84,6 +84,14 @@
   }
 
   window.addEventListener("message", (event) => {
+    // Diagnostic log: every inbound message, pre-filter. MWS itself fires a
+    // lot of internal postMessage traffic, so this is noisy — but if no log
+    // appears with origin = preview.baybranchfarm.com (or order.bay...), we
+    // know admin's polling isn't reaching the tab at all. Remove once the
+    // pipeline is confirmed end-to-end.
+    if (event.data && typeof event.data === "object") {
+      console.log("[Bushel SMS Helper] msg from", event.origin, event.data);
+    }
     if (!ALLOWED_ORIGINS.includes(event.origin)) return;
     const data = event.data;
     if (!data || data.type !== "bushel-sms") return;
