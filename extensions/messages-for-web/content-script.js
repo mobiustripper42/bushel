@@ -50,18 +50,36 @@
   }
 
   async function fillNewConversation(phone, body) {
+    const log = (...args) => console.log("[Bushel SMS Helper]", ...args);
+
+    log("step 1: find Start Chat");
     const startChat = document.querySelector(SELECTORS.startChat);
     if (!startChat) throw new Error("no-start-chat-trigger");
+
+    log("step 2: clicking Start Chat — href:", startChat.getAttribute("href"));
     startChat.click();
 
+    // Small wait so the SPA can route; helps subsequent URL log reflect the
+    // post-click state instead of the pre-click one.
+    await new Promise((r) => setTimeout(r, 100));
+    log("step 3: URL after click:", location.href);
+
+    log("step 4: waiting for recipient input");
     const recipient = await waitFor(SELECTORS.recipientInput, 5000);
+    log("step 5: recipient found, setting value to", toUsLocal(phone));
     setInputValue(recipient, toUsLocal(phone));
+    log("step 6: recipient.value after set:", recipient.value);
+
     recipient.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
     );
+    log("step 7: Enter dispatched");
 
+    log("step 8: waiting for compose textarea");
     const compose = await waitFor(SELECTORS.composeTextarea, 5000);
+    log("step 9: compose found, setting value (len", body.length, ")");
     setInputValue(compose, body);
+    log("step 10: compose.value after set (len):", compose.value.length);
     // Do NOT submit. Operator clicks Send so she can edit / cancel.
   }
 
