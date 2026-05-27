@@ -5,11 +5,18 @@
 // customer's phone + the SMS body. The operator still clicks Send.
 //
 // Contract (from src/components/admin/send-row.tsx):
-//   inbound:  { type: "bushel-sms", phone: "+15555551234", body: "..." }
-//   outbound: { type: "bushel-sms-ok" }
-//             { type: "bushel-sms-error", reason: "..." }
+//   outbound (on load): { type: "bushel-sms-ready" }      → wakes the admin tab
+//   inbound:            { type: "bushel-sms", phone, body }
+//   outbound:           { type: "bushel-sms-ok" }
+//                       { type: "bushel-sms-error", reason: "..." }
+//
+// The ready handshake is the primary trigger. The admin tab attaches its
+// message listener, opens the MWS tab, then waits — the script announcing
+// itself solves the timing problem where MWS cold-loads take 10s+ to reach
+// `document_idle` and any eager admin-side postMessage falls on a dead tab.
 
 (function () {
+  console.log("[Bushel SMS Helper] content script loaded on " + location.href);
   const ALLOWED_ORIGINS = [
     "https://order.baybranchfarm.com",
     "https://preview.baybranchfarm.com",
@@ -72,6 +79,19 @@
     const compose = await waitFor(SELECTORS.composeTextarea, 2000);
     setInputValue(compose, body);
     // Do NOT submit. Operator clicks Send manually so she can edit / cancel.
+  }
+
+  // Announce readiness to the opener (the bushel admin tab). Origin "*" is
+  // safe here: the payload carries no secrets, and the admin tab validates
+  // origin on every reply it processes. The admin tab uses this signal as
+  // the trigger to send the bushel-sms request, removing the MWS-cold-load
+  // race entirely.
+  if (window.opener) {
+    try {
+      window.opener.postMessage({ type: "bushel-sms-ready" }, "*");
+    } catch (e) {
+      console.warn("[Bushel SMS Helper] opener.postMessage failed", e);
+    }
   }
 
   window.addEventListener("message", (event) => {

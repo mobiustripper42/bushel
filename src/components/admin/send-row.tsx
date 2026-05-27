@@ -24,11 +24,10 @@ const MESSAGES_WEB_ORIGIN = "https://messages.google.com";
 // within EXTENSION_REPLY_TIMEOUT_MS and we show "Filled in Messages" instead
 // of "Copied — paste in Messages." If absent or it errors, the clipboard
 // fallback covers — clipboard write happens either way as a safety net.
-const EXTENSION_REPLY_TIMEOUT_MS = 4000;
-// Content script runs at document_idle; window.open returns before the script
-// has bound its listener. Send once immediately and once again after this
-// delay to cover the race.
-const EXTENSION_RETRY_DELAY_MS = 800;
+//
+// 20s is sized for Messages-for-Web cold loads, which routinely take 10s+
+// before the content script reaches `document_idle` on a fresh tab.
+const EXTENSION_REPLY_TIMEOUT_MS = 20000;
 
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
 // or open iMessage on macOS — neither is what Annabel wants when working from
@@ -40,9 +39,12 @@ function isDesktopOperator(): boolean {
   return window.matchMedia("(pointer: fine)").matches;
 }
 
-type ExtensionReply =
+type ExtensionMessage =
+  | { type: "bushel-sms-ready" }
   | { type: "bushel-sms-ok" }
   | { type: "bushel-sms-error"; reason: string };
+
+type ExtensionReply = Exclude<ExtensionMessage, { type: "bushel-sms-ready" }>;
 
 function postToExtension(
   tab: Window,
@@ -53,8 +55,17 @@ function postToExtension(
     let settled = false;
     const handler = (event: MessageEvent) => {
       if (event.origin !== MESSAGES_WEB_ORIGIN) return;
-      const data = event.data as ExtensionReply | undefined;
-      if (!data || (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error")) return;
+      const data = event.data as ExtensionMessage | undefined;
+      if (!data) return;
+      if (data.type === "bushel-sms-ready") {
+        // Content script just announced it's bound on the MWS tab. Send the
+        // request now — this is the reliable trigger; the eager send below
+        // is just belt-and-suspenders for the (unlikely) case where the
+        // script loaded before our listener attached.
+        send();
+        return;
+      }
+      if (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error") return;
       settle(data);
     };
     const timeout = window.setTimeout(() => settle(null), EXTENSION_REPLY_TIMEOUT_MS);
@@ -74,12 +85,9 @@ function postToExtension(
         // Tab closed or cross-origin guard tripped — let the timeout resolve.
       }
     };
-    // Send immediately, then once more after the retry delay to cover the
-    // document_idle race with the content script. The retry no-ops if the
-    // first send already produced a reply (avoids a double-fill that would
-    // clobber operator edits made between the two sends).
+    // Eager send for the race where the content script bound before we did.
+    // The primary trigger is the bushel-sms-ready handshake above.
     send();
-    window.setTimeout(send, EXTENSION_RETRY_DELAY_MS);
   });
 }
 
@@ -136,10 +144,13 @@ export function SendRow({
       e.preventDefault();
       // Open the tab synchronously inside the click handler; Safari and
       // some Chromium variants pop-up-block window.open if it runs after
-      // an await. `noopener` would null the returned window reference and
-      // kill postMessage to the extension; the explicit origin allowlist in
-      // the content script is the equivalent guard. `noreferrer` is kept.
-      const tab = window.open(MESSAGES_WEB_URL, "_blank", "noreferrer");
+      // an await. We DON'T pass `noopener` or `noreferrer`: `noopener` nulls
+      // the returned window reference (kills postMessage to the extension),
+      // and `noreferrer` *implies* `noopener` per spec — passing either
+      // silently breaks the extension path. The explicit origin allowlist
+      // on the content-script side is the equivalent guard against hostile
+      // pages, and Referer-to-messages.google.com isn't sensitive.
+      const tab = window.open(MESSAGES_WEB_URL, "_blank");
 
       let clipboardOk = true;
       try {

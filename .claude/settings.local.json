@@ -78,7 +78,8 @@
       "Bash(pkill -f next-server)",
       "Bash(pkill -9 -f \"next-server\")",
       "Bash(identify -version)",
-      "Bash(kill 4039366)"
+      "Bash(kill 4039366)",
+      "Bash(kill 4098119)"
     ]
   }
 }
