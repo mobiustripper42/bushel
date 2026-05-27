@@ -25,16 +25,25 @@
     if (!data || data.type !== "bushel-sms-helper:fill") return;
     if (typeof data.phone !== "string" || typeof data.body !== "string") return;
 
-    chrome.runtime.sendMessage(
-      { type: "deposit", phone: data.phone, body: data.body },
-      () => {
-        if (chrome.runtime.lastError) {
-          console.warn(
-            "[Bushel SMS Helper] deposit failed",
-            chrome.runtime.lastError.message,
-          );
-        }
-      },
-    );
+    try {
+      chrome.runtime.sendMessage(
+        { type: "deposit", phone: data.phone, body: data.body },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.warn(
+              "[Bushel SMS Helper] deposit failed",
+              chrome.runtime.lastError.message,
+            );
+          }
+        },
+      );
+    } catch (err) {
+      // Extension was reloaded; this bridge is orphaned. Refresh the page
+      // to re-inject a current bridge.
+      console.warn(
+        "[Bushel SMS Helper] bridge orphaned (extension reloaded?) — refresh this tab to re-link",
+        err,
+      );
+    }
   });
 })();
