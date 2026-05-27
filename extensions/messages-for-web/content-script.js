@@ -11,6 +11,11 @@
   const SELECTORS = {
     startChat: "a[data-e2e-start-button]",
     recipientInput: "input[data-e2e-contact-input]",
+    // MWS's contact-suggestion row contains a span.anon-contact-name with the
+    // dialed digits. Synthetic Enter keypresses get filtered (isTrusted=false),
+    // so we click the suggestion instead. Bubbles up to whichever ancestor
+    // owns the click handler.
+    contactSuggestion: ".anon-contact-name",
     composeTextarea: "textarea[data-e2e-message-input-box]",
   };
 
@@ -69,10 +74,15 @@
     setInputValue(recipient, toUsLocal(phone));
     log("step 6: recipient.value after set:", recipient.value);
 
-    recipient.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-    );
-    log("step 7: Enter dispatched");
+    log("step 7: waiting for contact suggestion");
+    const suggestion = await waitFor(SELECTORS.contactSuggestion, 5000);
+    // Click the closest interactive ancestor — span itself may not have the
+    // handler, but a button/li wrapper above it does. Fall back to the span
+    // for click-bubbling if no obvious ancestor.
+    const clickTarget =
+      suggestion.closest('[role="option"], mat-option, li, button') || suggestion;
+    log("step 7b: clicking suggestion via", clickTarget.tagName, clickTarget.className);
+    clickTarget.click();
 
     log("step 8: waiting for compose textarea");
     const compose = await waitFor(SELECTORS.composeTextarea, 5000);
