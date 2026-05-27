@@ -17,22 +17,6 @@ type SendRowProps = {
 };
 
 const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
-const MESSAGES_WEB_ORIGIN = "https://messages.google.com";
-
-// Optional sideloaded Chromium extension (extensions/messages-for-web/) listens
-// on the Messages-for-Web tab. If installed, it replies with bushel-sms-ok
-// within EXTENSION_REPLY_TIMEOUT_MS and we show "Filled in Messages" instead
-// of "Copied — paste in Messages." If absent or it errors, the clipboard
-// fallback covers — clipboard write happens either way as a safety net.
-//
-// 20s is sized for Messages-for-Web cold loads, which routinely take 10s+
-// before the content script reaches `document_idle` on a fresh tab. The
-// admin posts every EXTENSION_RESEND_MS until we get a reply or hit the
-// overall timeout — MWS scrubs `window.opener` defensively on load, so the
-// content script can't proactively announce itself; polling from this side
-// is the only reliable trigger across the cold-load gap.
-const EXTENSION_REPLY_TIMEOUT_MS = 20000;
-const EXTENSION_RESEND_MS = 1500;
 
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
 // or open iMessage on macOS — neither is what Annabel wants when working from
@@ -44,49 +28,19 @@ function isDesktopOperator(): boolean {
   return window.matchMedia("(pointer: fine)").matches;
 }
 
-type ExtensionReply =
-  | { type: "bushel-sms-ok" }
-  | { type: "bushel-sms-error"; reason: string };
-
-function postToExtension(
-  tab: Window,
-  phone: string,
-  body: string,
-): Promise<ExtensionReply | null> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const handler = (event: MessageEvent) => {
-      if (event.origin !== MESSAGES_WEB_ORIGIN) return;
-      const data = event.data as ExtensionReply | undefined;
-      if (!data || (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error")) return;
-      settle(data);
-    };
-    const timeout = window.setTimeout(() => settle(null), EXTENSION_REPLY_TIMEOUT_MS);
-    const interval = window.setInterval(send, EXTENSION_RESEND_MS);
-    function settle(reply: ExtensionReply | null) {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener("message", handler);
-      window.clearTimeout(timeout);
-      window.clearInterval(interval);
-      resolve(reply);
-    }
-    window.addEventListener("message", handler);
-    function send() {
-      if (settled) return;
-      try {
-        tab.postMessage({ type: "bushel-sms", phone, body }, MESSAGES_WEB_ORIGIN);
-        console.log("[Bushel admin] posted bushel-sms to MWS tab");
-      } catch (e) {
-        console.warn("[Bushel admin] tab.postMessage threw", e);
-        // Tab closed or cross-origin guard tripped — let the timeout resolve.
-      }
-    }
-    // First send happens immediately; the interval covers the cold-load gap.
-    // The content script's one-shot guard ignores resends once it's started
-    // processing, so polling doesn't double-fill.
-    send();
-  });
+// The optional sideloaded extension (extensions/messages-for-web/) reads
+// {phone, body} from the URL hash on the MWS tab and fills the new-conversation
+// view. Hash transport (not postMessage) because messages.google.com sends a
+// Cross-Origin-Opener-Policy header that severs window.opener and silently
+// drops cross-tab postMessages — the extension can't be reached any other way
+// from a tab admin opens. If the extension isn't installed, the hash is just
+// inert and clipboard fallback covers the operator.
+function buildMessagesUrl(phone: string, body: string): string {
+  const payload = JSON.stringify({ phone, body });
+  // Base64 over JSON keeps the hash short and avoids URL-encoding edge cases
+  // with arbitrary body characters (newlines, ampersands, etc).
+  const encoded = btoa(unescape(encodeURIComponent(payload)));
+  return `${MESSAGES_WEB_URL}#bushel-sms=${encoded}`;
 }
 
 function formatSentAt(iso: string): string {
@@ -112,7 +66,6 @@ export function SendRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [filled, setFilled] = useState(false);
 
   const smsHref = phone ? buildSmsUrl({ phone, body }) : null;
   const isSent = sentAt !== null;
@@ -134,55 +87,22 @@ export function SendRow({
     if (!phone) return;
 
     if (isDesktopOperator()) {
-      // Desktop path: intercept the sms: nav, open Messages for Web in a new
-      // tab, attempt extension auto-fill, fall back to clipboard. Clipboard
-      // write happens either way as a safety net — if the extension fills the
-      // compose box but Annabel wants to edit and the page reloads, the body
-      // is still in clipboard.
+      // Desktop path: open MWS in a new tab with phone+body encoded in the
+      // URL hash for the extension to read. Clipboard write is a safety net
+      // so Annabel can paste manually if the extension isn't installed.
       e.preventDefault();
-      // Open the tab synchronously inside the click handler; Safari and
-      // some Chromium variants pop-up-block window.open if it runs after
-      // an await. We DON'T pass `noopener` or `noreferrer`: `noopener` nulls
-      // the returned window reference (kills postMessage to the extension),
-      // and `noreferrer` *implies* `noopener` per spec — passing either
-      // silently breaks the extension path. The explicit origin allowlist
-      // on the content-script side is the equivalent guard against hostile
-      // pages, and Referer-to-messages.google.com isn't sensitive.
-      const tab = window.open(MESSAGES_WEB_URL, "_blank");
+      // Open the tab synchronously inside the click handler; some browsers
+      // pop-up-block window.open if it runs after an await.
+      window.open(buildMessagesUrl(phone, body), "_blank", "noreferrer");
 
-      let clipboardOk = true;
       try {
         await navigator.clipboard.writeText(body);
       } catch {
-        clipboardOk = false;
-      }
-
-      // Record the send now — the tab is open, the operator is on the path
-      // to sending. Waiting for the extension reply (up to 4s) to record
-      // would push the Sent pill flip past click in the no-extension case.
-      recordOptimistic();
-
-      if (clipboardOk) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2400);
-      }
-
-      if (!tab) {
-        if (!clipboardOk) {
-          setError("Clipboard blocked. Copy the message manually, then click Send again.");
-        }
+        setError("Clipboard blocked. Copy the message manually, then click Send again.");
         return;
       }
-
-      const reply = await postToExtension(tab, phone, body);
-      if (reply?.type === "bushel-sms-ok") {
-        setCopied(false);
-        setFilled(true);
-        setTimeout(() => setFilled(false), 2400);
-      } else if (!clipboardOk) {
-        setError("Clipboard blocked. Copy the message manually, then click Send again.");
-      }
-      return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2400);
     }
     // Mobile path falls through: the <a href="sms:..."> navigation proceeds
     // naturally (no preventDefault), and recordOptimistic() runs below.
@@ -199,11 +119,6 @@ export function SendRow({
         <span className={"send-status" + (isSent ? " is-sent" : "")}>
           {isSent ? `Sent · ${formatSentAt(sentAt!)}` : "Unsent"}
         </span>
-        {filled && (
-          <span className="send-row-copied" role="status">
-            Filled in Messages — review and Send
-          </span>
-        )}
         {copied && (
           <span className="send-row-copied" role="status">
             Copied — paste in Messages

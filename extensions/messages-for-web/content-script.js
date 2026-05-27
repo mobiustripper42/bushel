@@ -1,29 +1,20 @@
 // Bushel SMS Helper — content script for messages.google.com/web/*
 //
-// Listens for postMessage from the Bushel admin tab and drives the
-// Messages-for-Web DOM to open a new conversation pre-filled with the
-// customer's phone + the SMS body. The operator still clicks Send.
+// Reads phone + body from the URL hash and drives the Messages-for-Web DOM
+// to open a new conversation pre-filled. Operator clicks Send manually.
 //
-// Contract (from src/components/admin/send-row.tsx):
-//   inbound:  { type: "bushel-sms", phone, body }
-//   outbound: { type: "bushel-sms-ok" }
-//             { type: "bushel-sms-error", reason: "..." }
+// Hash format set by admin (src/components/admin/send-row.tsx):
+//   #bushel-sms=<base64(JSON.stringify({phone, body}))>
 //
-// MWS scrubs `window.opener` defensively on load (anti-tabnabbing), so the
-// content script can't proactively reach the admin tab. The admin tab polls
-// every ~1.5s for up to 20s until we reply; the one-shot `processed` guard
-// below ensures we only run the fill flow once even though many requests
-// may arrive across the cold-load window.
+// Hash transport (not postMessage) because Messages-for-Web sends a
+// Cross-Origin-Opener-Policy header that severs window.opener and silently
+// drops cross-tab postMessages from the admin tab. The hash survives the
+// MWS redirect to /web/u/0/conversations.
 
 (function () {
   console.log("[Bushel SMS Helper] content script loaded on " + location.href);
 
-  let processed = false;
-  const ALLOWED_ORIGINS = [
-    "https://order.baybranchfarm.com",
-    "https://preview.baybranchfarm.com",
-    "http://localhost:3001",
-  ];
+  const HASH_PREFIX = "#bushel-sms=";
 
   const SELECTORS = {
     startChat: "a[data-e2e-start-button]",
@@ -31,9 +22,8 @@
     composeTextarea: "textarea[data-e2e-message-input-box]",
   };
 
-  // DB stores E.164 (+1XXXXXXXXXX). Messages-for-Web's recipient input strips
-  // the +1 prefix on its own, but typing it sometimes confuses the contact
-  // matcher — strip to a 10-digit US local number before fill.
+  // DB stores E.164 (+1XXXXXXXXXX). MWS recipient input prefers 10-digit US
+  // local; the +1 prefix sometimes confuses the contact matcher. Strip it.
   function toUsLocal(e164) {
     return String(e164 || "").replace(/^\+1/, "").replace(/\D/g, "");
   }
@@ -58,9 +48,9 @@
     });
   }
 
-  // Angular Material listens for native `input` events on `<input>` /
-  // `<textarea>` via its FormControl bridge — setting `.value` alone is a
-  // no-op. Assign + dispatch is enough; no React-internals trick needed.
+  // Angular Material listens for native `input` events on <input> / <textarea>
+  // via its FormControl bridge — setting `.value` alone is a no-op. Assign +
+  // dispatch is enough; no React-internals trick needed.
   function setInputValue(el, value) {
     el.focus();
     el.value = value;
@@ -72,49 +62,47 @@
     if (!startChat) throw new Error("no-start-chat-trigger");
     startChat.click();
 
-    const recipient = await waitFor(SELECTORS.recipientInput, 2000);
+    const recipient = await waitFor(SELECTORS.recipientInput, 5000);
     setInputValue(recipient, toUsLocal(phone));
     recipient.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
     );
 
-    const compose = await waitFor(SELECTORS.composeTextarea, 2000);
+    const compose = await waitFor(SELECTORS.composeTextarea, 5000);
     setInputValue(compose, body);
-    // Do NOT submit. Operator clicks Send manually so she can edit / cancel.
+    // Do NOT submit. Operator clicks Send so she can edit / cancel.
   }
 
-  window.addEventListener("message", (event) => {
-    // Diagnostic log: every inbound message, pre-filter. MWS itself fires a
-    // lot of internal postMessage traffic, so this is noisy — but if no log
-    // appears with origin = preview.baybranchfarm.com (or order.bay...), we
-    // know admin's polling isn't reaching the tab at all. Remove once the
-    // pipeline is confirmed end-to-end.
-    if (event.data && typeof event.data === "object") {
-      console.log("[Bushel SMS Helper] msg from", event.origin, event.data);
+  function readPayloadFromHash() {
+    const hash = location.hash || "";
+    if (!hash.startsWith(HASH_PREFIX)) return null;
+    const encoded = hash.slice(HASH_PREFIX.length);
+    try {
+      const json = decodeURIComponent(escape(atob(encoded)));
+      const obj = JSON.parse(json);
+      if (typeof obj.phone === "string" && typeof obj.body === "string") return obj;
+    } catch (e) {
+      console.warn("[Bushel SMS Helper] failed to decode hash payload", e);
     }
-    if (!ALLOWED_ORIGINS.includes(event.origin)) return;
-    const data = event.data;
-    if (!data || data.type !== "bushel-sms") return;
-    if (typeof data.phone !== "string" || typeof data.body !== "string") return;
-    // Admin tab polls every ~1.5s; ignore everything after the first one
-    // we accept. The reply still goes back so admin can settle and stop.
-    if (processed) return;
-    processed = true;
-    console.log("[Bushel SMS Helper] filling for", data.phone);
+    return null;
+  }
 
-    const reply = (msg) => {
-      if (event.source && typeof event.source.postMessage === "function") {
-        event.source.postMessage(msg, event.origin);
-      }
-    };
+  const payload = readPayloadFromHash();
+  if (!payload) {
+    console.log("[Bushel SMS Helper] no bushel-sms hash; idle");
+    return;
+  }
 
-    fillNewConversation(data.phone, data.body)
-      .then(() => reply({ type: "bushel-sms-ok" }))
-      .catch((err) => {
-        reply({
-          type: "bushel-sms-error",
-          reason: err && err.message ? err.message : "unknown",
-        });
-      });
+  // Clear the hash so the URL bar isn't littered + so a manual page reload
+  // doesn't re-fire the fill flow.
+  try {
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch {
+    // Non-fatal — fill still works, URL just stays dirty.
+  }
+
+  console.log("[Bushel SMS Helper] filling for", payload.phone);
+  fillNewConversation(payload.phone, payload.body).catch((err) => {
+    console.warn("[Bushel SMS Helper] fill failed", err);
   });
 })();
