@@ -45,20 +45,29 @@
     });
   }
 
-  // Use document.execCommand("insertText") so MWS's Angular FormControl picks
-  // up the change. Plain `.value = ...` updates the DOM property but doesn't
-  // dispatch the InputEvent that NgModel binds to, so on next render MWS
-  // clears the textarea back to the FormControl's empty state. Selecting all
-  // first replaces any existing content.
+  // Wake the framework's FormControl. Plain `el.value = ...` updates the DOM
+  // property but skips the change-detection path Angular uses to mirror the
+  // value into NgModel — MWS then clears the visible text on next render.
+  // The native value setter (called via the prototype descriptor) bypasses
+  // some framework wrappers that hide writes, and the InputEvent with
+  // inputType "insertText" matches what real keyboard typing dispatches,
+  // which is what Angular's FormControl listens for.
   function setInputValue(el, value) {
     el.focus();
-    el.select();
-    const ok = document.execCommand("insertText", false, value);
-    if (!ok) {
-      // execCommand deprecated/disabled; fall back to native setter + event.
-      el.value = value;
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+    const proto =
+      el instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+    setter.call(el, value);
+    el.dispatchEvent(
+      new InputEvent("input", {
+        inputType: "insertText",
+        data: value,
+        bubbles: true,
+      }),
+    );
+    el.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   async function fillNewConversation(phone, body) {

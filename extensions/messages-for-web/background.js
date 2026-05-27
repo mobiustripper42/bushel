@@ -23,20 +23,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     chrome.storage.session
       .set({ [STORAGE_KEY]: { phone: msg.phone, body: msg.body } })
       .then(async () => {
-        // Force any existing MWS tab to reload so the content script re-runs
-        // and consumes the new payload. Tabs still mid-load don't need it —
-        // their initial content-script run will pick it up.
+        // Focus or open MWS via chrome.tabs.* — admin can't manage the tab
+        // via window.open because Cross-Origin-Opener-Policy on
+        // messages.google.com blocks both named-target reuse and any cross
+        // -tab communication. chrome.tabs operates at the browser level,
+        // not subject to COOP.
         try {
-          const tabs = await chrome.tabs.query({
+          const existing = await chrome.tabs.query({
             url: "https://messages.google.com/web/*",
           });
-          for (const tab of tabs) {
-            if (tab.id && tab.status === "complete") {
-              chrome.tabs.reload(tab.id);
+          if (existing.length > 0 && existing[0].id) {
+            const tab = existing[0];
+            await chrome.tabs.update(tab.id, { active: true });
+            if (tab.windowId) {
+              chrome.windows.update(tab.windowId, { focused: true });
             }
+            // Reload so the content script re-runs and consumes the fresh
+            // payload. Without the reload, focusing an already-loaded MWS
+            // tab leaves the old (empty / previously consumed) state.
+            await chrome.tabs.reload(tab.id);
+          } else {
+            await chrome.tabs.create({
+              url: "https://messages.google.com/web/conversations",
+              active: true,
+            });
           }
-        } catch {
-          // Tab API unavailable in odd contexts — payload's still in storage.
+        } catch (err) {
+          console.warn("[Bushel SMS Helper] tab focus/open failed", err);
         }
         sendResponse({ ok: true });
       })

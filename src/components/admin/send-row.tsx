@@ -16,8 +16,6 @@ type SendRowProps = {
   initialSentAt: string | null;
 };
 
-const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
-
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
 // or open iMessage on macOS — neither is what Annabel wants when working from
 // her laptop. Detect desktop via the pointer-precision media query (touch-
@@ -72,26 +70,19 @@ export function SendRow({
     if (!phone) return;
 
     if (isDesktopOperator()) {
-      // Desktop path. Notify the optional Bushel SMS Helper extension via
-      // same-window postMessage — its bridge content script (on this origin)
-      // picks it up and stashes the payload in chrome.storage.session for the
-      // MWS content script to consume on tab load. Falls back silently to the
-      // clipboard path if no extension is installed (no bridge means no one
-      // listens to this postMessage, no harm done).
+      // Desktop path. The Bushel SMS Helper extension (if installed) handles
+      // opening + focusing the MWS tab via chrome.tabs from its service
+      // worker — admin can't manage the tab itself because COOP on
+      // messages.google.com blocks named-target reuse and severs cross-tab
+      // postMessage. We just notify the extension via same-window postMessage
+      // (which the bridge content script picks up) and provide a clipboard
+      // safety net so an operator without the extension can still paste
+      // manually after opening MWS themselves.
       e.preventDefault();
       window.postMessage(
         { type: "bushel-sms-helper:fill", phone, body },
         window.location.origin,
       );
-      // Named target "bushel-mws" so successive Sends reuse the same MWS tab
-      // instead of stacking new ones. Synchronous open inside the click
-      // handler to dodge popup blockers. If the named tab exists, this
-      // focuses it; the service worker's reload (triggered by the bridge
-      // deposit) forces the content script to re-run with the new payload.
-      // No noopener/noreferrer — name-target reuse requires the opener
-      // relationship, and the extension's content-script gate is the
-      // equivalent guard.
-      window.open(MESSAGES_WEB_URL, "bushel-mws");
 
       try {
         await navigator.clipboard.writeText(body);
