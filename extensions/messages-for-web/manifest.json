@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Bushel SMS Helper",
+  "version": "0.1.0",
+  "description": "Pre-fills recipient and body in Messages for Web when triggered from the Bushel admin.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://messages.google.com/web/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

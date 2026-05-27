@@ -17,6 +17,18 @@ type SendRowProps = {
 };
 
 const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
+const MESSAGES_WEB_ORIGIN = "https://messages.google.com";
+
+// Optional sideloaded Chromium extension (extensions/messages-for-web/) listens
+// on the Messages-for-Web tab. If installed, it replies with bushel-sms-ok
+// within EXTENSION_REPLY_TIMEOUT_MS and we show "Filled in Messages" instead
+// of "Copied — paste in Messages." If absent or it errors, the clipboard
+// fallback covers — clipboard write happens either way as a safety net.
+const EXTENSION_REPLY_TIMEOUT_MS = 4000;
+// Content script runs at document_idle; window.open returns before the script
+// has bound its listener. Send once immediately and once again after this
+// delay to cover the race.
+const EXTENSION_RETRY_DELAY_MS = 800;
 
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
 // or open iMessage on macOS — neither is what Annabel wants when working from
@@ -26,6 +38,44 @@ const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
 function isDesktopOperator(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(pointer: fine)").matches;
+}
+
+type ExtensionReply =
+  | { type: "bushel-sms-ok" }
+  | { type: "bushel-sms-error"; reason: string };
+
+function postToExtension(
+  tab: Window,
+  phone: string,
+  body: string,
+): Promise<ExtensionReply | null> {
+  return new Promise((resolve) => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== MESSAGES_WEB_ORIGIN) return;
+      const data = event.data as ExtensionReply | undefined;
+      if (!data || (data.type !== "bushel-sms-ok" && data.type !== "bushel-sms-error")) return;
+      cleanup();
+      resolve(data);
+    };
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, EXTENSION_REPLY_TIMEOUT_MS);
+    function cleanup() {
+      window.removeEventListener("message", handler);
+      window.clearTimeout(timeout);
+    }
+    window.addEventListener("message", handler);
+    const send = () => {
+      try {
+        tab.postMessage({ type: "bushel-sms", phone, body }, MESSAGES_WEB_ORIGIN);
+      } catch {
+        // Tab closed or cross-origin guard tripped — let the timeout resolve.
+      }
+    };
+    send();
+    window.setTimeout(send, EXTENSION_RETRY_DELAY_MS);
+  });
 }
 
 function formatSentAt(iso: string): string {
@@ -51,6 +101,7 @@ export function SendRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [filled, setFilled] = useState(false);
 
   const smsHref = phone ? buildSmsUrl({ phone, body }) : null;
   const isSent = sentAt !== null;
@@ -72,26 +123,52 @@ export function SendRow({
     if (!phone) return;
 
     if (isDesktopOperator()) {
-      // Desktop path: intercept the sms: nav, copy body to clipboard, open
-      // Messages for Web in a new tab. Messages for Web doesn't accept a
-      // prefill query-param — operator pastes after picking the conversation.
+      // Desktop path: intercept the sms: nav, open Messages for Web in a new
+      // tab, attempt extension auto-fill, fall back to clipboard. Clipboard
+      // write happens either way as a safety net — if the extension fills the
+      // compose box but Annabel wants to edit and the page reloads, the body
+      // is still in clipboard.
       e.preventDefault();
       // Open the tab synchronously inside the click handler; Safari and
       // some Chromium variants pop-up-block window.open if it runs after
-      // an await.
-      window.open(MESSAGES_WEB_URL, "_blank", "noopener,noreferrer");
+      // an await. `noopener` would null the returned window reference and
+      // kill postMessage to the extension; the explicit origin allowlist in
+      // the content script is the equivalent guard. `noreferrer` is kept.
+      const tab = window.open(MESSAGES_WEB_URL, "_blank", "noreferrer");
+
+      let clipboardOk = true;
       try {
         await navigator.clipboard.writeText(body);
       } catch {
-        // Clipboard blocked — surface the failure and do NOT record the send.
-        // The operator sees a single coherent state (error, still Unsent) and
-        // can retry after granting clipboard access, instead of an optimistic
-        // Sent pill that lies about delivery.
-        setError("Clipboard blocked. Copy the message manually, then click Send again.");
+        clipboardOk = false;
+      }
+
+      // Record the send now — the tab is open, the operator is on the path
+      // to sending. Waiting for the extension reply (up to 4s) to record
+      // would push the Sent pill flip past click in the no-extension case.
+      recordOptimistic();
+
+      if (clipboardOk) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2400);
+      }
+
+      if (!tab) {
+        if (!clipboardOk) {
+          setError("Clipboard blocked. Copy the message manually, then click Send again.");
+        }
         return;
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2400);
+
+      const reply = await postToExtension(tab, phone, body);
+      if (reply?.type === "bushel-sms-ok") {
+        setCopied(false);
+        setFilled(true);
+        setTimeout(() => setFilled(false), 2400);
+      } else if (!clipboardOk) {
+        setError("Clipboard blocked. Copy the message manually, then click Send again.");
+      }
+      return;
     }
     // Mobile path falls through: the <a href="sms:..."> navigation proceeds
     // naturally (no preventDefault), and recordOptimistic() runs below.
@@ -108,6 +185,11 @@ export function SendRow({
         <span className={"send-status" + (isSent ? " is-sent" : "")}>
           {isSent ? `Sent · ${formatSentAt(sentAt!)}` : "Unsent"}
         </span>
+        {filled && (
+          <span className="send-row-copied" role="status">
+            Filled in Messages — review and Send
+          </span>
+        )}
         {copied && (
           <span className="send-row-copied" role="status">
             Copied — paste in Messages
