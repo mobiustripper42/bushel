@@ -1324,13 +1324,8 @@
   padding: 16px;
 }
 .submit-summary { margin-bottom: 12px; }
-.summary-line {
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin-bottom: 4px;
-}
-.summary-label { font-weight: 600; color: var(--ink-900); }
-.summary-total { font-weight: 600; font-size: 1.05rem; color: var(--ink-900); }
-.summary-sub { font-size: 0.85rem; color: var(--ink-500); }
+.submit-summary .eyebrow { margin-bottom: 6px; }
+.summary-sub { font-size: 0.85rem; color: var(--ink-500); margin-top: 4px; }
 .submit-btn { width: 100%; }
 .submit-fine { margin-top: 10px; font-size: 0.78rem; color: var(--ink-500); }
 .submit-error {

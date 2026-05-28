@@ -78,7 +78,9 @@
       "Bash(pkill -f next-server)",
       "Bash(pkill -9 -f \"next-server\")",
       "Bash(rm tests/_screenshot-temp.spec.ts)",
-      "Bash(kill 734383)"
+      "Bash(kill 734383)",
+      "Bash(kill 822521)",
+      "Bash(kill 829354)"
     ]
   }
 }

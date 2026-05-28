@@ -107,7 +107,7 @@ test.describe("/c/[token] · per-product unit picker", () => {
     await expect(row.locator(".stepper-val")).toHaveValue("2");
 
     // 2 × $6.00 = $12.00 — sticky/summary totals reflect Eggs only.
-    await expect(page.locator(".summary-total")).toContainText("12.00");
+    await expect(page.locator(".submit-summary .rail-row-total")).toContainText("12.00");
   });
 
   test("submit payload records selected unit's price + id + fractional decrement (6.5d contract)", async ({ page }) => {

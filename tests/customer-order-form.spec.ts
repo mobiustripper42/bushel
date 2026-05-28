@@ -34,7 +34,7 @@ test.describe("/c/[token] order form", () => {
 
     // Sticky bar + submit-block totals reflect 2 × $3.00 = $6.00
     await expect(page.locator(".sticky-total").first()).toContainText("6.00");
-    await expect(page.locator(".summary-total")).toContainText("6.00");
+    await expect(page.locator(".submit-summary .rail-row-total")).toContainText("6.00");
   });
 
   test("stepper value is typeable; clamps to qty_available on blur", async ({ page }) => {
@@ -47,7 +47,7 @@ test.describe("/c/[token] order form", () => {
     await input.pressSequentially("7");
     await input.blur();
     await expect(input).toHaveValue("7");
-    await expect(page.locator(".summary-total")).toContainText("21.00");
+    await expect(page.locator(".submit-summary .rail-row-total")).toContainText("21.00");
 
     // Type a value above qty_available (10) → clamps on blur
     await input.click();
