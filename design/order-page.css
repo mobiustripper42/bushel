@@ -298,17 +298,8 @@
   margin-bottom: 24px;
 }
 .submit-summary { margin-bottom: 16px; }
-.summary-line {
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin-bottom: 4px;
-}
-.summary-label { font-size: 0.95rem; color: var(--ink-700); }
-.summary-total {
-  font-family: var(--serif);
-  font-size: 1.6rem; font-weight: 600;
-  color: var(--ink-900);
-}
-.summary-sub { font-size: 0.85rem; color: var(--ink-500); }
+.submit-summary .eyebrow { margin-bottom: 6px; }
+.summary-sub { font-size: 0.85rem; color: var(--ink-500); margin-top: 4px; }
 
 .submit-btn {
   width: 100%; min-height: 52px; font-size: 1.02rem;
