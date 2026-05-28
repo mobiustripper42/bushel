@@ -78,11 +78,9 @@ function ItemRow({ item, qty, onQty, soldOut, selectedUnitId, onUnitChange }) {
   const remaining = out ? 0 : perUnitMax - qty;
   return (
     <div className={"item-row" + (out ? " is-sold-out" : "") + (hasPicker ? " has-picker" : "")}>
-      <div className="item-thumb" aria-hidden="true">
-        <div className="item-thumb-inner"></div>
-      </div>
       <div className="item-body">
         <div className="item-name">{item.name}</div>
+        {item.description && <div className="item-desc">{item.description}</div>}
         <div className="item-meta-row">
           <span className="item-price">
             <span className="mono">${selected.price.toFixed(2)}</span>
