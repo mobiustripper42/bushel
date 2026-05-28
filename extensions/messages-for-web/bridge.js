@@ -16,8 +16,6 @@
 //     extension key — possible but heavier than this bridge for one user)
 
 (function () {
-  console.log("[Bushel SMS Helper] bridge loaded on " + location.origin);
-
   window.addEventListener("message", (event) => {
     // Same-window only — never accept messages from other windows / origins.
     if (event.source !== window) return;
