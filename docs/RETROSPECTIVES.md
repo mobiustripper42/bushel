@@ -1,5 +1,62 @@
 # Retrospectives
 
+## Phase 7 — 2026-05-28 — Post-go-live feature backlog
+
+**Sessions:** 7 (S28–S34)
+**Points:** 45 (rolling catch-all; 7 parking-lot issues closed-not-built, 4 moved to Phase 8)
+**Wall clock:** 126.75h
+**Active time (wall − breaks): 36.17h ← honest headline** (90.58h breaks — real-life interruptions, overnight + multi-day gaps)
+**Dev time (per DEC-013 math):** 12.83h¹
+**Review time (per DEC-013 math):** 29.08h¹
+**Velocities:**
+- Wall: 2.82 h/pt
+- **Active: 0.80 h/pt** ← headline forecast number
+- Dev: 0.29 h/pt¹ ← DEC-015 method artifact (stacked PRs in S31/S32/S34); do not trust as headline
+- Review: 0.65 h/pt¹
+**Issues:** ~24 phase:7 issues total; 7 closed-not-built (trigger-gated descope), 4 moved to Phase 8.
+
+¹ dev/review split is a DEC-015 per-PR-window artifact in S31, S32, S34: stacked PRs merged after the session window, so each PR's review window clamps to the same `ended` timestamp and the windows overlap — review_time sums past wall clock. Forecast on active (0.80 h/pt), not dev/review.
+
+### Per-session breakdown
+| Session | Date       | Wall   | Dev   | Review | Breaks | Points | PRs                              |
+|---------|------------|--------|-------|--------|--------|--------|----------------------------------|
+| 28      | 2026-05-18 | 1.58   | 1.33  | 0.25   | 0.00²  | 0      | 142                              |
+| 29      | 2026-05-22 | 8.75   | 2.42  | 0.33   | 6.00   | 6      | 150, 157                         |
+| 30      | 2026-05-23 | 35.00  | 1.67  | 16.58  | 16.75  | 5      | 160                              |
+| 31      | 2026-05-24 | 4.58   | 0.42  | 3.58   | 2.58   | 7      | 162, 163, 164, 165               |
+| 32      | 2026-05-25 | 32.83  | 5.42  | 3.50   | 26.75  | 19     | 166, 167, 169, 171, 172, 175, 176 |
+| 33      | 2026-05-26 | 2.17   | 0.42  | 0.33   | 1.42   | 3      | 177, 178                         |
+| 34      | 2026-05-27 | 41.83  | 1.17  | 4.50   | 37.08  | 5      | 179, 181, 182                    |
+
+² S28 transcript is a Windows path, unreadable on this host — `breaks=0` by rule (`inference: transcript-unavailable`). S28 shipped 0 points (baseline sweep, no Task blocks).
+
+### What worked
+- "I was able to just make bug fixes, pulling from issues is good. For bug fixes I would keep this the same. Really all the sessions went well — they were long, but I never really lost anything, I just have a lot of interruptions."
+
+### What didn't
+- Nothing flagged by the user — long sessions attributed to real-life interruptions (90.58h of 126.75h wall is breaks), not process friction. (PM note: #120 Messages-for-Web extension was a genuinely hard multi-day grind, not just an interruption cost.)
+
+### Changes for next phase
+- "For bug fixes I would keep this the same." Keep the bug-fix-from-issues loop unchanged into Phase 8.
+
+### Scope changes
+- **4 issues moved to Phase 8:** #170 PWA admin install/push, #149 cart-cleared-on-rotation (non-repro), #134 prepopulate UAT, #132 oversell-at-qty=0 bug.
+- **7 parking-lot issues closed-not-built** (trigger-gated wishlist, per OPEN_ITEMS.md triage): #53 realtime inventory, #136 order history, #137 per-customer pricing, #138 min-delivery, #139 10DLC, #146 self-serve edits/cancellations, #174 product_units-authoritative refactor.
+- **Multi-unit products epic shipped** (#135, #151–156 / 6.5a–f): migration, units sub-sheet, customer picker, fractional decrement, prefill, cross-cutting tests.
+
+### PM read
+Phase 7 ran at 0.80 active h/pt — about triple Phase 6's record 0.25 and double Phase 5's 0.35. That's a real slowdown per point, and the honest reading is that Phase 6's number was the anomaly, not this one: a hard go-live deadline, compounded skill-loop muscle memory, and a tight batch of well-specified UAT tickets all stacked in its favor. None of that held in Phase 7. S34's Messages-for-Web extension (#120) is the clearest cost driver — a multi-day grind through COOP-blocked postMessage into a service-worker-plus-bridge architecture, plus an Angular FormControl reset that needed a settle delay nobody could have estimated from the issue text. That's external-contract discovery against a browser surface you don't control. The dev/review split shouldn't be quoted — stacked PRs merging after the session window inflated review past wall clock in S31, S32, and S34. Active 0.80 is the only number to forecast on.
+
+On scope: this is where Phase 7 actually earned its keep. Seven parking-lot issues got closed-not-built and four real ones punted cleanly to Phase 8. That's the trigger-gated wishlist working as designed. The carry-over creep the Phase 4 and 5 reads kept warning about did not happen; the descope discipline that showed up mid-Phase-6 held through a much longer, looser phase.
+
+But the structural tension the Phase 6 read predicted arrived on schedule: "one long phase, just features" has no natural boundary, so this retro is run by fiat at 45 points across ten calendar days because someone decided to stop — not because anything closed. The mini-checkpoint recommendation from last retro did not get adopted, and you can feel it: 45 points is past the resolution where a single velocity number means much. S32 alone (19pts, 7 PRs) and S34 (one dominant multi-day extension) are different animals averaged into the same 0.80.
+
+On the user's answers — "really all the sessions went well, I just have a lot of interruptions" is mostly defensible: 90.58h of 126.75h wall clock is breaks, and the work between interruptions was clean — code-review findings caught and fixed, no rebuilds, design-folder parity held. But "nothing flagged" skips over #120. That extension wasn't an interruption problem; it was genuinely hard work that shipped three PRs and still left a "service worker console, mid-debug" loose end. Not process friction — but not nothing.
+
+Forward note for Phase 8: opens with four carried issues. #132 (oversell) and #149 (cart non-repro) are the two to watch — a correctness bug and a non-repro both expand on contact; budget them against 0.80, not the 0.25 fantasy. "Keep the same loop" is right for the work; it's the measurement cadence that needs the discipline the work already has.
+
+---
+
 ## Phase 6 — 2026-05-18 — V1 SHIPPED 🌱
 
 **Sessions:** 2 (S26, S27)

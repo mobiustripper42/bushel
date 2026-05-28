@@ -31,6 +31,7 @@ Derived from sailbook (the user's reference Next.js + Supabase project):
 | 1 (Phase 4) | 11 (labeled, 100% delivery) | 13.7 wall / 3.0 active / 0.3 dev¹ | 1.24 wall / 0.27 active / 0.024 dev¹ |
 | 1 (Phase 5) | 11 (8 labeled + 3 unplanned bug fix #102/PR #103) | 9.17 wall / 3.84 active / 0.65 dev¹ | 0.83 wall / 0.35 active / 0.06 dev¹ |
 | 2 (Phase 6) | 20 (10 phase-6 PRs + bonus scope; 12 of 32 planned affirmatively cut) | 17.92 wall / 4.92 active / 0.67 dev¹ | 0.90 wall / **0.25 active** / 0.035 dev¹ |
+| 7 (Phase 7) | 45 (catch-all; 7 parking-lot issues closed-not-built, 4 moved to Phase 8) | 126.75 wall / 36.17 active / 12.83 dev¹ | 2.82 wall / **0.80 active** / 0.29 dev¹ |
 
 Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
@@ -198,6 +199,8 @@ V1 shipped 2026-05-18. Phase 7 = one rolling phase of features, no fixed scope, 
 - ~~Public signup for individuals~~ — wholesale-only is the product, not a V1 limitation.
 
 **Open-ended ideas** — see [`docs/OPEN_ITEMS.md`](OPEN_ITEMS.md). Wishlist that hasn't earned an issue yet; promote when the trigger fires.
+
+**Closed 2026-05-28 (retro):** 45 pts shipped across 7 sessions (S28–S34), 0.80 active h/pt. Multi-unit products epic (6.5a–f, #151–156, #135) landed; UAT punch-list cleared (#129–134 except #132/#134); admin polish (#143 drag-reorder, #61 deactivated toggle, #129 unsaved-guard); Messages-for-Web extension (#120). Seven parking-lot issues closed-not-built (trigger-gated wishlist: #53, #136, #137, #138, #139, #146, #174). **4 issues moved to Phase 8:** #170 PWA admin install/push, #149 cart-cleared-on-rotation (non-repro), #134 prepopulate UAT, #132 oversell-at-qty=0 bug. Full retro in [`RETROSPECTIVES.md`](RETROSPECTIVES.md).
 
 ---
 
