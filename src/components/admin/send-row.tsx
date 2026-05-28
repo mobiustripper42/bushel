@@ -16,8 +16,6 @@ type SendRowProps = {
   initialSentAt: string | null;
 };
 
-const MESSAGES_WEB_URL = "https://messages.google.com/web/conversations";
-
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
 // or open iMessage on macOS — neither is what Annabel wants when working from
 // her laptop. Detect desktop via the pointer-precision media query (touch-
@@ -72,21 +70,23 @@ export function SendRow({
     if (!phone) return;
 
     if (isDesktopOperator()) {
-      // Desktop path: intercept the sms: nav, copy body to clipboard, open
-      // Messages for Web in a new tab. Messages for Web doesn't accept a
-      // prefill query-param — operator pastes after picking the conversation.
+      // Desktop path. The Bushel SMS Helper extension (if installed) handles
+      // opening + focusing the MWS tab via chrome.tabs from its service
+      // worker — admin can't manage the tab itself because COOP on
+      // messages.google.com blocks named-target reuse and severs cross-tab
+      // postMessage. We just notify the extension via same-window postMessage
+      // (which the bridge content script picks up) and provide a clipboard
+      // safety net so an operator without the extension can still paste
+      // manually after opening MWS themselves.
       e.preventDefault();
-      // Open the tab synchronously inside the click handler; Safari and
-      // some Chromium variants pop-up-block window.open if it runs after
-      // an await.
-      window.open(MESSAGES_WEB_URL, "_blank", "noopener,noreferrer");
+      window.postMessage(
+        { type: "bushel-sms-helper:fill", phone, body },
+        window.location.origin,
+      );
+
       try {
         await navigator.clipboard.writeText(body);
       } catch {
-        // Clipboard blocked — surface the failure and do NOT record the send.
-        // The operator sees a single coherent state (error, still Unsent) and
-        // can retry after granting clipboard access, instead of an optimistic
-        // Sent pill that lies about delivery.
         setError("Clipboard blocked. Copy the message manually, then click Send again.");
         return;
       }

@@ -183,7 +183,7 @@ test.describe("admin send-queue", () => {
       .toBe(1);
   });
 
-  test("desktop: clicking Send copies the body to clipboard and opens Messages for Web", async ({ page, context }, testInfo) => {
+  test("desktop: clicking Send postMessages the extension and copies the body to clipboard", async ({ page, context }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "Desktop-only path (Phase 6.7). Mobile uses the sms: deep link directly.");
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const ids = await customerIds();
@@ -199,21 +199,28 @@ test.describe("admin send-queue", () => {
     const expectedBody = decodeURIComponent(bodyEncoded);
     expect(expectedBody).toContain("Bay Branch Farm");
 
-    // Click Send — desktop project ("(pointer: fine)") triggers the desktop
-    // path: preventDefault + clipboard.writeText + window.open in a new tab.
-    const [popup] = await Promise.all([
-      context.waitForEvent("page"),
-      farmStandRow.getByRole("link", { name: /^send$/i }).click(),
-    ]);
-
-    // Popup is the Messages-for-Web tab.
-    await popup.waitForLoadState("domcontentloaded").catch(() => {
-      // Real google.com may be unreachable in CI; URL alone is enough.
+    // Install a listener on the admin page BEFORE clicking so we can capture
+    // the postMessage the desktop path fires. The Bushel SMS Helper extension
+    // (when installed) bridges this to its service worker, which then opens /
+    // focuses the MWS tab via chrome.tabs. CI doesn't have the extension, so
+    // no popup will appear — we just verify the bridge contract.
+    const messagePromise = page.evaluate(() => {
+      return new Promise<{ phone: string; body: string }>((resolve) => {
+        window.addEventListener("message", (ev) => {
+          if (ev.data?.type === "bushel-sms-helper:fill") {
+            resolve({ phone: ev.data.phone, body: ev.data.body });
+          }
+        });
+      });
     });
-    expect(popup.url()).toContain("messages.google.com");
-    await popup.close();
 
-    // Clipboard contains the body the operator will paste.
+    await farmStandRow.getByRole("link", { name: /^send$/i }).click();
+
+    const posted = await messagePromise;
+    expect(posted.body).toBe(expectedBody);
+    expect(posted.phone).toBeTruthy();
+
+    // Clipboard contains the body as a fallback for no-extension operators.
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     expect(clip).toBe(expectedBody);
 
