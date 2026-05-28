@@ -54,6 +54,16 @@
   // which is what Angular's FormControl listens for.
   function setInputValue(el, value) {
     el.focus();
+    // Prefer execCommand("insertText") — it produces the most faithful,
+    // browser-generated InputEvent and updates Angular's FormControl the same
+    // way a keystroke would. Select-all first so it replaces existing text.
+    el.select?.();
+    const ok = document.execCommand("insertText", false, value);
+    if (ok && el.value === value) {
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
+    }
+    // Fallback: native prototype setter + synthetic InputEvent.
     const proto =
       el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
@@ -102,9 +112,20 @@
 
     log("step 8: waiting for compose textarea");
     const compose = await waitFor(SELECTORS.composeTextarea, 5000);
+    // Let Angular attach its ControlValueAccessor to the freshly-rendered
+    // compose field before we write. Writing too early lets MWS's first
+    // change-detection pass reset the textarea to its empty model value.
+    await new Promise((r) => setTimeout(r, 600));
     log("step 9: compose found, setting value (len", body.length, ")");
     setInputValue(compose, body);
-    log("step 10: compose.value after set (len):", compose.value.length);
+    log("step 10: compose.value immediately after (len):", compose.value.length);
+    // Recheck after a render tick: if this logs 0, MWS cleared our write
+    // (framework reset) and we need trusted events (chrome.debugger). If it
+    // still shows the full length, the value stuck.
+    setTimeout(
+      () => log("step 11: compose.value after 600ms (len):", compose.value.length),
+      600,
+    );
     // Do NOT submit. Operator clicks Send so she can edit / cancel.
   }
 
