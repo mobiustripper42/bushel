@@ -362,11 +362,11 @@ export function OrderForm({
                         (showPicker ? " has-picker" : "")
                       }
                     >
-                      <div className="item-thumb" aria-hidden="true">
-                        <div className="item-thumb-inner"></div>
-                      </div>
                       <div className="item-body">
                         <div className="item-name">{p.name}</div>
+                        {p.description ? (
+                          <div className="item-desc">{p.description}</div>
+                        ) : null}
                         <div className="item-meta-row">
                           <span className="item-price">
                             <span className="mono">${formatPrice(priceCents)}</span>
