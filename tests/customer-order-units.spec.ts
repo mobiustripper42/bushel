@@ -80,6 +80,26 @@ test.describe("/c/[token] · per-product unit picker", () => {
     await expect(perLabel).toContainText("lb");
   });
 
+  test("order-box line amount uses the selected unit's price, not the base", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+    const row = kaleRow(page);
+    // Pick lb ($5.00/lb) and order 2 lb.
+    await row.locator("label.unit-option").filter({ hasText: "lb" }).click();
+    await row.getByRole("button", { name: "increase" }).click();
+    await row.getByRole("button", { name: "increase" }).click();
+    await expect(row.locator(".stepper-val")).toHaveValue("2");
+
+    // The "your order" summary line for Kale must read 2 × $5.00 = $10.00
+    // (selected unit price), NOT 2 × base $3.00 = $6.00. Regression guard for
+    // the rail/summary line-amount pulling products.price_cents directly.
+    const kaleLine = page
+      .locator(".submit-summary .rail-list li")
+      .filter({ hasText: KALE.name });
+    await expect(kaleLine.locator(".rail-amt")).toContainText("10.00");
+    await expect(page.locator(".submit-summary .rail-row-total")).toContainText("10.00");
+  });
+
   test("per-unit sold-out: lb radio is disabled when base inventory < 1 lb-conversion", async ({ page }) => {
     // qty_available = 1 bunch is enough for the bunch radio (conv=1) but
     // below the lb conversion (conv=2), so the lb radio must be disabled.

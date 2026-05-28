@@ -536,7 +536,7 @@ export function OrderForm({
                           {p.name}
                         </span>
                         <span className="rail-amt mono">
-                          ${formatPrice((qty[p.id] ?? 0) * p.price_cents)}
+                          ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? p.price_cents))}
                         </span>
                       </li>
                     ))}
@@ -598,7 +598,7 @@ export function OrderForm({
                         {p.name}
                       </span>
                       <span className="rail-amt mono">
-                        ${formatPrice((qty[p.id] ?? 0) * p.price_cents)}
+                        ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? p.price_cents))}
                       </span>
                     </li>
                   ))}
