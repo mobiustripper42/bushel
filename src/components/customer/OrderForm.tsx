@@ -362,11 +362,11 @@ export function OrderForm({
                         (showPicker ? " has-picker" : "")
                       }
                     >
-                      <div className="item-thumb" aria-hidden="true">
-                        <div className="item-thumb-inner"></div>
-                      </div>
                       <div className="item-body">
                         <div className="item-name">{p.name}</div>
+                        {p.description ? (
+                          <div className="item-desc">{p.description}</div>
+                        ) : null}
                         <div className="item-meta-row">
                           <span className="item-price">
                             <span className="mono">${formatPrice(priceCents)}</span>
@@ -521,13 +521,32 @@ export function OrderForm({
 
             <section className="submit-block">
               <div className="submit-summary">
-                <div className="summary-line">
-                  <span className="summary-label">
-                    {itemCount} item{itemCount !== 1 ? "s" : ""}
-                  </span>
-                  <span className="summary-total mono">
-                    ${formatPrice(subtotalCents)}
-                  </span>
+                <div className="eyebrow">your order</div>
+                {lineCount === 0 ? (
+                  <div className="rail-empty">
+                    Nothing selected yet. Tap <span className="mono">+</span> on
+                    items above.
+                  </div>
+                ) : (
+                  <ul className="rail-list">
+                    {itemsWithQty.map((p) => (
+                      <li key={p.id}>
+                        <span className="rail-name">
+                          <span className="rail-qty mono">{qty[p.id]}×</span>{" "}
+                          {p.name}
+                        </span>
+                        <span className="rail-amt mono">
+                          ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? p.price_cents))}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="rail-totals">
+                  <div className="rail-row rail-row-total">
+                    <span>Total</span>
+                    <span className="mono">${formatPrice(subtotalCents)}</span>
+                  </div>
                 </div>
                 <div className="summary-sub">
                   {mode === "delivery"
@@ -579,7 +598,7 @@ export function OrderForm({
                         {p.name}
                       </span>
                       <span className="rail-amt mono">
-                        ${formatPrice((qty[p.id] ?? 0) * p.price_cents)}
+                        ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? p.price_cents))}
                       </span>
                     </li>
                   ))}

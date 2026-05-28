@@ -1083,12 +1083,12 @@
 }
 .item-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
-  /* align-items: start gives the name + meta + picker stack room to grow
-     while keeping the thumb pinned to the top. Stepper top-aligns too so
-     it sits next to the price (visually paired) instead of drifting down
-     when a long name wraps. 6.5c restructure (#144). */
+  /* align-items: start gives the name + desc + meta + picker stack room to
+     grow while the stepper top-aligns next to the price (visually paired)
+     instead of drifting down when a long name wraps. 6.5c restructure
+     (#144). */
   align-items: start;
   padding: 12px 14px;
   border-top: 1px solid var(--ink-200);
@@ -1104,25 +1104,6 @@
 }
 .item-row.is-sold-out { background: var(--leaf-50); opacity: 0.78; }
 .item-row.is-sold-out .item-name { color: var(--ink-500); }
-.item-row.is-sold-out .item-thumb { opacity: 0.55; }
-
-.item-thumb {
-  width: 44px; height: 44px; border-radius: 8px;
-  background: var(--leaf-50);
-  border: 1px solid var(--leaf-100);
-  overflow: hidden;
-}
-.item-thumb-inner {
-  width: 100%; height: 100%;
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      transparent 0,
-      transparent 6px,
-      rgba(59,109,17,0.08) 6px,
-      rgba(59,109,17,0.08) 7px
-    );
-}
 
 .item-body {
   min-width: 0;
@@ -1134,6 +1115,13 @@
   line-height: 1.25;
   /* Wrap freely — name owns its row now, no longer competing with the
      price for horizontal space. Closes #144. */
+  overflow-wrap: anywhere;
+}
+.item-desc {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--ink-500);
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 .item-meta-row {
@@ -1336,13 +1324,8 @@
   padding: 16px;
 }
 .submit-summary { margin-bottom: 12px; }
-.summary-line {
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin-bottom: 4px;
-}
-.summary-label { font-weight: 600; color: var(--ink-900); }
-.summary-total { font-weight: 600; font-size: 1.05rem; color: var(--ink-900); }
-.summary-sub { font-size: 0.85rem; color: var(--ink-500); }
+.submit-summary .eyebrow { margin-bottom: 6px; }
+.summary-sub { font-size: 0.85rem; color: var(--ink-500); margin-top: 4px; }
 .submit-btn { width: 100%; }
 .submit-fine { margin-top: 10px; font-size: 0.78rem; color: var(--ink-500); }
 .submit-error {

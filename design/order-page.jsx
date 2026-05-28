@@ -78,11 +78,9 @@ function ItemRow({ item, qty, onQty, soldOut, selectedUnitId, onUnitChange }) {
   const remaining = out ? 0 : perUnitMax - qty;
   return (
     <div className={"item-row" + (out ? " is-sold-out" : "") + (hasPicker ? " has-picker" : "")}>
-      <div className="item-thumb" aria-hidden="true">
-        <div className="item-thumb-inner"></div>
-      </div>
       <div className="item-body">
         <div className="item-name">{item.name}</div>
+        {item.description && <div className="item-desc">{item.description}</div>}
         <div className="item-meta-row">
           <span className="item-price">
             <span className="mono">${selected.price.toFixed(2)}</span>
@@ -350,9 +348,27 @@ function OrderPage({ tweaks }) {
             {/* Submit row (visible at end of scroll on mobile, primary on desktop) */}
             <section className="submit-block" style={{ fontFamily: "-apple-system" }}>
               <div className="submit-summary">
-                <div className="summary-line">
-                  <span className="summary-label">{itemCount} item{itemCount !== 1 ? "s" : ""}</span>
-                  <span className="summary-total mono">${subtotal.toFixed(2)}</span>
+                <Eyebrow>your order</Eyebrow>
+                {lineCount === 0 ?
+                <div className="rail-empty">
+                  Nothing selected yet. Tap <span className="mono">+</span> on items above.
+                </div> :
+                <ul className="rail-list">
+                  {items_with_qty.map((i) =>
+                  <li key={i.id}>
+                    <span className="rail-name">
+                      <span className="rail-qty mono">{qty[i.id]}×</span> {i.name}
+                    </span>
+                    <span className="rail-amt mono">${(qty[i.id] * i.price).toFixed(2)}</span>
+                  </li>
+                  )}
+                </ul>
+                }
+                <div className="rail-totals">
+                  <div className="rail-row rail-row-total">
+                    <span>Total</span>
+                    <span className="mono">${subtotal.toFixed(2)}</span>
+                  </div>
                 </div>
                 <div className="summary-sub">
                   {mode === "delivery" ?
