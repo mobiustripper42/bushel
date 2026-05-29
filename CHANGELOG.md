@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.17] - 2026-05-26
+- PR #178: Order-detail oversold gate + Sold-this-week column on /admin/inventory
+
 ## [0.8.16] - 2026-05-26
 - PR #177: Inventory qty input: accept fractional values
 
