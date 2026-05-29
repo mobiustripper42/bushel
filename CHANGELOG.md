@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.4] - 2026-05-23
+- PR #160: Phase 6.5b — Per-product Units sub-sheet (#152)
+
 ## [0.8.3] - 2026-05-22
 - PR #157: 6.5a — product_units migration + backfill + safety-net triggers
 
