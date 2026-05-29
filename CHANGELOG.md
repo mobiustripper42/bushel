@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.1] - 2026-05-18
+- PR #142: DEC-016 — extract Bay Branch Farm design system to .claude/ui-context.md
+
 ## [0.8.0] - 2026-05-18 — Phase 6 (V1 SHIPPED)
 - 20 pts shipped across 2 sessions (0.25 h/pt active — project record)
 - See `docs/RETROSPECTIVES.md` for the full retro
