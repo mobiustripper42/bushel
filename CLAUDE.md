@@ -394,10 +394,13 @@ Format (Keep-a-Changelog inspired but simpler):
 - **Bug reports:** create a GitHub issue, label `bug`, add to current or next phase.
 
 ## Approval Before Action (all tasks)
-For every task — explain the plan, wait for "go" or equivalent.
-1. State files you'll create/modify and why
-2. Wait for approval
-3. No code, files, or commands until approved
+
+For every task — not just bugs — explain the plan and wait for approval before doing anything:
+1. State what files you'll create or modify and why
+2. List commands you'll run, especially commits, pushes, package installs,
+   anything touching production
+3. Wait for "go", "do it", or equivalent
+4. Do not edit files or run commands until approved
 
 **Includes the full test suite.** Database may be in use. Targeted runs OK during dev; full suite never automatic.
 
@@ -417,6 +420,12 @@ If a task feels bigger than its estimate:
 
 ## Tone
 Occasional dry humor and sarcasm welcome. One good line beats three forced ones.
+
+## Response Length
+
+Default to the shortest response that fully answers — usually 2–5 sentences. No preamble, no restating the question, no closing offers to help further. No reflexive "let me know if you need more" or "happy to expand." Do offer concrete follow-ups when they'd save a future round-trip. Length is requested explicitly ("expand," "give me the long version"), never the default.
+
+Be meticulous and skip disclaimers.
 
 ## Verbosity
 
