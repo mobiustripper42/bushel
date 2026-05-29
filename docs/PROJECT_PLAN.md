@@ -204,6 +204,20 @@ V1 shipped 2026-05-18. Phase 7 = one rolling phase of features, no fixed scope, 
 
 ---
 
+## Phase 8 — Post-go-live feature backlog (continued)
+
+Rolling phase, continuation of the Phase 7 model: no fixed scope, no end date. The GitHub issue list (label `phase:8`) is the canonical backlog; this section is the prose summary. Materialized 2026-05-29 from the four Phase 7 carry-overs (no new issues created — they already existed).
+
+**Starting backlog (8 pts):**
+- [#170](https://github.com/mobiustripper42/bushel/issues/170) PWA admin: home-screen install + push notifications (3)
+- [#149](https://github.com/mobiustripper42/bushel/issues/149) Cart cleared on phone rotation (Brave/Android) — non-reproducible, recheck (2) — *watch: non-repro expands on contact*
+- [#134](https://github.com/mobiustripper42/bushel/issues/134) Proper UAT of 'Pre-populate from last week' inventory action (1)
+- [#132](https://github.com/mobiustripper42/bushel/issues/132) Bug: order placed for qty=4 against qty=0 inventory (2) — *watch: correctness bug*
+
+Forecast at 0.80 active h/pt (Phase 7 headline) → ~6.4h active for the opening backlog. New work lands as `phase:8` issues; promote from [`docs/OPEN_ITEMS.md`](OPEN_ITEMS.md) when triggers fire.
+
+---
+
 ## `seeds` Backports (track via `/sync-config`)
 
 1. **Test scaffolding** — Playwright config, pgTAP layout, `supabase/seed.sql`, GitHub Actions workflow. Coordinate with parallel session.
