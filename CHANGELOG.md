@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.13] - 2026-05-26
+- PR #172: Unsaved-changes guard on admin data-entry forms (closes #129)
+
 ## [0.8.12] - 2026-05-25
 - PR #169: Drag-to-reorder inventory rows (closes #143)
 
