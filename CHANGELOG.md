@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.10] - 2026-05-25
+- PR #167: Consistent items count across customer, admin, Telegram (closes #159)
+
 ## [0.8.9] - 2026-05-25
 - PR #166: Inventory meta pills: drop Cutoff; Open-for-orders pulls from schedule
 
