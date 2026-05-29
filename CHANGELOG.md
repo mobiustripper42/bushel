@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.2] - 2026-05-22
+- PR #150: Sticky-bar button: Review → scroll to fulfillment
+
 ## [0.8.1] - 2026-05-18
 - PR #142: DEC-016 — extract Bay Branch Farm design system to .claude/ui-context.md
 
