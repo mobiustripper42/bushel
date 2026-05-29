@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.9] - 2026-05-25
+- PR #166: Inventory meta pills: drop Cutoff; Open-for-orders pulls from schedule
+
 ## [0.8.8] - 2026-05-24
 - PR #165: Phase 6.5f — Per-line unit label everywhere + cross-cutting e2e tests (#156)
 
