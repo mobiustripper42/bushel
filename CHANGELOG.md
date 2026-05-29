@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.14] - 2026-05-26
+- PR #175: Inline-debug bundle: triggers, prepopulate rewrite, decimal inputs, chip-tab
+
 ## [0.8.13] - 2026-05-26
 - PR #172: Unsaved-changes guard on admin data-entry forms (closes #129)
 
