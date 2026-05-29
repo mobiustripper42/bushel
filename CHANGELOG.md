@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.8] - 2026-05-24
+- PR #165: Phase 6.5f — Per-line unit label everywhere + cross-cutting e2e tests (#156)
+
 ## [0.8.7] - 2026-05-24
 - PR #164: Phase 6.5e — Unit-aware pre-populate + last-week price restore (#155)
 
