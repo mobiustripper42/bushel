@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.19] - 2026-05-28
+- PR #182: Mobile order summary: itemized your order above submit button
+
 ## [0.8.18] - 2026-05-28
 - PR #181: Customer order page: drop item thumbnail, add product description
 
