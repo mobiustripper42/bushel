@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.18] - 2026-05-28
+- PR #181: Customer order page: drop item thumbnail, add product description
+
 ## [0.8.17] - 2026-05-26
 - PR #178: Order-detail oversold gate + Sold-this-week column on /admin/inventory
 
