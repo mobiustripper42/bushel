@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.6] - 2026-05-24
+- PR #163: Phase 6.5d — Unit-aware place_order: fractional decrement + price snapshot (#154)
+
 ## [0.8.5] - 2026-05-24
 - PR #162: Phase 6.5c — Customer order form: per-product unit picker (#153)
 
