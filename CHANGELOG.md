@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.9.0] - 2026-05-28 — Phase 7
+- 45 pts shipped across 7 sessions (0.80 active h/pt)
+- See `docs/RETROSPECTIVES.md` for the full retro
+
 ## [0.8.20] - 2026-05-28
 - PR #179: Messages-for-Web auto-fill extension (closes #120)
 
