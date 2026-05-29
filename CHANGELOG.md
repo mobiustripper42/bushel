@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.15] - 2026-05-26
+- PR #176: Block paused + deactivated customers from /c/[token] (closes #130)
+
 ## [0.8.14] - 2026-05-26
 - PR #175: Inline-debug bundle: triggers, prepopulate rewrite, decimal inputs, chip-tab
 
