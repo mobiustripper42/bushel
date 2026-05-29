@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.20] - 2026-05-28
+- PR #179: Messages-for-Web auto-fill extension (closes #120)
+
 ## [0.8.19] - 2026-05-28
 - PR #182: Mobile order summary: itemized your order above submit button
 
