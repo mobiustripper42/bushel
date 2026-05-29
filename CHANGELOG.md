@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.5] - 2026-05-24
+- PR #162: Phase 6.5c — Customer order form: per-product unit picker (#153)
+
 ## [0.8.4] - 2026-05-23
 - PR #160: Phase 6.5b — Per-product Units sub-sheet (#152)
 
