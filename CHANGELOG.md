@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.7] - 2026-05-24
+- PR #164: Phase 6.5e — Unit-aware pre-populate + last-week price restore (#155)
+
 ## [0.8.6] - 2026-05-24
 - PR #163: Phase 6.5d — Unit-aware place_order: fractional decrement + price snapshot (#154)
 
