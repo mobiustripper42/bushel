@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.16] - 2026-05-26
+- PR #177: Inventory qty input: accept fractional values
+
 ## [0.8.15] - 2026-05-26
 - PR #176: Block paused + deactivated customers from /c/[token] (closes #130)
 
