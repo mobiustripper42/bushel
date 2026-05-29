@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.11] - 2026-05-25
+- PR #171: Admin customers — show + reactivate deactivated rows (closes #61)
+
 ## [0.8.10] - 2026-05-25
 - PR #167: Consistent items count across customer, admin, Telegram (closes #159)
 
