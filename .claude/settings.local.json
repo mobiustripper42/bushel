@@ -80,9 +80,7 @@
       "Bash(rm tests/_screenshot-temp.spec.ts)",
       "Bash(kill 734383)",
       "Bash(kill 822521)",
-      "Bash(kill 829354)",
-      "Bash(awk 'NR>=79 && NR<=82' src/components/customer/OrderForm.tsx)",
-      "Bash(cd *)"
+      "Bash(kill 829354)"
     ]
   }
 }

@@ -133,7 +133,7 @@ function ItemRow({ item, qty, onQty, soldOut, selectedUnitId, onUnitChange }) {
 
 }
 
-function FulfillmentTab({ active, onClick, label, sublabel }) {
+function FulfillmentTab({ active, onClick, label }) {
   return (
     <button
       className={"fulfill-tab" + (active ? " is-active" : "")}
