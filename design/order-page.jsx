@@ -140,7 +140,6 @@ function FulfillmentTab({ active, onClick, label }) {
       onClick={onClick}>
       
       <div className="fulfill-tab-label">{label}</div>
-      <div className="fulfill-tab-sub">{sublabel}</div>
     </button>);
 
 }
