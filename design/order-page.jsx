@@ -211,8 +211,7 @@ function OrderPage({ tweaks }) {
           <Eyebrow>this week · may 3 – may 9</Eyebrow>
           <h1 className="page-title">What's available</h1>
           <p className="page-greet">
-            Hi, {CUSTOMER.contact} at <span className="customer-name">{CUSTOMER.name}</span>.
-            Order by Tuesday 9pm.
+            <span className="customer-name">{CUSTOMER.name}</span>
           </p>
 
           {tweaks.showNote &&
@@ -261,14 +260,12 @@ function OrderPage({ tweaks }) {
                 <FulfillmentTab
                   active={mode === "delivery"}
                   onClick={() => setMode("delivery")}
-                  label="Delivery"
-                  sublabel="Wednesday morning" />
-                
+                  label="Delivery" />
+
                 <FulfillmentTab
                   active={mode === "pickup"}
                   onClick={() => setMode("pickup")}
-                  label="Pickup at farm"
-                  sublabel="3612 W 114th, Cleveland" />
+                  label="Pickup at farm" />
                 
               </div>
 

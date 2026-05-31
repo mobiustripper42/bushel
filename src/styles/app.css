@@ -1233,6 +1233,10 @@
   font-size: 1.1rem; font-weight: 600; color: var(--ink-700);
   cursor: pointer;
 }
+/* Round the outer corners to the pill radius so the hover/active background
+   can't paint a square over the curved stepper border. */
+.stepper-btn:first-of-type { border-radius: var(--r-pill, 999px) 0 0 var(--r-pill, 999px); }
+.stepper-btn:last-of-type { border-radius: 0 var(--r-pill, 999px) var(--r-pill, 999px) 0; }
 .stepper-btn:hover:not(:disabled) { background: var(--leaf-50); }
 .stepper-btn:disabled { color: var(--ink-300); cursor: default; }
 .stepper-val {
@@ -1277,9 +1281,7 @@
   border-color: var(--leaf-600);
   box-shadow: 0 0 0 2px rgba(79,138,27,0.12);
 }
-.fulfill-tab-label { font-weight: 600; font-size: 1rem; color: var(--ink-900); margin-bottom: 2px; }
-.fulfill-tab-sub { font-size: 0.82rem; color: var(--ink-500); }
-.fulfill-tab.is-active .fulfill-tab-sub { color: var(--leaf-700); }
+.fulfill-tab-label { font-weight: 600; font-size: 1rem; color: var(--ink-900); }
 
 .fulfill-detail {
   background: var(--paper);

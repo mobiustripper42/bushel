@@ -7,7 +7,7 @@ export function AllSoldOutShell({ customerName }: { customerName: string }) {
       <div className="status-eyebrow eyebrow">this week · {weekOfLabel()}</div>
       <h1 className="status-title">Everything is sold out for this week.</h1>
       <p className="status-lede">
-        Hi, {customerName}. Check back next week — Annabel re-stocks Sunday and
+        {customerName}. Check back next week — Annabel re-stocks Sunday and
         Monday. Text 216-202-5718 with any questions.
       </p>
     </StatusShell>

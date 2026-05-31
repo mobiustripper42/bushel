@@ -320,7 +320,7 @@ export function OrderForm({
           <h1 className="page-title">What&rsquo;s available</h1>
           <div className="eyebrow page-head-week">this week · {weekLabel}</div>
           <p className="page-greet">
-            Hi, <span className="customer-name">{customer.name}</span>.
+            <span className="customer-name">{customer.name}</span>
           </p>
         </header>
 
@@ -450,7 +450,6 @@ export function OrderForm({
                   onClick={() => setMode("delivery")}
                 >
                   <div className="fulfill-tab-label">Delivery</div>
-                  <div className="fulfill-tab-sub">Wednesday morning</div>
                 </button>
                 <button
                   type="button"
@@ -460,7 +459,6 @@ export function OrderForm({
                   onClick={() => setMode("pickup")}
                 >
                   <div className="fulfill-tab-label">Pickup at farm</div>
-                  <div className="fulfill-tab-sub">3612 W 114th, Cleveland</div>
                 </button>
               </div>
 
@@ -479,7 +477,6 @@ export function OrderForm({
                     id="delivery-pref"
                     className="textarea"
                     rows={3}
-                    placeholder="e.g. Leave at back door, gate code 4321."
                     value={deliveryPreference}
                     onChange={(e) => setDeliveryPreference(e.target.value)}
                   />
@@ -496,12 +493,12 @@ export function OrderForm({
                     id="pickup-note"
                     className="textarea"
                     rows={3}
-                    placeholder="e.g. Wednesday afternoon, around 3."
                     value={pickupNote}
                     onChange={(e) => setPickupNote(e.target.value)}
                   />
                   <div className="fulfill-help">
-                    Pick up at the farm. Annabel will text you the morning of.
+                    Pickup at the farm (3612 W 114th St, Cleveland). Annabel will
+                    text you the morning of.
                   </div>
                 </div>
               )}
