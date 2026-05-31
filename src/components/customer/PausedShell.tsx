@@ -16,8 +16,8 @@ export function PausedShell({
       : "Your weekly order link is paused.";
   const lede =
     reason === "closed"
-      ? `Hi, ${customerName}. Text Annabel at 216-202-5718 if you'd like to come back.`
-      : `Hi, ${customerName}. Text Annabel at 216-202-5718 to resume.`;
+      ? `${customerName}. Text Annabel at 216-202-5718 if you'd like to come back.`
+      : `${customerName}. Text Annabel at 216-202-5718 to resume.`;
   return (
     <StatusShell>
       <div className="status-eyebrow eyebrow">account</div>

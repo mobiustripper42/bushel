@@ -212,9 +212,7 @@
   background: var(--leaf-50);
   box-shadow: inset 0 0 0 1px var(--leaf-600);
 }
-.fulfill-tab-label { font-weight: 600; font-size: 1rem; color: var(--ink-900); margin-bottom: 2px; }
-.fulfill-tab-sub { font-size: 0.82rem; color: var(--ink-500); }
-.fulfill-tab.is-active .fulfill-tab-sub { color: var(--leaf-700); }
+.fulfill-tab-label { font-weight: 600; font-size: 1rem; color: var(--ink-900); }
 
 .fulfill-detail {
   background: var(--paper);
