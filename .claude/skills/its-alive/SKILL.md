@@ -26,8 +26,9 @@ Before stamping time, check for leftover work from prior sessions. The CC platfo
 
 **Resolve `WORKING_BRANCH`:**
 ```
-git show-ref --verify --quiet refs/remotes/origin/staging && WORKING_BRANCH=staging || WORKING_BRANCH=main
+WORKING_BRANCH=main
 ```
+The active trunk is always `main` (DEC-022); a `production` branch, if present, is a downstream deploy pointer and never the orphan-scan base.
 
 **Scan A — remote `claude/*` branches with commits not on `$WORKING_BRANCH`:**
 ```

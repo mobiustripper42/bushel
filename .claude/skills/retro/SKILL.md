@@ -227,10 +227,11 @@ git push origin <BRANCH>
 
 Run only if `package.json` exists at the repo root (dev-project signal — DEC-007).
 
-Resolve working branch:
+Resolve working branch — always the active trunk (DEC-022):
 ```
-git show-ref --verify --quiet refs/remotes/origin/staging && WORKING_BRANCH=staging || WORKING_BRANCH=main
+WORKING_BRANCH=main
 ```
+Bumps and tags land on `main` directly; `production` (if any) only moves at `/promote-production`.
 
 If `BRANCH != $WORKING_BRANCH`: STOP. Tell the user "Switch to `$WORKING_BRANCH` and re-run /retro." Wait.
 
@@ -259,8 +260,9 @@ c. **Commit + tag (main only):**
    git add package.json CHANGELOG.md
    [ -f package-lock.json ] && git add package-lock.json
    git commit -m "Bump version to v<NEW_VERSION> (PR #<N>)"
+   git tag "v<NEW_VERSION>"
    ```
-   If `$WORKING_BRANCH = main`: `git tag "v<NEW_VERSION>"`. On `staging`: skip the tag — `/promote-staging` tags later.
+   Tags land on the trunk at bump time. Promotion to `production` (if the project has it) carries the already-tagged commit — `/promote-production` does not tag.
 
 ### Step 8.3 — Minor-bump at phase close
 
@@ -280,8 +282,8 @@ c. Commit + tag (main only):
    git add package.json CHANGELOG.md
    [ -f package-lock.json ] && git add package-lock.json
    git commit -m "Phase <N> close — bump to v<NEW_VERSION>"
+   git tag "v<NEW_VERSION>"
    ```
-   `$WORKING_BRANCH = main` → `git tag "v<NEW_VERSION>"`. `staging` → skip.
 
 ### Step 8.4 — Push
 
