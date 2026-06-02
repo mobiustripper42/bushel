@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin · Orders — design preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="admin-shell.css">
+  <link rel="stylesheet" href="admin-orders.css">
+  <style>
+    body { margin: 0; background: var(--cream); font-family: var(--sans); color: var(--ink-900); }
+    .preview-shell { max-width: 1180px; margin: 0 auto; padding: 28px 28px 80px; }
+    .preview-banner {
+      margin-bottom: 18px;
+      padding: 10px 14px;
+      background: var(--leaf-50);
+      border: 1px solid var(--leaf-100);
+      border-radius: var(--r-sm);
+      font-size: 0.82rem;
+      color: var(--leaf-700);
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <div class="preview-banner">
+      <strong>Design preview · admin-orders.jsx</strong>
+      — click any order row to expand its detail.
+    </div>
+    <div id="root"></div>
+  </div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    (async () => {
+      const src = await fetch("admin-orders.jsx").then(r => r.text());
+      const out = Babel.transform(src, { presets: ["react"] }).code;
+      // eslint-disable-next-line no-new-func
+      new Function(out)();
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(window.OrdersPage));
+    })();
+  </script>
+</body>
+</html>
