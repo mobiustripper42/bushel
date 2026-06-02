@@ -262,8 +262,8 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 | `/its-dead` | Session end (once per window) | Stamp `ended:`, tally points, display wall_clock to screen, close session file. No time math, no version bump (those moved to `/retro`). Merge PRs whenever. |
 | `/start-phase` | Phase boundary (start) | Materialize phase as Issues with `phase:N`, `points:X` labels |
 | `/retro` | Phase boundary (end) | Compute per-session wall/dev/review from `started`/`ended`/transcript/PR timestamps. Aggregate phase velocity. Mark `[x]`, write retro, patch-bump per merged PR + minor-bump at close. |
-| `/bump-major` | Breaking change | Manually bump major version. CHANGELOG.md entry + tag (on main) or deferred tag (on staging). Dev projects only |
-| `/promote-staging` | Ship staging to prod | ff-merge `staging` → `main`, tag the release with current `package.json` version, push both. Staging-flow projects only |
+| `/bump-major` | Breaking change | Manually bump major version. CHANGELOG.md entry + tag on the trunk (`main`). Dev projects only |
+| `/promote-production` | Ship trunk to prod | ff-merge `main` → `production` (deploy-only; tag already on the commit), push. Projects with a `production` branch only |
 | `/push-seeds` | After workflow improvements | Backport project-side improvements to the seeds templates via @sync-config |
 | `/pull-seeds` | After seeds gets new improvements | Pull template changes into this project — schema-version-gated, applied via @sync-config |
 | `/read-the-tape` | After a session worth learning from | Audit JSONL transcript, find anti-patterns, propose skill improvements |
@@ -301,18 +301,17 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - Never two open PRs with migrations on the same table — merge one first.
 - **Stacking PRs is preferred** when tasks depend on each other. Branch the next task off the previous task branch (`git checkout -b task/X.Y-next task/X.Y-prev`), not off main. Only wait for the previous PR to merge when there's a migration conflict on the same table.
 
-### Staging vs no-staging
+### Production branch (DEC-022)
 
-Bushel currently has no `origin/staging`, so it ships PRs straight to `main`:
+`main` is the always-active trunk. Bushel currently deploys straight off `main`:
 - `/kill-this` opens PRs into `main` per task.
-- `/retro` patch-bumps + tags on `main` at phase boundary (no per-PR bump from `/its-dead` post-DEC-013).
-- `/retro` minor-bumps on `main` and tags `vX.0.0` immediately.
+- `/retro` patch-bumps per merged PR + minor-bumps at phase close, tagging on `main` immediately.
 
-Adopting staging later: cut from `main` once and skills auto-detect.
+Adopting a `production` deploy branch later (optional — a downstream pointer Vercel watches):
 ```
-git checkout -b staging main && git push -u origin staging
+git checkout -b production main && git push -u origin production
 ```
-After that, `/kill-this` PRs into `staging`, bumps are untagged on `staging`, and `/promote-staging` ff-merges `staging` → `main` and tags the release. No skill changes required to opt in or out — staging existence (`git show-ref --verify --quiet refs/remotes/origin/staging`) is the only signal.
+Then repoint Vercel's production branch from `main` to `production` (Settings → Git → Production Branch) **before** `main` takes new work, or WIP auto-deploys to prod. After that, ship with `/promote-production`, which ff-merges `main` → `production` and pushes (the tag is already on the commit from the bump — promotion does not tag). `production` is never a PR base and never read by sync; `/promote-production` gates on `origin/production`, so opting in/out is just the branch existing.
 
 ### Mobile PR review (developer notes)
 - GitHub mobile app, not web.
@@ -350,7 +349,7 @@ Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.
 - **Minor:** `/retro` Step 8.3 — at phase close after all patches. CHANGELOG entry summarizes the phase.
 - **Major:** `/bump-major` manual. User supplies the breaking-change rationale.
 
-**Tag rule:** tags only ever applied on `main`. In staging-flow projects (which bushel currently isn't — see above), bumps on `staging` are untagged; the tag lands when `/promote-staging` ff-merges.
+**Tag rule:** tags are applied on the active trunk (`main`) at bump time (DEC-022). A `production` deploy branch, if adopted, receives the already-tagged commit via `/promote-production` ff-merge — promotion does not tag.
 
 **Detection:** these skills check `package.json` exists at the repo root before bumping. If it doesn't (template/markdown-only project), they no-op silently.
 
