@@ -26,7 +26,7 @@ const SEED_ORDERS = [
     ],
     fulfillment: { type: "delivery", when: "Wed 8am – noon", address: "1948 W 25th St, Cleveland" },
     notes: "",
-    status: "ready", needsReconciliation: false,
+    status: "confirmed", needsReconciliation: false, confirmSent: true,
   },
   {
     id: "ord-0503-02", customer: "West Side Market — Bay Stand",
@@ -88,6 +88,15 @@ function OrdersPage() {
 
   const advance = (id, next) =>
     setOrders(os => os.map(o => o.id === id ? { ...o, status: next } : o));
+
+  const send = (id, kind) =>
+    setOrders(os => os.map(o => {
+      if (o.id !== id) return o;
+      if (kind === "confirm") {
+        return { ...o, confirmSent: true, status: o.status === "new" ? "confirmed" : o.status };
+      }
+      return { ...o, reminderSent: true };
+    }));
 
   const totals = (o) => o.items.reduce((s, i) => s + i.qty * i.price, 0);
 
@@ -172,7 +181,7 @@ function OrdersPage() {
                       <div className="ord-total mono">${total.toFixed(2)}</div>
                     </td>
                     <td className="col-o-status" onClick={e => e.stopPropagation()}>
-                      <StatusControl order={o} onAdvance={s => advance(o.id, s)}/>
+                      <StatusControl order={o} onAdvance={advance} onSend={send}/>
                     </td>
                   </tr>
                   {isOpen && (
@@ -192,35 +201,66 @@ function OrdersPage() {
   );
 }
 
-function StatusControl({ order, onAdvance }) {
+function StatusChip({ status }) {
+  if (status === "new")       return <span className="pill pill-new">New</span>;
+  if (status === "confirmed") return <span className="pill pill-confirmed">Confirmed</span>;
+  if (status === "ready")     return <span className="pill pill-ready">Ready</span>;
+  if (status === "picked-up") return <span className="pill pill-done">Picked up</span>;
+  if (status === "delivered") return <span className="pill pill-done">Delivered</span>;
+  return null;
+}
+
+function SendAction({ label, sent, onSend }) {
+  return (
+    <div className="send-action">
+      <span className="send-action-label">{label}</span>
+      {sent && <span className="send-action-sent">Sent</span>}
+      <button type="button" className="btn-send" onClick={onSend}>
+        {sent ? "Re-send" : "Send"}
+      </button>
+    </div>
+  );
+}
+
+function StatusControl({ order, onAdvance, onSend }) {
   const s = order.status;
-  if (s === "new") {
-    return (
-      <div className="status-control">
-        <span className="pill pill-new">New</span>
-        <button type="button" className="status-advance" onClick={() => onAdvance("ready")}>
-          Mark ready <IconArrow/>
+  const isPickup = order.fulfillment.type === "pickup";
+
+  // Terminal states: chip only.
+  if (s === "picked-up" || s === "delivered") {
+    return <div className="status-stack"><StatusChip status={s}/></div>;
+  }
+
+  const reminderLabel = isPickup ? "Pickup reminder" : "Delivery reminder";
+  const advanceLabel  = s === "ready" ? (isPickup ? "Mark picked up" : "Mark delivered") : "Mark ready";
+  const advanceNext   = s === "ready" ? (isPickup ? "picked-up" : "delivered") : "ready";
+
+  return (
+    <div className="status-stack">
+      <StatusChip status={s}/>
+      <div className="status-actions">
+        {s !== "ready" && (
+          <SendAction
+            label="Confirm order"
+            sent={order.confirmSent}
+            onSend={() => onSend(order.id, "confirm")}
+          />
+        )}
+        <SendAction
+          label={reminderLabel}
+          sent={order.reminderSent}
+          onSend={() => onSend(order.id, "reminder")}
+        />
+        <button
+          type="button"
+          className="status-advance status-advance-block"
+          onClick={() => onAdvance(order.id, advanceNext)}
+        >
+          {advanceLabel}
         </button>
       </div>
-    );
-  }
-  if (s === "ready") {
-    return (
-      <div className="status-control">
-        <span className="pill pill-ready">Ready</span>
-        <div className="status-split">
-          {order.fulfillment.type === "pickup" ? (
-            <button type="button" className="status-advance" onClick={() => onAdvance("picked-up")}>Picked up <IconCheck/></button>
-          ) : (
-            <button type="button" className="status-advance" onClick={() => onAdvance("delivered")}>Delivered <IconCheck/></button>
-          )}
-        </div>
-      </div>
-    );
-  }
-  if (s === "picked-up") return <span className="pill pill-done">Picked up · {order.fulfillment.when.split(" ")[0]}</span>;
-  if (s === "delivered") return <span className="pill pill-done">Delivered · Wed</span>;
-  return null;
+    </div>
+  );
 }
 
 function OrderDetail({ order, total }) {
