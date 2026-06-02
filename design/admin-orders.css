@@ -100,7 +100,7 @@
 .col-o-items  { width: 26%; min-width: 220px; }
 .col-o-ful    { width: 180px; }
 .col-o-total  { width: 90px; text-align: right; }
-.col-o-status { width: 240px; }
+.col-o-status { width: 130px; }
 
 .ord-num { font-size: 0.82rem; color: var(--ink-700); font-weight: 600; }
 .badge-recon {
@@ -177,10 +177,13 @@
 }
 .status-advance:hover { background: #2c2b27; }
 
-/* 6.x: per-order action stack — status chip + Confirm/Reminder sends + advance */
-.status-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; }
-.status-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.status-advance-block { width: 100%; margin-top: 2px; }
+.status-advance:disabled { background: var(--ink-200); color: var(--ink-500); cursor: default; }
+
+/* 6.x: order-detail action block — Confirm/Reminder sends + advance buttons */
+.ord-actions { margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--leaf-100); }
+.ord-actions-panel { display: flex; flex-direction: column; gap: 10px; max-width: 380px; }
+.ord-actions-btns { display: flex; gap: 10px; margin-top: 4px; }
+.ord-actions-btns .status-advance { flex: 1; padding: 8px 12px; }
 
 .send-action {
   display: flex; align-items: center; gap: 8px;

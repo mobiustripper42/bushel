@@ -181,13 +181,13 @@ function OrdersPage() {
                       <div className="ord-total mono">${total.toFixed(2)}</div>
                     </td>
                     <td className="col-o-status" onClick={e => e.stopPropagation()}>
-                      <StatusControl order={o} onAdvance={advance} onSend={send}/>
+                      <StatusChip status={o.status}/>
                     </td>
                   </tr>
                   {isOpen && (
                     <tr className="ord-detail-row">
                       <td colSpan={7}>
-                        <OrderDetail order={o} total={total}/>
+                        <OrderDetail order={o} total={total} onAdvance={advance} onSend={send}/>
                       </td>
                     </tr>
                   )}
@@ -222,48 +222,54 @@ function SendAction({ label, sent, onSend }) {
   );
 }
 
-function StatusControl({ order, onAdvance, onSend }) {
+function OrderActions({ order, onAdvance, onSend }) {
   const s = order.status;
   const isPickup = order.fulfillment.type === "pickup";
-
-  // Terminal states: chip only.
-  if (s === "picked-up" || s === "delivered") {
-    return <div className="status-stack"><StatusChip status={s}/></div>;
-  }
-
   const reminderLabel = isPickup ? "Pickup reminder" : "Delivery reminder";
-  const advanceLabel  = s === "ready" ? (isPickup ? "Mark picked up" : "Mark delivered") : "Mark ready";
-  const advanceNext   = s === "ready" ? (isPickup ? "picked-up" : "delivered") : "ready";
+  const terminalLabel = isPickup ? "Mark picked up" : "Mark delivered";
+  const terminalNext  = isPickup ? "picked-up" : "delivered";
+
+  const readyDone    = s === "ready" || s === "picked-up" || s === "delivered";
+  const terminalDone = s === "picked-up" || s === "delivered";
 
   return (
-    <div className="status-stack">
-      <StatusChip status={s}/>
-      <div className="status-actions">
-        {s !== "ready" && (
-          <SendAction
-            label="Confirm order"
-            sent={order.confirmSent}
-            onSend={() => onSend(order.id, "confirm")}
-          />
-        )}
+    <div className="ord-actions">
+      <div className="ord-detail-label">Actions</div>
+      <div className="ord-actions-panel">
+        <SendAction
+          label="Confirm order"
+          sent={order.confirmSent}
+          onSend={() => onSend(order.id, "confirm")}
+        />
         <SendAction
           label={reminderLabel}
           sent={order.reminderSent}
           onSend={() => onSend(order.id, "reminder")}
         />
-        <button
-          type="button"
-          className="status-advance status-advance-block"
-          onClick={() => onAdvance(order.id, advanceNext)}
-        >
-          {advanceLabel}
-        </button>
+        <div className="ord-actions-btns">
+          <button
+            type="button"
+            className="status-advance"
+            disabled={readyDone}
+            onClick={() => onAdvance(order.id, "ready")}
+          >
+            Mark ready
+          </button>
+          <button
+            type="button"
+            className="status-advance"
+            disabled={terminalDone}
+            onClick={() => onAdvance(order.id, terminalNext)}
+          >
+            {terminalLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function OrderDetail({ order, total }) {
+function OrderDetail({ order, total, onAdvance, onSend }) {
   return (
     <div className="ord-detail">
       <div className="ord-detail-grid">
@@ -317,6 +323,8 @@ function OrderDetail({ order, total }) {
           )}
         </div>
       </div>
+
+      <OrderActions order={order} onAdvance={onAdvance} onSend={onSend}/>
     </div>
   );
 }
