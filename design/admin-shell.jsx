@@ -63,8 +63,8 @@ function AdminShell({ initialPage }) {
   const nav = [
     { id: "inventory", label: "Inventory", icon: <IconLeaf/>,    badge: "12 listed" },
     { id: "customers", label: "Customers", icon: <IconUsers/>,   badge: null },
+    { id: "broadcast", label: "Send Texts", icon: <IconSend/>,   badge: null },
     { id: "orders",    label: "Orders",    icon: <IconBag/>,     badge: "4 new" },
-    { id: "broadcast", label: "Send Update", icon: <IconSend/>,  badge: null },
     { id: "settings",  label: "Settings",  icon: <IconCog/>,     badge: null },
   ];
 

@@ -34,22 +34,22 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/send",
+    label: "Send Texts",
+    icon: (
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 4 3 11l7 2 2 7z"/>
+        <path d="m10 13 5-5"/>
+      </svg>
+    ),
+  },
+  {
     href: "/admin/orders",
     label: "Orders",
     icon: (
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
         <path d="M5 8h14l-1 12H6z"/>
         <path d="M9 8V6a3 3 0 0 1 6 0v2"/>
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/send",
-    label: "Send Update",
-    icon: (
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 4 3 11l7 2 2 7z"/>
-        <path d="m10 13 5-5"/>
       </svg>
     ),
   },

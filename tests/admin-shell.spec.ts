@@ -24,6 +24,18 @@ test.describe("admin shell — authenticated", () => {
     await expect(page.getByRole("link", { name: /customers/i })).toBeVisible();
   });
 
+  test("send nav reads 'Send Texts' and sits between Customers and Orders (#188)", async ({ page }) => {
+    await page.goto("/admin");
+    const nav = page.getByRole("navigation", { name: /admin navigation/i });
+    await expect(nav.getByRole("link", { name: /send texts/i })).toBeVisible();
+    // Old label is gone from the nav.
+    await expect(nav.getByText("Send Update")).toHaveCount(0);
+    // DOM order: Customers → Send Texts → Orders.
+    const labels = await nav.locator(".admin-nav-label").allTextContents();
+    expect(labels.indexOf("Customers")).toBeLessThan(labels.indexOf("Send Texts"));
+    expect(labels.indexOf("Send Texts")).toBeLessThan(labels.indexOf("Orders"));
+  });
+
   test("nav link marks active page with aria-current", async ({ page }) => {
     await page.goto("/admin/inventory");
     const inventoryLink = page.getByRole("link", { name: /inventory/i });
