@@ -73,7 +73,7 @@ export type SeedOrderInput = {
   customerId: string;
   weekOf: string;
   fulfillmentType: "pickup" | "delivery";
-  status?: "new" | "ready" | "picked-up" | "delivered";
+  status?: "new" | "confirmed" | "ready" | "picked-up" | "delivered";
   needsReconciliation?: boolean;
   // Opt-in for delivery orders. Defaults to null — matches admin-orders-export
   // and orders-flow specs' pre-refactor behavior. admin-orders.spec passes

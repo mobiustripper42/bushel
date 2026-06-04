@@ -141,6 +141,27 @@ test.describe("admin orders list", () => {
     await expect(reloadedRow.locator(".pill-done")).toHaveText("Delivered");
   });
 
+  test("confirmed order renders the Confirmed pill and advances confirmed → ready (#190)", async ({ page }) => {
+    const ids = await customerIds();
+    const orderId = await seedOrder({
+      customerId: ids.restaurant,
+      weekOf: thisWeek,
+      fulfillmentType: "delivery",
+      status: "confirmed",
+      items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
+    });
+
+    await page.goto("/admin/orders");
+    const row = page.locator(`tr.ord-row[data-order-id="${orderId}"]`);
+    await expect(row).toHaveAttribute("data-status", "confirmed");
+    // Renders the Confirmed pill — not a fallthrough "Delivered" done-pill.
+    await expect(row.locator(".pill-confirmed")).toHaveText("Confirmed");
+
+    await row.getByRole("button", { name: /mark ready/i }).click();
+    await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
+    await expect(row.locator(".pill-ready")).toHaveText("Ready");
+  });
+
   test("pickup order: ready advances to picked-up (not delivered)", async ({ page }) => {
     const ids = await customerIds();
     const orderId = await seedOrder({

@@ -2459,9 +2459,10 @@
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.pill-new   { background: rgba(178,59,46,0.1); color: var(--rose-600); }
-.pill-ready { background: var(--leaf-50); color: var(--leaf-700); border: 1px solid var(--leaf-100); }
-.pill-done  { background: var(--ink-100); color: var(--ink-700); }
+.pill-new       { background: rgba(178,59,46,0.1); color: var(--rose-600); }
+.pill-confirmed { background: var(--amber-50); color: #8A6210; border: 1px solid #EFD89A; }
+.pill-ready     { background: var(--leaf-50); color: var(--leaf-700); border: 1px solid var(--leaf-100); }
+.pill-done      { background: var(--ink-100); color: var(--ink-700); }
 
 .status-advance {
   display: inline-flex; align-items: center; gap: 6px;

@@ -2,14 +2,48 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { weekOfMondayNY } from "@/lib/week";
 
-export type OrderStatus = "new" | "ready" | "picked-up" | "delivered";
+// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked-up | delivered).
+// Confirmed is optional. Ordering matches codes.sort_order.
+export type OrderStatus =
+  | "new"
+  | "confirmed"
+  | "ready"
+  | "picked-up"
+  | "delivered";
 
 export const ORDER_STATUSES: OrderStatus[] = [
   "new",
+  "confirmed",
   "ready",
   "picked-up",
   "delivered",
 ];
+
+// The no-regress auto-advance rule for confirm-sends (DEC-035): sending the
+// confirmation text moves a new order to confirmed, but must never regress a
+// ready/terminal order. Wired to the confirm-send action in the Orders-page
+// action stack (#192); lives here as a pure, testable helper.
+export function statusAfterConfirmSend(current: OrderStatus): OrderStatus {
+  return current === "new" ? "confirmed" : current;
+}
+
+// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked-up | delivered).
+// Confirmed is optional — new → ready stays valid (Annabel may pack before
+// texting). Fulfillment type pins which terminal state is valid. Pure +
+// exported so advance-order-status.ts (a "use server" module, which can only
+// export async actions) can import it and tests can exercise the table.
+export function isValidTransition(
+  from: OrderStatus,
+  to: OrderStatus,
+  fulfillmentType: "pickup" | "delivery",
+): boolean {
+  if (from === "new" && to === "confirmed") return true;
+  if (from === "new" && to === "ready") return true;
+  if (from === "confirmed" && to === "ready") return true;
+  if (from === "ready" && to === "picked-up") return fulfillmentType === "pickup";
+  if (from === "ready" && to === "delivered") return fulfillmentType === "delivery";
+  return false;
+}
 
 export type OrderItem = {
   productId: string;
