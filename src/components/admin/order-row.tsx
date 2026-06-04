@@ -55,7 +55,11 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function handleAdvance(next: OrderStatus) {
+  // `quiet` suppresses the error surface — used by the confirm auto-advance,
+  // where a rejected new→confirmed (because the order already moved past new,
+  // e.g. a mid-flight Mark-ready or double-tap) is non-actionable: the send
+  // still succeeded, so we just roll the optimistic status back silently.
+  function handleAdvance(next: OrderStatus, quiet = false) {
     setError(null);
     const previous = optimisticStatus;
     setOptimisticStatus(next);
@@ -63,7 +67,7 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
       const result = await advanceOrderStatus(order.id, next);
       if (result.error) {
         setOptimisticStatus(previous);
-        setError(result.error);
+        if (!quiet) setError(result.error);
       }
     });
   }

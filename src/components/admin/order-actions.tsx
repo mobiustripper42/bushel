@@ -18,7 +18,7 @@ export function OrderActions({
   pending,
 }: {
   order: OrderRowData;
-  onAdvance: (next: OrderStatus) => void;
+  onAdvance: (next: OrderStatus, quiet?: boolean) => void;
   pending: boolean;
 }) {
   const isPickup = order.fulfillmentType === "pickup";
@@ -49,9 +49,11 @@ export function OrderActions({
         initialSentAt={order.confirmSentAt}
         revalidate="/admin/orders"
         onRecorded={() => {
-          // Auto-advance new → confirmed; never regress a later status.
+          // Auto-advance new → confirmed; never regress a later status. Quiet:
+          // if the order already moved past new (mid-flight Mark / double-tap),
+          // the server rejects new→confirmed — non-actionable, so don't surface it.
           const next = statusAfterConfirmSend(order.status);
-          if (next !== order.status) onAdvance(next);
+          if (next !== order.status) onAdvance(next, true);
         }}
       />
 

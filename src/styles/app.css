@@ -2467,7 +2467,7 @@
   cursor: pointer; white-space: nowrap; transition: background 0.1s;
 }
 .btn-send:hover { background: var(--leaf-700); }
-.btn-send[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+.btn-send[aria-disabled="true"] { opacity: 0.5; cursor: default; pointer-events: none; }
 
 .pill {
   display: inline-flex; align-items: center;
