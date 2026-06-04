@@ -2449,7 +2449,26 @@
   text-align: right;
 }
 
-.status-control { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+/* Per-order status cell (#192): chip always; action stack under it when the
+   row is expanded. Design: design/admin-orders.{jsx,css}. */
+.status-stack { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; }
+.status-stack > .pill { align-self: flex-start; }
+
+.ord-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.ord-actions .status-advance { width: 100%; justify-content: center; }
+
+.send-action { display: flex; align-items: center; gap: 8px; width: 100%; }
+.send-action-label { flex: 1; font-size: 0.82rem; color: var(--ink-700); white-space: nowrap; }
+.send-action-sent { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em; color: var(--leaf-700); }
+.btn-send {
+  background: var(--leaf-600); color: var(--paper); border: none;
+  border-radius: var(--r-sm); padding: 4px 12px;
+  font-family: var(--sans); font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: background 0.1s;
+}
+.btn-send:hover { background: var(--leaf-700); }
+.btn-send[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+
 .pill {
   display: inline-flex; align-items: center;
   padding: 3px 10px;
@@ -2731,20 +2750,17 @@
   .ord-items-prev { -webkit-line-clamp: 2; }
   .ord-ful { flex-direction: row; align-items: center; gap: 8px; }
 
-  /* Status row: pill + advance button on a single line, button is full-width
-     and ≥44px tall (WCAG 2.5.5). */
-  .status-control {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    margin-top: 4px;
-  }
-  .status-advance {
-    flex: 1;
+  /* Action stack (#192): full-width, touch-sized controls (≥44px, WCAG 2.5.5). */
+  .ord-actions { gap: 8px; margin-top: 4px; }
+  .ord-actions .status-advance {
     min-height: 44px;
     padding: 0 16px;
     font-size: 0.9rem;
-    justify-content: center;
+  }
+  .send-action .btn-send {
+    min-height: 44px;
+    padding: 0 16px;
+    font-size: 0.88rem;
   }
 
   /* Detail panel: collapse to single column, tighten padding. */

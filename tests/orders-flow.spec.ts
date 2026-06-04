@@ -92,6 +92,8 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
 
     const row = adminPage.locator(`tr.ord-row[data-order-id="${orderId}"]`);
     await expect(row).toHaveAttribute("data-status", "new");
+    // #192: advance buttons live in the expanded row — open it first.
+    await row.locator(".col-o-cust").click();
 
     // new → ready
     await row.getByRole("button", { name: /mark ready/i }).click();

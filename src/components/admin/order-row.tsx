@@ -4,6 +4,7 @@ import { useState, useTransition, Fragment } from "react";
 
 import { advanceOrderStatus } from "@/actions/advance-order-status";
 import { OrderDetail } from "@/components/admin/order-detail";
+import { OrderActions } from "@/components/admin/order-actions";
 import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/orders-queries";
 import { totalItemCount } from "@/lib/order-items";
 
@@ -37,75 +38,15 @@ function itemsPreview(items: OrderRowData["items"]): string {
   return `${names}${extra}`;
 }
 
-function StatusControl({
-  order,
-  onAdvance,
-  pending,
-}: {
-  order: OrderRowData;
-  onAdvance: (next: OrderStatus) => void;
-  pending: boolean;
-}) {
-  if (order.status === "new") {
-    return (
-      <div className="status-control">
-        <span className="pill pill-new">New</span>
-        <button
-          type="button"
-          className="status-advance"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdvance("ready");
-          }}
-          disabled={pending}
-        >
-          Mark ready →
-        </button>
-      </div>
-    );
-  }
-  if (order.status === "confirmed") {
-    return (
-      <div className="status-control">
-        <span className="pill pill-confirmed">Confirmed</span>
-        <button
-          type="button"
-          className="status-advance"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdvance("ready");
-          }}
-          disabled={pending}
-        >
-          Mark ready →
-        </button>
-      </div>
-    );
-  }
-  if (order.status === "ready") {
-    const terminal: OrderStatus =
-      order.fulfillmentType === "pickup" ? "picked-up" : "delivered";
-    const label = terminal === "picked-up" ? "Picked up ✓" : "Delivered ✓";
-    return (
-      <div className="status-control">
-        <span className="pill pill-ready">Ready</span>
-        <button
-          type="button"
-          className="status-advance"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdvance(terminal);
-          }}
-          disabled={pending}
-        >
-          {label}
-        </button>
-      </div>
-    );
-  }
-  if (order.status === "picked-up") {
+// Collapsed rows show only the chip (#192). The advance + send controls live
+// in OrderActions, rendered under the chip when the row is expanded.
+function StatusChip({ status }: { status: OrderStatus }) {
+  if (status === "new") return <span className="pill pill-new">New</span>;
+  if (status === "confirmed")
+    return <span className="pill pill-confirmed">Confirmed</span>;
+  if (status === "ready") return <span className="pill pill-ready">Ready</span>;
+  if (status === "picked-up")
     return <span className="pill pill-done">Picked up</span>;
-  }
   return <span className="pill pill-done">Delivered</span>;
 }
 
@@ -170,12 +111,21 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
           <div className="ord-total mono">{formatMoney(view.totalCents)}</div>
         </td>
         <td className="col-o-status" onClick={(e) => e.stopPropagation()}>
-          <StatusControl order={view} onAdvance={handleAdvance} pending={pending} />
-          {error && (
-            <div className="ord-row-error" role="alert">
-              {error}
-            </div>
-          )}
+          <div className="status-stack">
+            <StatusChip status={view.status} />
+            {isOpen && (
+              <OrderActions
+                order={view}
+                onAdvance={handleAdvance}
+                pending={pending}
+              />
+            )}
+            {error && (
+              <div className="ord-row-error" role="alert">
+                {error}
+              </div>
+            )}
+          </div>
         </td>
       </tr>
       {isOpen && (
