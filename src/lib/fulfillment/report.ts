@@ -45,7 +45,12 @@ function round2(n: number): number {
 export async function buildFulfillmentReport(
   weekOf: string,
 ): Promise<FulfillmentReport> {
-  const orders = await listOrders(weekOf);
+  // Fulfilled orders are already out the door — exclude picked-up/delivered so
+  // the sheet only shows what's still to harvest and pack. Negation keeps new,
+  // confirmed (DEC-035), and ready.
+  const orders = (await listOrders(weekOf)).filter(
+    (o) => o.status !== "picked-up" && o.status !== "delivered",
+  );
 
   // ── consolidated harvest list ──────────────────────────────────────────
   const byProduct = new Map<
