@@ -78,7 +78,7 @@ export function FulfillmentReportView({
           </p>
           <div className="fr-slip-grid">
             {report.slips.map((slip) => (
-              <div className="fr-slip" key={slip.customer}>
+              <div className="fr-slip" key={slip.orderId}>
                 <div className="fr-slip-head">
                   <div className="fr-slip-customer">{slip.customer}</div>
                   <span className={`fr-slip-tag fr-slip-tag-${slip.fulfillment}`}>

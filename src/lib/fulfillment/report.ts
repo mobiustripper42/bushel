@@ -24,6 +24,7 @@ export type HarvestProduct = {
 export type SlipLine = { qty: number; unit: string; product: string };
 
 export type Slip = {
+  orderId: string;
   customer: string;
   fulfillment: "pickup" | "delivery";
   where: string;
@@ -100,6 +101,7 @@ export async function buildFulfillmentReport(
   // ── per-customer packing slips ─────────────────────────────────────────
   const slips: Slip[] = orders
     .map((o) => ({
+      orderId: o.id,
       customer: o.customerName,
       fulfillment: o.fulfillmentType,
       where:
