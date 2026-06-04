@@ -12,6 +12,10 @@ export async function recordSend(
   customerId: string,
   weekOf: string,
   mode: SendMode,
+  // Path to revalidate after recording. Defaults to the Send page; the
+  // Orders-page action stack (#192) passes "/admin/orders". Kept optional so
+  // the original 3-arg call sites stay unchanged (#191).
+  revalidate: string = "/admin/send",
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
 
@@ -35,6 +39,6 @@ export async function recordSend(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/send");
+  revalidatePath(revalidate);
   return { error: null };
 }
