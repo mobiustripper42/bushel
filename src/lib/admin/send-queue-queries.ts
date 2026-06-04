@@ -107,11 +107,10 @@ export async function getIntroNote(): Promise<string> {
 }
 
 // Count of weekly_update unsent for the current week — used by the admin
-// nav badge. Only weekly_update has a badge; order_confirmation and
-// pickup_reminder are surfaced through the page's mode tabs instead, to
-// keep the nav uncluttered when multiple modes have unsent customers.
-// Runs on every admin page render via the layout, so we avoid the full
-// queue load: count subscribers, subtract sent rows for the week.
+// nav badge on Send Texts. Order-confirmation and pickup-reminder sends moved
+// onto the Orders page (#190), so weekly_update is the only mode this page
+// handles. Runs on every admin page render via the layout, so we avoid the
+// full queue load: count subscribers, subtract sent rows for the week.
 export async function getWeeklyUpdateUnsentCount(): Promise<number> {
   const supabase = createAdminClient();
   const weekOf = weekOfMondayNY();

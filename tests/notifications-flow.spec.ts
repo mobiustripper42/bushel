@@ -49,14 +49,6 @@ async function ensureOrderingOpen(): Promise<void> {
     .eq("is_singleton", true);
 }
 
-async function clearOrdersFor(customerId: string): Promise<void> {
-  await admin()
-    .from("orders")
-    .delete()
-    .eq("customer_id", customerId)
-    .eq("week_of", weekOfMondayNY());
-}
-
 // Polls customer_sends for a row's sent_at, optionally requiring it to
 // differ from a prior value (used to detect a second upsert landed). Real
 // signal of "the server action completed" — beats a fixed sleep.
@@ -79,28 +71,6 @@ async function pollSentAt(
     await new Promise((r) => setTimeout(r, 100));
   }
   return null;
-}
-
-async function ensureDeliveryOrder(token: string): Promise<void> {
-  const sb = admin();
-  const { data } = await sb
-    .from("customers")
-    .select("id, delivery_address")
-    .eq("token", token)
-    .single();
-  if (!data) throw new Error(`customer ${token} not found`);
-  await sb.from("orders").upsert(
-    {
-      customer_id: data.id,
-      week_of: weekOfMondayNY(),
-      fulfillment_type: "delivery",
-      delivery_address: data.delivery_address,
-      delivery_preference: "Back door, gate code 4321",
-      pickup_note: null,
-      status: "new",
-    },
-    { onConflict: "customer_id,week_of" },
-  );
 }
 
 test.describe("notifications cross-task flow", () => {
@@ -226,42 +196,4 @@ test.describe("notifications cross-task flow", () => {
     expect(data?.length).toBe(1);
   });
 
-  test("mode independence — sent in weekly_update does not bleed into order_confirmation", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === "mobile", "WebKit navigates to sms:... on click and clears the page; covered on desktop");
-    const ids = await customerIds();
-
-    // Seed an order so the customer appears in order_confirmation mode too.
-    // try/finally so a mid-test failure doesn't leak the order into the
-    // shared dev DB and pollute subsequent specs.
-    await clearOrdersFor(ids.farmStand);
-    await ensureDeliveryOrder(TEST_CUSTOMERS.farmStand.token);
-
-    try {
-      // Mark sent in weekly_update mode
-      await page.goto("/admin/send");
-      const weeklyList = page.getByRole("list", { name: /weekly update queue/i });
-      const weeklyRow = weeklyList.locator(`li.send-row[data-customer-id="${ids.farmStand}"]`);
-      await weeklyRow.getByRole("link", { name: /^send$/i }).click();
-      await expect(weeklyRow).toHaveAttribute("data-sent", "true", { timeout: 5000 });
-
-      // Switch to order_confirmation mode — same customer should appear unsent
-      await page.goto("/admin/send?mode=order_confirmation");
-      const confirmList = page.getByRole("list", { name: /order confirmation queue/i });
-      const confirmRow = confirmList.locator(`li.send-row[data-customer-id="${ids.farmStand}"]`);
-      await expect(confirmRow).toHaveCount(1);
-      await expect(confirmRow).toHaveAttribute("data-sent", "false");
-      await expect(confirmRow.locator(".send-status")).toHaveText("Unsent");
-
-      // DB sanity — only one customer_sends row, in weekly_update
-      const sb = admin();
-      const { data: rows } = await sb
-        .from("customer_sends")
-        .select("mode")
-        .eq("customer_id", ids.farmStand)
-        .eq("week_of", weekOfMondayNY());
-      expect(rows?.map((r) => r.mode).sort()).toEqual(["weekly_update"]);
-    } finally {
-      await clearOrdersFor(ids.farmStand);
-    }
-  });
 });
