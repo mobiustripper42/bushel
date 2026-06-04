@@ -87,3 +87,38 @@ test("invalid token 404s", async ({ page }) => {
   expect(res?.status()).toBe(404);
   await expect(page.getByText("This link doesn’t work.")).toBeVisible();
 });
+
+test("excludes picked-up / delivered orders (#200)", async ({ page }) => {
+  const ids = await customerIds();
+  const sb = admin();
+  // The restaurant's (delivery) order is fulfilled — out the door.
+  await sb
+    .from("orders")
+    .update({ status: "delivered" })
+    .eq("customer_id", ids.restaurant)
+    .eq("week_of", WEEK);
+
+  try {
+    await page.goto(`/f/${await fulfillmentToken()}`);
+
+    // Restaurant slip is gone; the still-active farm-stand slip remains.
+    await expect(
+      page.locator(".fr-slip", { hasText: TEST_CUSTOMERS.restaurant.name }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator(".fr-slip", { hasText: TEST_CUSTOMERS.farmStand.name }),
+    ).toHaveCount(1);
+
+    // Kale drops 5 → 3 (restaurant's 2 excluded); Honey (restaurant-only) gone.
+    await expect(
+      page.locator(".fr-hv-row", { hasText: "Kale" }).locator(".fr-hv-unit-qty"),
+    ).toHaveText("3");
+    await expect(page.locator(".fr-hv-row", { hasText: "Honey" })).toHaveCount(0);
+  } finally {
+    await sb
+      .from("orders")
+      .update({ status: "new" })
+      .eq("customer_id", ids.restaurant)
+      .eq("week_of", WEEK);
+  }
+});
