@@ -19,29 +19,6 @@ async function clearIntroNote(): Promise<void> {
   await sb.from("ordering_schedule").update({ intro_note: null }).eq("is_singleton", true);
 }
 
-async function ensureOrderForCustomer(token: string): Promise<void> {
-  const sb = admin();
-  const { data: customer } = await sb
-    .from("customers")
-    .select("id, delivery_address")
-    .eq("token", token)
-    .single();
-  if (!customer) throw new Error(`customer ${token} not found`);
-  const weekOf = weekOfMondayNY();
-  await sb.from("orders").upsert(
-    {
-      customer_id: customer.id,
-      week_of: weekOf,
-      fulfillment_type: "delivery",
-      delivery_address: customer.delivery_address,
-      delivery_preference: "Back door, gate code 4321",
-      pickup_note: null,
-      status: "new",
-    },
-    { onConflict: "customer_id,week_of" },
-  );
-}
-
 async function clearCurrentWeekOrders(): Promise<void> {
   const sb = admin();
   const weekOf = weekOfMondayNY();
@@ -272,29 +249,15 @@ test.describe("admin send-queue", () => {
     expect(href).toContain("Sungolds%20are%20exceptional%20this%20week.");
   });
 
-  test("order_confirmation mode: only customers with current-week orders appear", async ({ page }) => {
-    const ids = await customerIds();
-    await clearCurrentWeekOrders();
-    await ensureOrderForCustomer(TEST_CUSTOMERS.farmStand.token);
+  test("weekly-only: title reads 'Send Texts' and no mode tabs render (#189)", async ({ page }) => {
+    await customerIds();
+    await page.goto("/admin/send");
 
-    await page.goto("/admin/send?mode=order_confirmation");
-
-    const list = page.getByRole("list", { name: /order confirmation queue/i });
-    const farmStandRow = list.locator(`li.send-row[data-customer-id="${ids.farmStand}"]`);
-    const restaurantRow = list.locator(`li.send-row[data-customer-id="${ids.restaurant}"]`);
-
-    // farmStand has an order this week (we just created one); restaurant does
-    // not. Other dev-DB customers may or may not appear — we only assert what
-    // we control.
-    await expect(farmStandRow).toHaveCount(1);
-    await expect(restaurantRow).toHaveCount(0);
-
-    // sms href reflects the delivery confirmation template
-    const href = await farmStandRow
-      .getByRole("link", { name: /^send$/i })
-      .getAttribute("href");
-    expect(href).toContain("Delivery%20note");
-    expect(href).toContain("gate%20code%204321");
+    await expect(page.locator(".send-title")).toHaveText("Send Texts");
+    // The confirmation/reminder mode tabs are gone — they moved to the Orders page.
+    await expect(page.locator(".send-mode-tabs")).toHaveCount(0);
+    await expect(page.getByText("Order confirmation")).toHaveCount(0);
+    await expect(page.getByText("Pickup reminder")).toHaveCount(0);
   });
 
   test("mobile (375px): page fits viewport; Send button is touch-sized; drawer opens and closes", async ({ page, viewport }, testInfo) => {
@@ -324,29 +287,5 @@ test.describe("admin send-queue", () => {
     await expect(drawer.getByRole("link", { name: /inventory/i })).toBeVisible();
     await page.getByRole("button", { name: /close navigation/i }).click();
     await expect(page.locator(".admin-mobile-drawer.is-open")).toHaveCount(0);
-  });
-
-  test("pickup_reminder mode: same order-bound customer set, different body", async ({ page }, testInfo) => {
-    const ids = await customerIds();
-    await clearCurrentWeekOrders();
-    await ensureOrderForCustomer(TEST_CUSTOMERS.farmStand.token);
-
-    await page.goto("/admin/send?mode=pickup_reminder");
-
-    const list = page.getByRole("list", { name: /pickup reminder queue/i });
-    const farmStandRow = list.locator(`li.send-row[data-customer-id="${ids.farmStand}"]`);
-    await expect(farmStandRow).toHaveCount(1);
-
-    const href = await farmStandRow
-      .getByRole("link", { name: /^send$/i })
-      .getAttribute("href");
-    expect(href).toContain("reminder");
-    expect(href).toContain("ready%20for%20pickup");
-
-    if (testInfo.project.name === "mobile") return; // sms: navigation clears page on WebKit; covered by desktop project
-    await farmStandRow.getByRole("link", { name: /^send$/i }).click();
-    await expect(farmStandRow.locator(".send-status")).toContainText("Sent", {
-      timeout: 5000,
-    });
   });
 });

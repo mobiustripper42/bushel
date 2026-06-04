@@ -94,72 +94,6 @@ export async function getWeeklyUpdateQueue(): Promise<SendQueueRow[]> {
   }));
 }
 
-type OrderBoundMode = "order_confirmation" | "pickup_reminder";
-
-// order_confirmation + pickup_reminder both queue from "customers with an
-// order this week." Shared loader; mode only affects which customer_sends
-// rows we lookup.
-async function getOrderBoundQueue(
-  mode: OrderBoundMode,
-): Promise<SendQueueRow[]> {
-  const supabase = createAdminClient();
-  const weekOf = weekOfMondayNY();
-
-  const [ordersResult, sendMap] = await Promise.all([
-    supabase
-      .from("orders")
-      .select(
-        "customer_id, fulfillment_type, pickup_note, delivery_preference, customers(id, name, phone, token, priority)",
-      )
-      .eq("week_of", weekOf),
-    loadSendStateMap(weekOf, mode),
-  ]);
-
-  if (ordersResult.error)
-    throw new Error(`getOrderBoundQueue(${mode}): ${ordersResult.error.message}`);
-
-  const rows: SendQueueRow[] = (ordersResult.data ?? [])
-    .filter((o) => o.customers !== null)
-    .map((o) => {
-      const c = o.customers as {
-        id: string;
-        name: string;
-        phone: string | null;
-        token: string;
-        priority: number;
-      };
-      // Narrow fulfillment_type at the boundary; anything outside the union
-      // falls back to "pickup" (the conservative default) rather than the
-      // delivery branch picking up garbage.
-      const fulfillmentType: "pickup" | "delivery" =
-        o.fulfillment_type === "delivery" ? "delivery" : "pickup";
-      return {
-        customerId: c.id,
-        customerName: c.name,
-        phone: c.phone,
-        token: c.token,
-        priority: c.priority,
-        sentAt: sendMap.get(c.id) ?? null,
-        fulfillmentType,
-        pickupNote: o.pickup_note,
-        deliveryPreference: o.delivery_preference,
-      };
-    });
-
-  return rows.sort((a, b) => {
-    if (a.priority !== b.priority) return b.priority - a.priority;
-    return a.customerName.localeCompare(b.customerName);
-  });
-}
-
-export async function getOrderConfirmationQueue(): Promise<SendQueueRow[]> {
-  return getOrderBoundQueue("order_confirmation");
-}
-
-export async function getPickupReminderQueue(): Promise<SendQueueRow[]> {
-  return getOrderBoundQueue("pickup_reminder");
-}
-
 // ordering_schedule is a singleton (DEC-030). Same .single() discipline as
 // getOrderingOpen — loud failure if the row goes missing.
 export async function getIntroNote(): Promise<string> {
@@ -173,11 +107,10 @@ export async function getIntroNote(): Promise<string> {
 }
 
 // Count of weekly_update unsent for the current week — used by the admin
-// nav badge. Only weekly_update has a badge; order_confirmation and
-// pickup_reminder are surfaced through the page's mode tabs instead, to
-// keep the nav uncluttered when multiple modes have unsent customers.
-// Runs on every admin page render via the layout, so we avoid the full
-// queue load: count subscribers, subtract sent rows for the week.
+// nav badge on Send Texts. Order-confirmation and pickup-reminder sends moved
+// onto the Orders page (#190), so weekly_update is the only mode this page
+// handles. Runs on every admin page render via the layout, so we avoid the
+// full queue load: count subscribers, subtract sent rows for the week.
 export async function getWeeklyUpdateUnsentCount(): Promise<number> {
   const supabase = createAdminClient();
   const weekOf = weekOfMondayNY();

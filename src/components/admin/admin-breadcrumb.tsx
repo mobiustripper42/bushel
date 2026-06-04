@@ -6,7 +6,7 @@ const PAGE_LABELS: Record<string, string> = {
   "/admin/inventory": "Inventory",
   "/admin/customers": "Customers",
   "/admin/orders": "Orders",
-  "/admin/send": "Send Update",
+  "/admin/send": "Send Texts",
   "/admin/settings": "Settings",
 };
 
