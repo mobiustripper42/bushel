@@ -2919,3 +2919,143 @@
   main:has(.cust-table) .page-actions { width: 100%; flex-wrap: wrap; }
   main:has(.cust-table) .page-actions button { flex: 1; min-height: 44px; }
 }
+
+/* ============================================================
+   Fulfillment · Harvest & Pack Sheet — public /f/[token] (#195)
+   Layout spec: design/fulfillment-report.{jsx,css}. Mobile-first
+   surface (farm hands on phones); desktop two-column; print flows.
+   ============================================================ */
+
+.fr-report {
+  max-width: 920px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-md);
+  box-shadow: var(--hairline);
+  padding: 32px 36px 40px;
+}
+
+.fr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--leaf-600);
+}
+.fr-title { font-size: 1.7rem; margin-top: 2px; }
+.fr-meta { text-align: right; flex-shrink: 0; }
+.fr-week { font-weight: 600; font-size: 1.05rem; color: var(--ink-900); }
+.fr-sub { font-size: 0.82rem; color: var(--ink-500); margin-top: 2px; }
+
+.fr-section { margin-top: 30px; }
+.fr-section-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--leaf-700);
+  font-weight: 700;
+}
+.fr-note { font-size: 0.86rem; color: var(--ink-500); margin-top: 2px; }
+.fr-empty { font-size: 0.95rem; color: var(--ink-500); margin-top: 10px; }
+
+/* harvest list */
+.fr-hv-grid { margin-top: 14px; columns: 2; column-gap: 40px; }
+.fr-hv-row {
+  break-inside: avoid;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--ink-200);
+  margin-bottom: 2px;
+}
+.fr-hv-name { font-weight: 600; font-size: 1.02rem; margin-bottom: 4px; }
+.fr-hv-lines { display: flex; flex-direction: column; gap: 1px; }
+.fr-hv-unit {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.95rem;
+  color: var(--ink-700);
+  padding: 2px 0;
+}
+.fr-hv-unit-label { color: var(--ink-500); }
+.fr-hv-unit-qty { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-900); }
+.fr-hv-total { margin-top: 3px; padding-top: 4px; border-top: 1px dotted var(--ink-300); }
+.fr-hv-total .fr-hv-unit-label { color: var(--leaf-700); font-weight: 600; text-transform: none; }
+.fr-hv-total .fr-hv-unit-qty { color: var(--leaf-700); font-size: 1.05rem; }
+
+/* packing slips */
+.fr-slip-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.fr-slip {
+  break-inside: avoid;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-sm);
+  padding: 14px 16px;
+}
+.fr-slip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fr-slip-customer { font-weight: 600; font-size: 1rem; }
+.fr-slip-tag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.fr-slip-tag-delivery { background: var(--leaf-100); color: var(--leaf-700); }
+.fr-slip-tag-pickup { background: var(--amber-50); color: #8b5e0a; }
+.fr-slip-where { font-size: 0.82rem; color: var(--ink-500); margin: 2px 0 10px; }
+.fr-slip-lines { display: flex; flex-direction: column; gap: 4px; }
+.fr-slip-line {
+  display: grid;
+  grid-template-columns: 2.4em 4.5em 1fr;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+.fr-slip-qty { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.fr-slip-unit { color: var(--ink-500); font-size: 0.85rem; }
+.fr-slip-product { color: var(--ink-900); }
+
+/* not-found */
+.fr-notfound { max-width: 460px; margin: 64px auto; padding: 0 20px; text-align: center; }
+.fr-notfound-title { font-size: 1.4rem; margin-top: 6px; }
+.fr-notfound-lede { color: var(--ink-500); margin-top: 8px; }
+
+/* mobile (farm hands view on phones — primary surface) */
+@media (max-width: 680px) {
+  .fr-report {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 20px 16px 28px;
+  }
+  .fr-head { flex-direction: column; gap: 6px; }
+  .fr-meta { text-align: left; }
+  .fr-title { font-size: 1.45rem; }
+  .fr-section { margin-top: 26px; }
+  .fr-hv-grid { columns: 1; }
+  .fr-hv-row { padding: 12px 0 14px; }
+  .fr-hv-name { font-size: 1.08rem; }
+  .fr-hv-unit { font-size: 1rem; padding: 3px 0; }
+  .fr-hv-total .fr-hv-unit-qty { font-size: 1.1rem; }
+  .fr-slip-grid { grid-template-columns: 1fr; gap: 14px; }
+  .fr-slip { padding: 16px; }
+  .fr-slip-customer { font-size: 1.05rem; }
+  .fr-slip-line { font-size: 1rem; }
+}
+
+/* print (secondary — Annabel may print; less paper, continuous flow) */
+@media print {
+  .fr-no-print { display: none !important; }
+  .fr-report { max-width: none; margin: 0; border: 0; box-shadow: none; padding: 0; }
+  .fr-slip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .fr-section { margin-top: 20px; }
+  .fr-hv-row { padding: 6px 0 8px; }
+}

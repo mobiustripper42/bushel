@@ -16,6 +16,7 @@ type Props = {
   weekOf: string;
   thisWeekCount: number;
   lastWeekCount: number;
+  harvestSheetToken: string;
 };
 
 function compareOrders(a: OrderRowData, b: OrderRowData, key: SortKey, dir: SortDir): number {
@@ -56,7 +57,7 @@ function SortHeader({
   );
 }
 
-export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeekCount }: Props) {
+export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeekCount, harvestSheetToken }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -107,6 +108,19 @@ export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeek
           <h1 className="page-title">Orders</h1>
         </div>
         <div className="page-actions">
+          <a
+            className="btn btn-secondary"
+            href={`/f/${harvestSheetToken}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open the harvest & pack sheet — same link to text a farm hand"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 4c0 8-4.5 14-12 14-1 0-2-.1-3-.4" />
+              <path d="M5 19c0-6 4-12 14-15" />
+            </svg>
+            Harvest sheet
+          </a>
           <ExportOrdersButton orders={sorted} weekOf={weekOf} />
         </div>
       </div>
