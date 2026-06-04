@@ -1,0 +1,149 @@
+/* Fulfillment · Harvest & Pack Sheet — companion to fulfillment-report.jsx */
+
+.report {
+  max-width: 920px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-md);
+  box-shadow: var(--hairline);
+  padding: 32px 36px 40px;
+}
+
+/* ── header ─────────────────────────────────────────────── */
+.report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--leaf-600);
+}
+.report-title { font-size: 1.7rem; margin-top: 2px; }
+.report-meta { text-align: right; flex-shrink: 0; }
+.report-week { font-weight: 600; font-size: 1.05rem; color: var(--ink-900); }
+.report-sub { font-size: 0.82rem; color: var(--ink-500); margin-top: 2px; }
+
+/* ── sections ───────────────────────────────────────────── */
+.report-section { margin-top: 30px; }
+.section-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--leaf-700);
+  font-weight: 700;
+}
+.section-note { font-size: 0.86rem; color: var(--ink-500); margin-top: 2px; }
+
+/* ── harvest list ───────────────────────────────────────── */
+.hv-grid {
+  margin-top: 14px;
+  columns: 2;
+  column-gap: 40px;
+}
+.hv-row {
+  break-inside: avoid;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--ink-200);
+  margin-bottom: 2px;
+}
+.hv-name { font-weight: 600; font-size: 1.02rem; margin-bottom: 4px; }
+.hv-lines { display: flex; flex-direction: column; gap: 1px; }
+.hv-unit {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.95rem;
+  color: var(--ink-700);
+  padding: 2px 0;
+}
+.hv-unit-label { color: var(--ink-500); }
+.hv-unit-qty { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-900); }
+.hv-total {
+  margin-top: 3px;
+  padding-top: 4px;
+  border-top: 1px dotted var(--ink-300);
+}
+.hv-total .hv-unit-label { color: var(--leaf-700); font-weight: 600; text-transform: none; }
+.hv-total .hv-unit-qty { color: var(--leaf-700); font-size: 1.05rem; }
+
+/* ── packing slips ──────────────────────────────────────── */
+.slip-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.slip {
+  break-inside: avoid;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-sm);
+  padding: 14px 16px;
+}
+.slip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.slip-customer { font-weight: 600; font-size: 1rem; }
+.slip-tag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.slip-tag-delivery { background: var(--leaf-100); color: var(--leaf-700); }
+.slip-tag-pickup { background: var(--amber-50); color: #8b5e0a; }
+.slip-where { font-size: 0.82rem; color: var(--ink-500); margin: 2px 0 10px; }
+.slip-lines { display: flex; flex-direction: column; gap: 4px; }
+.slip-line {
+  display: grid;
+  grid-template-columns: 2.4em 4.5em 1fr;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+.slip-qty { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.slip-unit { color: var(--ink-500); font-size: 0.85rem; }
+.slip-product { color: var(--ink-900); }
+
+/* ── mobile (farm hands view on phones — primary surface) ─ */
+@media (max-width: 680px) {
+  .report {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 20px 16px 28px;
+  }
+  .report-head { flex-direction: column; gap: 6px; }
+  .report-meta { text-align: left; }
+  .report-title { font-size: 1.45rem; }
+  .report-section { margin-top: 26px; }
+
+  /* one column — no side-by-side on a phone */
+  .hv-grid { columns: 1; }
+  .hv-row { padding: 12px 0 14px; }
+  .hv-name { font-size: 1.08rem; }
+  .hv-unit { font-size: 1rem; padding: 3px 0; }
+  .hv-total .hv-unit-qty { font-size: 1.1rem; }
+
+  .slip-grid { grid-template-columns: 1fr; gap: 14px; }
+  .slip { padding: 16px; }
+  .slip-customer { font-size: 1.05rem; }
+  .slip-line { font-size: 1rem; }
+}
+
+/* ── print ──────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  .report {
+    max-width: none;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+  .slip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .report-section { margin-top: 20px; }
+  /* a touch tighter on paper */
+  .hv-row { padding: 6px 0 8px; }
+}
