@@ -19,6 +19,12 @@ type SendActionProps = {
   // Lets a layout wrapper (e.g. SendRow's <li data-sent>) mirror sent-state
   // without owning the send logic.
   onSentChange?: (sent: boolean) => void;
+  // When set, renders the compact labeled-button "stack" presentation used by
+  // the Orders-page action stack (#192) instead of the Send-page row markup.
+  label?: string;
+  // Fires after a send is successfully recorded (server round-trip OK). The
+  // Orders confirm action uses this to auto-advance new → confirmed.
+  onRecorded?: () => void;
 };
 
 // Phase 6.7: when the operator is on desktop, `sms:` deep links either no-op
@@ -53,6 +59,8 @@ export function SendAction({
   initialSentAt,
   revalidate,
   onSentChange,
+  label,
+  onRecorded,
 }: SendActionProps) {
   const [sentAt, setSentAt] = useState<string | null>(initialSentAt);
   const [pending, startTransition] = useTransition();
@@ -73,6 +81,8 @@ export function SendAction({
         setSentAt(initialSentAt);
         onSentChange?.(initialSentAt !== null);
         setError(result.error);
+      } else {
+        onRecorded?.();
       }
     });
   }
@@ -107,6 +117,34 @@ export function SendAction({
     // Mobile path falls through: the <a href="sms:..."> navigation proceeds
     // naturally (no preventDefault), and recordOptimistic() runs below.
     recordOptimistic();
+  }
+
+  // Orders-page action-stack presentation: a labeled row with an inline Send
+  // button (design/admin-orders.jsx `.send-action`).
+  if (label !== undefined) {
+    return (
+      <div className="send-action">
+        <span className="send-action-label">{label}</span>
+        {isSent && <span className="send-action-sent">Sent</span>}
+        {smsHref ? (
+          <a
+            href={smsHref}
+            className="btn-send"
+            onClick={handleClick}
+            aria-disabled={pending}
+          >
+            {isSent ? "Re-send" : "Send"}
+          </a>
+        ) : (
+          <span className="send-row-disabled">No phone</span>
+        )}
+        {error && (
+          <span className="send-row-error" role="alert">
+            {error}
+          </span>
+        )}
+      </div>
+    );
   }
 
   return (

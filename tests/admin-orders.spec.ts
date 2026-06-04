@@ -11,14 +11,31 @@ import {
   setProductQty,
 } from "./helpers";
 import { weekOfMondayNY } from "@/lib/week";
+import type { Locator } from "@playwright/test";
+
+// #192: the per-order action stack (Mark/Confirm/Send buttons) renders only
+// when the row is expanded. Click a non-status cell to toggle it open.
+async function expandRow(row: Locator): Promise<void> {
+  await row.locator(".col-o-cust").click();
+}
 
 test.describe("admin orders list", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
   const thisWeek = weekOfMondayNY();
 
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ context, browserName }) => {
+    // The desktop Confirm/Send path writes the SMS body to the clipboard before
+    // recording (Phase 6.7). Grant the permission so the action-stack send tests
+    // don't error on clipboard-write. WebKit doesn't support the permission name
+    // and goes down the sms: deep-link path instead, so it's chromium-only.
+    if (browserName === "chromium") {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    }
     await clearOrdersForWeek(thisWeek);
+    // Clear the week's sends so the action-stack Send buttons start at "Send"
+    // (not "Re-send") regardless of prior-test/prior-run send state.
+    await admin().from("customer_sends").delete().eq("week_of", thisWeek);
   });
 
   test.afterAll(async () => {
@@ -101,6 +118,7 @@ test.describe("admin orders list", () => {
     await page.goto("/admin/orders");
     const row = page.locator(`tr.ord-row[data-order-id="${orderId}"]`);
     await expect(row).toHaveAttribute("data-status", "new");
+    await expandRow(row);
 
     const sb = admin();
 
@@ -156,6 +174,7 @@ test.describe("admin orders list", () => {
     await expect(row).toHaveAttribute("data-status", "confirmed");
     // Renders the Confirmed pill — not a fallthrough "Delivered" done-pill.
     await expect(row.locator(".pill-confirmed")).toHaveText("Confirmed");
+    await expandRow(row);
 
     await row.getByRole("button", { name: /mark ready/i }).click();
     await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
@@ -175,8 +194,9 @@ test.describe("admin orders list", () => {
     await page.goto("/admin/orders");
     const row = page.locator(`tr.ord-row[data-order-id="${orderId}"]`);
     await expect(row).toHaveAttribute("data-status", "ready");
+    await expandRow(row);
 
-    // Pickup orders show the "Picked up" advance button, not "Delivered".
+    // Pickup orders show the "Mark picked up" advance button, not "Delivered".
     await expect(row.getByRole("button", { name: /delivered/i })).toHaveCount(0);
     await row.getByRole("button", { name: /picked up/i }).click();
     await expect(row).toHaveAttribute("data-status", "picked-up", { timeout: 5000 });
@@ -196,6 +216,57 @@ test.describe("admin orders list", () => {
         { timeout: 5000 },
       )
       .toBe("picked-up");
+  });
+
+  test("action stack: collapsed shows only the chip; expanded Confirm+Send advances new → confirmed; reminder is pickup-only (#192)", async ({ page }, testInfo) => {
+    const ids = await customerIds();
+    const pickupId = await seedOrder({
+      customerId: ids.farmStand,
+      weekOf: thisWeek,
+      fulfillmentType: "pickup",
+      items: [{ productId: TEST_PRODUCTS.honey.id, qty: 1, unitPriceCents: 1200 }],
+    });
+    const deliveryId = await seedOrder({
+      customerId: ids.restaurant,
+      weekOf: thisWeek,
+      fulfillmentType: "delivery",
+      items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
+    });
+    // The Confirm/Send link only renders with a phone on file (else "No phone").
+    await admin()
+      .from("customers")
+      .update({ phone: "2165550100" })
+      .eq("id", ids.restaurant);
+
+    await page.goto("/admin/orders");
+
+    // Collapsed: chip only, no action stack.
+    const pickupRow = page.locator(`tr.ord-row[data-order-id="${pickupId}"]`);
+    await expect(pickupRow.locator(".pill-new")).toHaveText("New");
+    await expect(pickupRow.locator(".ord-actions")).toHaveCount(0);
+
+    // Pickup order expanded → has a Pickup reminder send action.
+    await expandRow(pickupRow);
+    const pickupActions = pickupRow.locator(".ord-actions");
+    await expect(pickupActions).toBeVisible();
+    await expect(pickupActions.getByText("Pickup reminder")).toBeVisible();
+
+    // Delivery order expanded → Confirm but NO reminder (DEC-014 / #193).
+    const deliveryRow = page.locator(`tr.ord-row[data-order-id="${deliveryId}"]`);
+    await expandRow(deliveryRow);
+    const deliveryActions = deliveryRow.locator(".ord-actions");
+    await expect(deliveryActions.getByText("Confirm order")).toBeVisible();
+    await expect(deliveryActions.getByText(/reminder/i)).toHaveCount(0);
+
+    // Confirm + Send records the send and auto-advances new → confirmed.
+    // Desktop-only: WebKit navigates to sms:… on click and clears the page.
+    if (testInfo.project.name === "mobile") return;
+    await deliveryActions
+      .locator(".send-action", { hasText: "Confirm order" })
+      .getByRole("link", { name: /^send$/i })
+      .click();
+    await expect(deliveryRow).toHaveAttribute("data-status", "confirmed", { timeout: 5000 });
+    await expect(deliveryRow.locator(".pill-confirmed")).toHaveText("Confirmed");
   });
 
   test("mobile (375px): page fits viewport; cards stack; status-advance is touch-sized; recon-pin renders; expand works", async ({ page, viewport }, testInfo) => {
@@ -231,17 +302,17 @@ test.describe("admin orders list", () => {
     await expect(firstRow).toHaveAttribute("data-order-id", reconId);
     await expect(firstRow.locator(".badge-recon")).toBeVisible();
 
-    // (c) Status-advance is ≥44px tall (Apple HIG / WCAG 2.5.5).
-    const advanceBtn = firstRow.getByRole("button", { name: /mark ready/i });
-    const box = await advanceBtn.boundingBox();
-    expect(box, "Status-advance button should be visible").not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
-
-    // (d) Tapping the card opens the detail; line items render in the stacked layout.
+    // (c) Tapping the card opens the detail; the action stack appears (#192).
     await firstRow.click();
     const detail = page.locator("tr.ord-detail-row .ord-detail");
     await expect(detail).toBeVisible();
     await expect(detail.locator(".ord-li-name")).toContainText("Honey");
+
+    // (d) The expanded action stack's advance button is ≥44px tall (WCAG 2.5.5).
+    const advanceBtn = firstRow.getByRole("button", { name: /mark ready/i });
+    const box = await advanceBtn.boundingBox();
+    expect(box, "Status-advance button should be visible").not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
   });
 
   test("line-level oversold badge gates on order.needsReconciliation (orders that fit at placement stay clean once inventory hits zero)", async ({ page }) => {

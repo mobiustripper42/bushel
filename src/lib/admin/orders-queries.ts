@@ -72,6 +72,8 @@ export type OrderRow = {
   id: string;
   customerId: string;
   customerName: string;
+  // Drives the per-order Send actions (#192). Null → "No phone" disabled state.
+  phone: string | null;
   placedAt: string;
   weekOf: string;
   fulfillmentType: "pickup" | "delivery";
@@ -83,6 +85,10 @@ export type OrderRow = {
   needsReconciliation: boolean;
   items: OrderItem[];
   totalCents: number;
+  // Per-mode sent timestamps for this customer's current-week sends (#192).
+  // Null = not yet sent. Drives the Send/Re-send state in the action stack.
+  confirmSentAt: string | null;
+  reminderSentAt: string | null;
 };
 
 function narrowStatus(s: string): OrderStatus {
@@ -103,26 +109,46 @@ export function currentWeekOf(): string {
 export async function listOrders(weekOf: string): Promise<OrderRow[]> {
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select(
-      `id, customer_id, created_at, week_of, fulfillment_type,
-       delivery_address, delivery_preference, pickup_note, notes,
-       status, needs_reconciliation,
-       customers(id, name),
-       order_items(product_id, qty, unit_price_cents,
-         products(name, description, unit, qty_available),
-         product_units(label, conversion_to_base))`,
-    )
-    .eq("week_of", weekOf)
-    .order("created_at", { ascending: false });
+  // Orders + the week's customer_sends (for per-order Send state, #192) in
+  // parallel. customer_sends is keyed (customer_id, week_of, mode); since
+  // there's one order per customer per week, customer_id maps 1:1 to an order.
+  const [{ data, error }, sendsResult] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        `id, customer_id, created_at, week_of, fulfillment_type,
+         delivery_address, delivery_preference, pickup_note, notes,
+         status, needs_reconciliation,
+         customers(id, name, phone),
+         order_items(product_id, qty, unit_price_cents,
+           products(name, description, unit, qty_available),
+           product_units(label, conversion_to_base))`,
+      )
+      .eq("week_of", weekOf)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("customer_sends")
+      .select("customer_id, mode, sent_at")
+      .eq("week_of", weekOf),
+  ]);
 
   if (error) throw new Error(`listOrders: ${error.message}`);
+  if (sendsResult.error)
+    throw new Error(`listOrders(sends): ${sendsResult.error.message}`);
+
+  const sentByCustomer = new Map<string, { confirm: string | null; reminder: string | null }>();
+  for (const s of sendsResult.data ?? []) {
+    const entry = sentByCustomer.get(s.customer_id) ?? { confirm: null, reminder: null };
+    if (s.mode === "order_confirmation") entry.confirm = s.sent_at;
+    else if (s.mode === "pickup_reminder") entry.reminder = s.sent_at;
+    sentByCustomer.set(s.customer_id, entry);
+  }
 
   return (data ?? [])
     .filter((o) => o.customers !== null)
     .map((o) => {
-      const c = o.customers as { id: string; name: string };
+      const c = o.customers as { id: string; name: string; phone: string | null };
+      const sent = sentByCustomer.get(c.id) ?? { confirm: null, reminder: null };
       const items: OrderItem[] = ((o.order_items ?? []) as Array<{
         product_id: string;
         qty: number;
@@ -162,6 +188,7 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         id: o.id,
         customerId: c.id,
         customerName: c.name,
+        phone: c.phone,
         placedAt: o.created_at,
         weekOf: o.week_of,
         fulfillmentType: narrowFulfillment(o.fulfillment_type),
@@ -173,6 +200,8 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         needsReconciliation: o.needs_reconciliation,
         items,
         totalCents,
+        confirmSentAt: sent.confirm,
+        reminderSentAt: sent.reminder,
       };
     });
 }
