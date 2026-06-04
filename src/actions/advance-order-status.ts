@@ -3,20 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import type { OrderStatus } from "@/lib/admin/orders-queries";
-
-// DEC-010: new → ready → (picked-up | delivered).
-// Fulfillment type pins which terminal state is valid.
-function isValidTransition(
-  from: OrderStatus,
-  to: OrderStatus,
-  fulfillmentType: "pickup" | "delivery",
-): boolean {
-  if (from === "new" && to === "ready") return true;
-  if (from === "ready" && to === "picked-up") return fulfillmentType === "pickup";
-  if (from === "ready" && to === "delivered") return fulfillmentType === "delivery";
-  return false;
-}
+import { isValidTransition, type OrderStatus } from "@/lib/admin/orders-queries";
 
 // Uses cookie-bound client (not admin) — the admin_all_orders RLS policy
 // (migration 20260508014838) is the gate on writes here. Matches the

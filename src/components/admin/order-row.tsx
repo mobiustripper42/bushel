@@ -64,6 +64,24 @@ function StatusControl({
       </div>
     );
   }
+  if (order.status === "confirmed") {
+    return (
+      <div className="status-control">
+        <span className="pill pill-confirmed">Confirmed</span>
+        <button
+          type="button"
+          className="status-advance"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdvance("ready");
+          }}
+          disabled={pending}
+        >
+          Mark ready →
+        </button>
+      </div>
+    );
+  }
   if (order.status === "ready") {
     const terminal: OrderStatus =
       order.fulfillmentType === "pickup" ? "picked-up" : "delivered";
