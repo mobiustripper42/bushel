@@ -136,11 +136,24 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
   if (sendsResult.error)
     throw new Error(`listOrders(sends): ${sendsResult.error.message}`);
 
-  const sentByCustomer = new Map<string, { confirm: string | null; reminder: string | null }>();
+  // Reminder mode is per-fulfillment (#193): pickup orders use pickup_reminder,
+  // delivery orders use delivery_reminder — tracked separately, resolved per
+  // order below.
+  type SentEntry = {
+    confirm: string | null;
+    pickupReminder: string | null;
+    deliveryReminder: string | null;
+  };
+  const sentByCustomer = new Map<string, SentEntry>();
   for (const s of sendsResult.data ?? []) {
-    const entry = sentByCustomer.get(s.customer_id) ?? { confirm: null, reminder: null };
+    const entry = sentByCustomer.get(s.customer_id) ?? {
+      confirm: null,
+      pickupReminder: null,
+      deliveryReminder: null,
+    };
     if (s.mode === "order_confirmation") entry.confirm = s.sent_at;
-    else if (s.mode === "pickup_reminder") entry.reminder = s.sent_at;
+    else if (s.mode === "pickup_reminder") entry.pickupReminder = s.sent_at;
+    else if (s.mode === "delivery_reminder") entry.deliveryReminder = s.sent_at;
     sentByCustomer.set(s.customer_id, entry);
   }
 
@@ -148,7 +161,12 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
     .filter((o) => o.customers !== null)
     .map((o) => {
       const c = o.customers as { id: string; name: string; phone: string | null };
-      const sent = sentByCustomer.get(c.id) ?? { confirm: null, reminder: null };
+      const sent = sentByCustomer.get(c.id) ?? {
+        confirm: null,
+        pickupReminder: null,
+        deliveryReminder: null,
+      };
+      const fulfillmentType = narrowFulfillment(o.fulfillment_type);
       const items: OrderItem[] = ((o.order_items ?? []) as Array<{
         product_id: string;
         qty: number;
@@ -191,7 +209,7 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         phone: c.phone,
         placedAt: o.created_at,
         weekOf: o.week_of,
-        fulfillmentType: narrowFulfillment(o.fulfillment_type),
+        fulfillmentType,
         deliveryAddress: o.delivery_address,
         deliveryPreference: o.delivery_preference,
         pickupNote: o.pickup_note,
@@ -201,7 +219,10 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         items,
         totalCents,
         confirmSentAt: sent.confirm,
-        reminderSentAt: sent.reminder,
+        reminderSentAt:
+          fulfillmentType === "pickup"
+            ? sent.pickupReminder
+            : sent.deliveryReminder,
       };
     });
 }

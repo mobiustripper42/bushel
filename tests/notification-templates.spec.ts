@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  deliveryReminderBody,
   orderConfirmationBody,
   pickupReminderBody,
   weeklyUpdateBody,
@@ -109,6 +110,14 @@ test.describe("pickupReminderBody", () => {
   test("includes customer name and pickup-day reminder", () => {
     expect(pickupReminderBody({ customerName: "Hannah" })).toBe(
       "Hi Hannah — reminder that your Bay Branch Farm order is ready for pickup this week. Text back if you need a different time.",
+    );
+  });
+});
+
+test.describe("deliveryReminderBody (#193)", () => {
+  test("includes customer name and delivery wording (distinct from pickup)", () => {
+    expect(deliveryReminderBody({ customerName: "Hannah" })).toBe(
+      "Hi Hannah — reminder that your Bay Branch Farm order is out for delivery this week. Text back if anything needs to change.",
     );
   });
 });
