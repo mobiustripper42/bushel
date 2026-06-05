@@ -218,7 +218,7 @@ test.describe("admin orders list", () => {
       .toBe("picked-up");
   });
 
-  test("action stack: collapsed shows only the chip; expanded Confirm+Send advances new → confirmed; reminder is pickup-only (#192)", async ({ page }, testInfo) => {
+  test("action stack: collapsed shows only the chip; expanded Confirm+Send advances new → confirmed; reminder wording follows fulfillment (#192/#193)", async ({ page }, testInfo) => {
     const ids = await customerIds();
     const pickupId = await seedOrder({
       customerId: ids.farmStand,
@@ -251,12 +251,13 @@ test.describe("admin orders list", () => {
     await expect(pickupActions).toBeVisible();
     await expect(pickupActions.getByText("Pickup reminder")).toBeVisible();
 
-    // Delivery order expanded → Confirm but NO reminder (DEC-014 / #193).
+    // Delivery order expanded → Confirm + a Delivery reminder (#193), not Pickup.
     const deliveryRow = page.locator(`tr.ord-row[data-order-id="${deliveryId}"]`);
     await expandRow(deliveryRow);
     const deliveryActions = deliveryRow.locator(".ord-actions");
     await expect(deliveryActions.getByText("Confirm order")).toBeVisible();
-    await expect(deliveryActions.getByText(/reminder/i)).toHaveCount(0);
+    await expect(deliveryActions.getByText("Delivery reminder")).toBeVisible();
+    await expect(deliveryActions.getByText("Pickup reminder")).toHaveCount(0);
 
     // Confirm + Send records the send and auto-advances new → confirmed.
     // Desktop-only: WebKit navigates to sms:… on click and clears the page.

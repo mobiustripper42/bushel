@@ -8,12 +8,14 @@ import { weekOfMondayNY } from "@/lib/week";
 export type SendMode =
   | "weekly_update"
   | "order_confirmation"
-  | "pickup_reminder";
+  | "pickup_reminder"
+  | "delivery_reminder";
 
 export const SEND_MODES: SendMode[] = [
   "weekly_update",
   "order_confirmation",
   "pickup_reminder",
+  "delivery_reminder",
 ];
 
 export type SendQueueRow = {

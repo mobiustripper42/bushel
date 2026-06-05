@@ -4,6 +4,7 @@ import { SendAction } from "@/components/admin/send-action";
 import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/orders-queries";
 import { statusAfterConfirmSend } from "@/lib/admin/orders-queries";
 import {
+  deliveryReminderBody,
   orderConfirmationBody,
   pickupReminderBody,
 } from "@/lib/notifications/templates";
@@ -57,18 +58,20 @@ export function OrderActions({
         }}
       />
 
-      {isPickup && (
-        <SendAction
-          label="Pickup reminder"
-          customerId={order.customerId}
-          phone={order.phone}
-          body={pickupReminderBody({ customerName: order.customerName })}
-          weekOf={order.weekOf}
-          mode="pickup_reminder"
-          initialSentAt={order.reminderSentAt}
-          revalidate="/admin/orders"
-        />
-      )}
+      <SendAction
+        label={isPickup ? "Pickup reminder" : "Delivery reminder"}
+        customerId={order.customerId}
+        phone={order.phone}
+        body={
+          isPickup
+            ? pickupReminderBody({ customerName: order.customerName })
+            : deliveryReminderBody({ customerName: order.customerName })
+        }
+        weekOf={order.weekOf}
+        mode={isPickup ? "pickup_reminder" : "delivery_reminder"}
+        initialSentAt={order.reminderSentAt}
+        revalidate="/admin/orders"
+      />
 
       <button
         type="button"

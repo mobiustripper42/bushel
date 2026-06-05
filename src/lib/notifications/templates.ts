@@ -51,3 +51,15 @@ export type PickupReminderInput = {
 export function pickupReminderBody({ customerName }: PickupReminderInput): string {
   return `Hi ${customerName} — reminder that your Bay Branch Farm order is ready for pickup this week. Text back if you need a different time.`;
 }
+
+export type DeliveryReminderInput = {
+  customerName: string;
+};
+
+// #193 (amends DEC-014): delivery reminders are now sent, per-order from the
+// Orders page. Distinct copy from the pickup reminder — it's coming to them.
+export function deliveryReminderBody({
+  customerName,
+}: DeliveryReminderInput): string {
+  return `Hi ${customerName} — reminder that your Bay Branch Farm order is out for delivery this week. Text back if anything needs to change.`;
+}
