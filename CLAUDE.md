@@ -47,7 +47,7 @@ Roles:
 | `docs/BRAND.md` | Voice, type, color |
 | `docs/VELOCITY_AND_POKER_GUIDE.md` | Estimation methodology |
 | `docs/CHEATSHEET.md` | One-page printable skill reference |
-| `sessions/*.md` (on orphan `sessions` branch via `.sessions-worktree/`) | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md`. Atomic after `/its-dead` closes (DEC-013); orphan branch decouples session log from any code branch (DEC-014). |
+| `sessions/*.md` (on orphan `sessions` branch via `.sessions-worktree/`) | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md`. Atomic after `/its-dead` closes (DEC-S013); orphan branch decouples session log from any code branch (DEC-S014). |
 | `.claude/seeds-version` | Schema version this project was last installed at. Used by `/pull-seeds` to gate template syncs. |
 | `.claude/project-type` | Project type — `webapp` or `tool`. Used by `@sync-config` to gate template files that don't apply to this project's type. Optional. |
 
@@ -73,7 +73,7 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 6. **Run targeted tests** — `npx playwright test tests/foo.spec.ts --project=desktop` (and mobile/webkit for customer-side). `supabase test db` if RLS-touching. Do NOT run full suite — that's the user's call.
 7. **Mobile screenshot** — confirm 375px viewport passes for customer-side
 8. **Ship the task** — `/kill-this` commits, pushes, opens PR with `closes #<issue>`, appends a `## Task <N>` block to the session file (on the orphan `sessions` branch). Run per task; multiple per session.
-9. **Pick up another task or close out** — start step 1 with a new branch, or run `/its-dead` once at the end of the Claude window. Merge PRs whenever — order doesn't matter (DEC-013).
+9. **Pick up another task or close out** — start step 1 with a new branch, or run `/its-dead` once at the end of the Claude window. Merge PRs whenever — order doesn't matter (DEC-S013).
 
 **No test, no push.**
 
@@ -258,7 +258,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 | `/its-alive` | Session start | Ensure `.sessions-worktree/` exists, open per-session file on orphan `sessions` branch, capture transcript, read context, recommend task |
 | `/pause-this` | Mid-session break | Build check, commit WIP on task branch, note pause in session file (sessions branch) |
 | `/restart-this` | Resume from pause | Reload context, continue same session |
-| `/kill-this` | **Per task** (DEC-013) | Build check, commit code on task branch, open PR, append `## Task <N>` block to session file. Run N times per session — one per task. No time math. |
+| `/kill-this` | **Per task** (DEC-S013) | Build check, commit code on task branch, open PR, append `## Task <N>` block to session file. Run N times per session — one per task. No time math. |
 | `/its-dead` | Session end (once per window) | Stamp `ended:`, tally points, display wall_clock to screen, close session file. No time math, no version bump (those moved to `/retro`). Merge PRs whenever. |
 | `/start-phase` | Phase boundary (start) | Materialize phase as Issues with `phase:N`, `points:X` labels |
 | `/retro` | Phase boundary (end) | Compute per-session wall/dev/review from `started`/`ended`/transcript/PR timestamps. Aggregate phase velocity. Mark `[x]`, write retro, patch-bump per merged PR + minor-bump at close. |
@@ -301,7 +301,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 - Never two open PRs with migrations on the same table — merge one first.
 - **Stacking PRs is preferred** when tasks depend on each other. Branch the next task off the previous task branch (`git checkout -b task/X.Y-next task/X.Y-prev`), not off main. Only wait for the previous PR to merge when there's a migration conflict on the same table.
 
-### Production branch (DEC-022)
+### Production branch (DEC-S022)
 
 `main` is the always-active trunk. Bushel currently deploys straight off `main`:
 - `/kill-this` opens PRs into `main` per task.
@@ -342,14 +342,14 @@ If the subdomain returns 500 or 404 right after reassignment, the new branch has
 
 ## Versioning
 
-Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. `/retro` is now the sole place version bumps happen (DEC-013 moved patch bumps out of `/its-dead`).
+Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. `/retro` is now the sole place version bumps happen (DEC-S013 moved patch bumps out of `/its-dead`).
 
-**Three triggers (all run at `/retro` per DEC-013):**
+**Three triggers (all run at `/retro` per DEC-S013):**
 - **Patch:** `/retro` Step 8.2 — one bump + CHANGELOG entry per PR merged in the phase window. Title pulled from GitHub.
 - **Minor:** `/retro` Step 8.3 — at phase close after all patches. CHANGELOG entry summarizes the phase.
 - **Major:** `/bump-major` manual. User supplies the breaking-change rationale.
 
-**Tag rule:** tags are applied on the active trunk (`main`) at bump time (DEC-022). A `production` deploy branch, if adopted, receives the already-tagged commit via `/promote-production` ff-merge — promotion does not tag.
+**Tag rule:** tags are applied on the active trunk (`main`) at bump time (DEC-S022). A `production` deploy branch, if adopted, receives the already-tagged commit via `/promote-production` ff-merge — promotion does not tag.
 
 **Detection:** these skills check `package.json` exists at the repo root before bumping. If it doesn't (template/markdown-only project), they no-op silently.
 
@@ -369,7 +369,7 @@ import { VersionTag } from "@/components/VersionTag";
 
 ### CHANGELOG.md
 
-Auto-maintained by `/retro` and `/bump-major` (DEC-013 — `/its-dead` no longer touches it). Don't edit by hand mid-flow — the skills always prepend after the `# Changelog` header. The first bump creates the file if absent.
+Auto-maintained by `/retro` and `/bump-major` (DEC-S013 — `/its-dead` no longer touches it). Don't edit by hand mid-flow — the skills always prepend after the `# Changelog` header. The first bump creates the file if absent.
 
 Format (Keep-a-Changelog inspired but simpler):
 ```
