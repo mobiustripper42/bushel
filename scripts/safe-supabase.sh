@@ -2,7 +2,7 @@
 # safe-supabase.sh — wrapper around the `supabase` CLI that refuses
 # destructive operations when linked to a production project.
 #
-# DEC-009 (seeds): two-layer defense — discipline (never link prod locally)
+# DEC-S009 (seeds): two-layer defense — discipline (never link prod locally)
 # plus this wrapper as belt-and-suspenders.
 #
 # Setup (per project):
