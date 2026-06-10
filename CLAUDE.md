@@ -1,67 +1,26 @@
-# bushel — Claude Code Project Context
+# [Project Name] — Claude Code Project Context
 
-## ⚠ READ FIRST — Design folder is authoritative for ALL UI work
-
-The `/design/` directory at the repo root contains hand-built JSX + CSS + HTML mockups for every page. Filenames match routes (`admin-inventory.jsx` ↔ `/admin/inventory`, `admin-customers.jsx` ↔ `/admin/customers`, `order-page.jsx` ↔ `/c/[token]`, etc.).
-
-**Before writing or modifying ANY file under `src/app/`, `src/components/admin/`, or `src/components/customer/`:**
-
-1. `ls design/` and identify the matching mockup
-2. Open the `.jsx` AND its companion `.css` if one exists
-3. Read both fully — the JSX defines structure + interaction, the CSS defines visual tokens
-4. Match the design's layout, controls, and dirty-state behavior — do not "simplify"
-5. If no design file exists for the page, **stop and ask** before inventing layout
-
-The mockups are the spec. Acceptance criteria in Issues + the design file together define done. Shipping a page that matches the AC but ignores the design is a rebuild, not a fix.
-
-This has been missed in prior sessions. Do not miss it again.
-
-## What We're Building
-
-Bay Branch Farm Inventory & Order System (`order.baybranchfarm.com`). Replaces tend.com for ~7 B2B customers (2 farm stands, 1 grocery store, 3–4 restaurants) on a weekly Sun/Mon → Wed/Thu cadence.
-
-Roles:
-- **Admin** — Annabel. Manages inventory, customers, orders, send notifications.
-- **Customer (B2B)** — receives weekly SMS link, places order through tokenized URL.
-
-## Stack
-
-- **Frontend:** Next.js 16 (App Router), TypeScript strict, sailbook-style CSS (DEC-021)
-- **Backend:** Supabase (PostgreSQL + Auth + RLS) — no separate API server
-- **Notifications:** Operator-sent customer SMS via native `sms:` deep links — no third-party SMS provider (DEC-026). Admin order-arrival alert via transactional email (DEC-027); PWA push as stretch upgrade.
-- **Hosting:** Vercel (frontend), Supabase Cloud (database)
-- **Testing:** pgTAP (RLS), Playwright (integration, mobile/tablet/desktop), axe-core (a11y)
-- **Domain:** `order.baybranchfarm.com` (CNAME → Vercel); apex stays Astro/Netlify
+> **Read `.claude/CLAUDE-context.md` first.** It holds this project's name, stack, data model, commands, and any project-specific overrides to the workflow and conventions below. Treat it as authoritative for every project-specific fact. If the file does not exist, stop and tell the user to create it from the seeds template (`dev/claude/CLAUDE-context.md`) before continuing.
+>
+> This `CLAUDE.md` is a **seeds-managed shell** (DEC-S019): it carries only project-agnostic workflow guidance and syncs from seeds untouched. Do **not** add project-specific content here — it belongs in `.claude/CLAUDE-context.md`, or the next sync will overwrite it.
 
 ## Key Docs
-
 | File | Purpose |
 |------|-------|
-| `docs/SPEC.md` | What we're building — scope, V1 vs V1.5 vs V2 |
-| `docs/DECISIONS.md` | Architectural decisions (DEC-001…DEC-032) |
-| `docs/SCHEMA.md` | Finalized table shapes; gates migrations + RLS |
-| `docs/USER_STORIES.md` | What each role does (B2B-reframed; pending review) |
+| `docs/SPEC.md` | What we're building — scope, V1 vs V2 vs V3 |
+| `docs/DECISIONS.md` | Why we made each architectural choice |
+| `docs/USER_STORIES.md` | What each role does |
 | `docs/PROJECT_PLAN.md` | Phases, scope, velocity. **Phase-boundary doc** — read at planning, written at retro. Current-phase tasks live in GitHub Issues. |
 | `docs/RETROSPECTIVES.md` | Phase-end retrospectives — written by `/retro` |
-| `docs/AGENTS.md` | Agent and skill specs (canonical). The repo-root `AGENTS.md` is a Next.js-agent rules stub for IDE tooling — not the project agent doc. |
-| `docs/BRAND.md` | Voice, type, color |
+| `docs/AGENTS.md` | Agent and skill specs (canonical). |
+| `docs/BRAND.md` | Voice, visual direction, philosophy |
 | `docs/VELOCITY_AND_POKER_GUIDE.md` | Estimation methodology |
 | `docs/CHEATSHEET.md` | One-page printable skill reference |
 | `sessions/*.md` (on orphan `sessions` branch via `.sessions-worktree/`) | Per-session files — `YYYY-MM-DD-HHMM-<dev>-<slug>.md`. Atomic after `/its-dead` closes (DEC-S013); orphan branch decouples session log from any code branch (DEC-S014). |
 | `.claude/seeds-version` | Schema version this project was last installed at. Used by `/pull-seeds` to gate template syncs. |
-| `.claude/project-type` | Project type — `webapp` or `tool`. Used by `@sync-config` to gate template files that don't apply to this project's type. Optional. |
+| `.claude/project-type` | Project type — `webapp` or `tool`. Used by `@sync-config` to gate template files that don't apply to this project's type (DEC-S011). Optional. |
 
-## Core Data Model (target — see Phase 1.1)
-
-```
-products → order_items
-customers (token, contact, send_weekly_link) → orders → order_items
-orders.needs_reconciliation (oversold flag)
-orders.pickup_note, orders.delivery_preference (DEC-029: free-text fulfillment, no structured pickup windows in V1)
-ordering_schedule (is_open default true per DEC-030)
-```
-
-Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
+Project-specific docs are listed in `.claude/CLAUDE-context.md` under `## Additional Docs`.
 
 ## Micro Workflow (every task, no exceptions)
 
@@ -69,187 +28,28 @@ Schema details land in Phase 1.1 (sketched in plan; finalize at execution).
 2. **Plan it** — summarize what you're going to do. Wait for explicit approval before writing code or running commands.
 3. **Cut the branch** — once approved: `git checkout -b task/X.Y-short-description`.
 4. **Build it**
-5. **Write the test** — Playwright integration test + pgTAP if RLS-touching. Test-first when behavior is changing (DEC-023).
-6. **Run targeted tests** — `npx playwright test tests/foo.spec.ts --project=desktop` (and mobile/webkit for customer-side). `supabase test db` if RLS-touching. Do NOT run full suite — that's the user's call.
-7. **Mobile screenshot** — confirm 375px viewport passes for customer-side
+5. **Write the test** — Playwright integration test + pgTAP if RLS-touching. Test-first when behavior is changing.
+6. **Run targeted tests** — `npx playwright test tests/foo.spec.ts --project=desktop`. `supabase test db` if RLS-touching. Do NOT run full suite — that's the user's call.
+7. **Mobile screenshot** — confirm 375px viewport passes
 8. **Ship the task** — `/kill-this` commits, pushes, opens PR with `closes #<issue>`, appends a `## Task <N>` block to the session file (on the orphan `sessions` branch). Run per task; multiple per session.
-9. **Pick up another task or close out** — start step 1 with a new branch, or run `/its-dead` once at the end of the Claude window. Merge PRs whenever — order doesn't matter (DEC-S013).
+9. **Pick up another task or close out** — start step 1 with a new branch, or run `/its-dead` once at the end of the Claude window. Merge PRs whenever — order doesn't matter.
 
 **No test, no push.**
 
 **Full suite (`npx playwright test`) is never run automatically.** Ask first.
 
+Project-specific step overrides (e.g. a tool project with no database swaps the test steps) live in `.claude/CLAUDE-context.md` under `## Workflow Overrides`.
+
 ## Migration Protocol
 
-**All schema changes go through `supabase/migrations/`.** No exceptions.
+- **All schema changes go through migrations.** No exceptions. Migrations are the source of truth — never edit schema through a dashboard on any environment, and never hand-patch an already-applied migration.
+- **Before creating a migration:** check for open PRs touching the same tables (`gh pr list`). If overlap exists, merge the in-flight PR first, or rename the new migration to a later timestamp to keep ledger order clean.
 
-- `supabase migration new <name>` to create
-- `supabase db reset` to test locally (replays + seed)
-- `supabase db push` to apply to remote
-- Never edit through the dashboard
-- After schema changes: `npx supabase gen types typescript --local > src/lib/supabase/types.ts`
-- Before creating: `gh pr list` to check overlapping migrations; merge in-flight first or rename to later timestamp.
-
-### Two Supabase projects (dev/preview + prod)
-
-Bushel runs against **two Supabase projects** under the bushel-billed org:
-
-| Role | Project ref | Used by |
-|------|------------|-------|
-| dev/preview | `nnmfubmlvnkouxxfxxlh` | `.env.local`, Vercel Development + Preview environments, local Playwright runs |
-| production | `piaobrnrmoxnfrpnpixw` | Vercel Production environment only — `order.baybranchfarm.com` |
-
-**Why split:** Annabel uses production daily for real customers/inventory. Dev work — migrations, schema changes, fixture data — happens against the dev/preview project so a botched migration or a `db reset` can't take prod with it.
-
-**Migration discipline (with the split)** — all `supabase link`/`db push` commands need the bushel PAT, so make sure `.envrc` is loaded (direnv or `source .envrc`):
-
-1. `supabase link --project-ref nnmfubmlvnkouxxfxxlh` is the default state. Stay linked here.
-2. Write migration → `supabase db reset` against local for a syntax sanity check → `supabase db push` against dev/preview → vet against the running dev/preview app.
-3. When dev/preview is happy and the PR has merged, push to prod:
-   ```bash
-   supabase link --project-ref piaobrnrmoxnfrpnpixw
-   supabase db push
-   supabase link --project-ref nnmfubmlvnkouxxfxxlh   # relink back, always
-   ```
-4. The relink-back step is non-negotiable. A forgotten link-to-prod is how `supabase db reset` becomes a resume-update event.
-
-**Local Supabase is NOT the development backend.** `.env.local` and `npm run dev` point at the dev/preview cloud project, not `127.0.0.1:54421`. The reason is Google OAuth — registering `http://localhost:54421` as a redirect on the Google Cloud OAuth client is enough friction (and enough mental-mode-switching for the admin side that uses OAuth) that it's not worth the speed of a purely-local loop. Local Supabase is still used for:
-
-- `supabase db reset` — applies all migrations on a clean local DB to catch syntax errors before pushing to dev/preview.
-- `supabase test db` — pgTAP tests, no auth needed, fast.
-- Playwright integration tests (CI + `/kill-this`) — env-overridden to local Supabase via the test commands, isolated per run, no cloud round-trip.
-
-`.env.local` keeps the commented-out local URLs at the bottom — handy if this decision is ever reversed, but the default state is cloud.
-
-**Auth config is per-project** — Google OAuth, redirect URLs, providers all live on each project independently. Changes (new OAuth client, new redirect URL, provider toggle) must be applied to both. The dev project's "this works" doesn't carry to prod automatically.
-
-There is no active guard against destructive ops on prod — the defense is the discipline above: link to dev by default, link to prod only for the seconds it takes to push, relink to dev.
-
-### Supabase CLI auth (mill-dev)
-
-**TL;DR — anytime you need to push migrations or hit remote Supabase, run:**
-
-```bash
-source .envrc && supabase db push
-```
-
-(Or `direnv allow` once to make `.envrc` auto-load on every `cd ~/bushel/`.)
-
-**Why:** the global `supabase login` on mill-dev is the **sailbook** account. Bushel lives in a different Supabase account, so any bushel CLI command that talks to the cloud project must use `SUPABASE_ACCESS_TOKEN` (a Personal Access Token generated in the bushel account's profile, kept in `.envrc` — gitignored).
-
-Without the token: `Your account does not have the necessary privileges` — that's the symptom. Local-only commands (`supabase start`, `supabase test db`, `supabase migration new`) don't need it.
-
-Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
-
-### Cross-system env-var sync (Supabase ↔ Vercel)
-
-**Vercel env vars and Supabase project refs do not auto-sync.** Bushel runs two Supabase projects (see above); Vercel Production points at the prod project, Vercel Preview/Development + `.env.local` point at dev/preview. The three vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) appear **twice** in Vercel — once per environment scope — with intentionally different values.
-
-When you rotate keys, switch project refs, or otherwise touch these vars, both scopes must stay coherent:
-- Vercel **Production** → matches prod project's URL + keys.
-- Vercel **Preview + Development** → matches dev/preview project's URL + keys, which is what `.env.local` has.
-
-Vercel does not redeploy on env-var change. After updating, trigger a redeploy of `main` (Deployments → ⋯ → Redeploy) or push any commit.
-
-Failure modes:
-- **Undefined values:** `createServerClient()` gets `undefined` for URL or key → `HTTP 500` site-wide. Local `npm run dev` keeps working because it reads `.env.local` directly, masking the regression until someone hits the deployed site. Session 19 (2026-05-14) lost an hour to this during the bushel/sailbook account split.
-- **Swapped projects:** Prod points at the dev DB or vice versa. Symptoms: prod login works but shows test fixtures, or Annabel's real data appears on a preview URL. Diff-check before assuming everything is wired correctly.
-- **Name typo:** A Vercel-side name like `SUPABASE_ANON_KEY` instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY` produces the same 500 even when the value is correct.
-
-Diff-check ritual after any rotation:
-
-```bash
-vercel env pull --environment=production .env.production.tmp
-vercel env pull --environment=preview    .env.preview.tmp
-# Preview should match .env.local:
-diff <(grep -E "SUPABASE" .env.local            | sort) \
-     <(grep -E "SUPABASE" .env.preview.tmp      | sort)
-# Production should NOT match .env.local — it should reference the prod project ref:
-grep "SUPABASE_URL" .env.production.tmp   # expect piaobrnrmoxnfrpnpixw.supabase.co
-```
-
-## Commands
-```bash
-# Development
-npm run dev
-npm run build
-npm run lint
-
-# Database (local Supabase)
-supabase start
-supabase stop
-supabase db reset
-supabase migration new <name>
-supabase db push
-
-# Testing
-supabase test db                                # pgTAP RLS
-npx playwright test                             # full suite (workers=1 by config — do not override)
-npx playwright test tests/foo.spec.ts --project=desktop  # targeted, dev mode
-npx playwright test --ui                        # browser UI
-
-# Types
-npx supabase gen types typescript --local > src/lib/supabase/types.ts
-```
+The project's migration **toolchain** — CLI commands, production-write protection (DEC-S009), and Supabase↔Vercel env-var sync — lives in `.claude/CLAUDE-context.md` under `## Migration Protocol (project)`. Projects without a database mark it `N/A` there.
 
 ## Conventions
 
-### TypeScript
-- Strict mode. No `any`.
-- Generated Supabase types from `lib/supabase/types.ts`. Regenerate after every schema change.
-
-### Next.js 16 routing
-- `src/proxy.ts` is the middleware entry point — export name is `proxy`, not `middleware`. Do NOT create `src/middleware.ts`; Next.js 16 will reject both existing simultaneously.
-- Check `src/` structure before writing new auth/routing files.
-
-### Components
-- Server Components by default. `'use client'` only when needed.
-- shadcn/ui in `components/ui/` — don't edit directly.
-- Feature components in `components/[feature]/`.
-- Under 200 lines per component. Split if larger.
-
-### Data Fetching
-- Server Components fetch via Supabase server client.
-- Mutations via Server Actions (not API routes).
-- Real-time / post-interaction client data uses Supabase browser client.
-
-### Auth & RLS
-- All auth through Supabase. No custom JWT.
-- Role flags on users table; not mutually exclusive.
-- Every table needs RLS policies before shipping. Every RLS change needs a pgTAP test.
-- Middleware handles role-based redirects.
-
-### Error Handling
-- Form actions: `string | null` (null = success).
-- Button actions: `{ error: string | null }`.
-- Never `throw` in server actions — return errors for inline feedback.
-
-### Database
-- Migrations are source of truth.
-- Configurable values in lookup tables, not hardcoded enums.
-
-### Naming
-- Files: `kebab-case.tsx`
-- Components: `PascalCase`
-- Server Actions: `camelCase` in `actions/`
-- DB columns: `snake_case`
-- Migrations: `supabase/migrations/YYYYMMDDHHMMSS_descriptive_name.sql`
-
-### UI / Brand
-- White/black base, semantic shadcn tokens. No color for color's sake.
-- One border radius: `rounded-lg`.
-- Layout padding in `layout.tsx` only.
-- Customer-side: every page works at 375px (DEC-019).
-- **All CSS lives in `src/styles/app.css`.** No per-page CSS files (`inventory.css`, `admin-customers.css`, etc.). No area files (`admin.css`, `customer.css`). When a page needs new styles, extend `app.css` under a clearly-labeled section — that's where the customer-table classes (`.cust-*`) and drawer primitives (`.drawer-*`) sit alongside `.btn` / `.field` / `.data-table`. Per-page CSS duplicates primitives that drift across files; one file with composable primitives is the standard, set in session 15 and re-litigated in session 16. If anyone (you, me, a future contributor) proposes a per-page or area CSS file, push back — the answer is no.
-
-### Testing (DEC-023)
-- **Test the user, not the function.** Heavy integration, light unit.
-- **Test-first when behavior changes.** Update the test, then the code.
-- pgTAP in `supabase/tests/`, Playwright in `tests/`.
-- Viewports: 375px (mobile), 768px (tablet), 1440px (desktop).
-- WebKit on every PR for customer-side (mobile-prioritized).
-- Full matrix on main / release.
-- `NOTIFICATIONS_ENABLED=false` in test env. Mock external services.
+Project coding conventions — typing, component structure, data fetching, auth/RLS, error-handling contract, naming, UI/brand, and testing layout — live in `.claude/CLAUDE-context.md` under `## Conventions`. They're stack-specific, so they're project-owned.
 
 ## Session Skills
 
@@ -259,15 +59,15 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 | `/pause-this` | Mid-session break | Build check, commit WIP on task branch, note pause in session file (sessions branch) |
 | `/restart-this` | Resume from pause | Reload context, continue same session |
 | `/kill-this` | **Per task** (DEC-S013) | Build check, commit code on task branch, open PR, append `## Task <N>` block to session file. Run N times per session — one per task. No time math. |
-| `/its-dead` | Session end (once per window) | Stamp `ended:`, tally points, display wall_clock to screen, close session file. No time math, no version bump (those moved to `/retro`). Merge PRs whenever. |
+| `/its-dead` | Session end (once per window) | Stamp `ended:`, tally points, display wall_clock to screen, close session file. No time math, no version bump (those moved to `/retro`). Merge PRs whenever — order doesn't matter. |
 | `/start-phase` | Phase boundary (start) | Materialize phase as Issues with `phase:N`, `points:X` labels |
-| `/retro` | Phase boundary (end) | Compute per-session wall/dev/review from `started`/`ended`/transcript/PR timestamps. Aggregate phase velocity. Mark `[x]`, write retro, patch-bump per merged PR + minor-bump at close. |
+| `/retro` | Phase boundary (end) | Compute per-session active time (wall − breaks) from `started`/`ended` + transcript break inference. Aggregate one phase velocity (active h/pt). Mark `[x]`, write retro, patch-bump per merged PR + minor-bump at close. |
 | `/bump-major` | Breaking change | Manually bump major version. CHANGELOG.md entry + tag on the trunk (`main`). Dev projects only |
 | `/promote-production` | Ship trunk to prod | ff-merge `main` → `production` (deploy-only; tag already on the commit), push. Projects with a `production` branch only |
 | `/push-seeds` | After workflow improvements | Backport project-side improvements to the seeds templates via @sync-config |
 | `/pull-seeds` | After seeds gets new improvements | Pull template changes into this project — schema-version-gated, applied via @sync-config |
 | `/read-the-tape` | After a session worth learning from | Audit JSONL transcript, find anti-patterns, propose skill improvements |
-| `/doc-consistency-check` | Mid-project, before phase boundaries, or after a session that touched multiple docs | Cross-reference factual claims across `docs/*.md` + root `CLAUDE.md`; flag mismatches + unfilled placeholders. Report-only via @doc-consistency |
+| `/doc-consistency-check` | Ad-hoc, when docs feel drifted (no scheduled trigger) | Cross-reference factual claims across `docs/*.md` + root `CLAUDE.md`; flag mismatches + unfilled placeholders. Report-only via @doc-consistency |
 
 **Dev identity:** `~/.claude/devname` (one-line file with handle, e.g. `eric`). Set once per machine.
 
@@ -277,7 +77,7 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 
 | Agent | Model | When | Purpose |
 |-------|-------|------|-------|
-| @architect | Opus | Before design decisions, new dependencies, scope creep | Coherence vs SPEC + DECISIONS |
+| @architect | Fable 5 | Before design decisions, new dependencies, scope creep | Coherence vs SPEC + DECISIONS |
 | @code-review | Sonnet | After every commit (wired into `/kill-this`) | Catch issues early |
 | @pm | Sonnet | Start/end of sessions via skills | Track progress, flag risks |
 | @ui-reviewer | Sonnet | After UI work, phase boundaries | Design quality |
@@ -287,9 +87,21 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 
 ## Model Selection
 
-- Main session: Sonnet by default. Switch to Opus when stuck.
-- Agents: model in agent frontmatter. Don't override unless task warrants.
-- **New agents:** default to Sonnet. Add `model: opus` frontmatter only for architecture-level agents.
+Three tiers. Default low; escalate by **task length and complexity** — Fable 5's lead over Sonnet/Opus is smallest on short scoped tasks and widens the longer and more complex the work (migrations, schema design, cross-cutting refactors, long autonomous runs).
+
+| Tier | Model | Use for |
+|------|-------|---------|
+| Workhorse | `claude-sonnet-4-6` | Default main session and most agents. Single-file edits, scoped tasks, reviews. |
+| Hard | `claude-opus-4-8` | The "stuck" escalation; RLS/schema work; anything where being wrong is expensive but the task is bounded. |
+| Frontier | `claude-fable-5` | Long-horizon, multi-file, high-autonomy work where holding coherence across the whole change is the bottleneck — and architecture decisions (see `@architect`). $10/$50 per MTok, 2× Opus both directions; reserve accordingly. |
+
+- **Reach for `effort` before reaching for a tier.** `effort` (`low`/`medium`/`high`/`xhigh`/`max`, set via `output_config`) buys quality more cheaply than a model jump on a task the current model can already do. `xhigh` is the floor for coding/agentic work, `high` for intelligence-sensitive work, `max` only when correctness must beat cost. Fable 5 reaches production-quality code at *medium* effort and is more token-efficient than prior models — frontier quality does **not** require max effort.
+- **Spec up front, then let it run.** Front-load the full task spec in one turn and let the model work long at high effort rather than over-decomposing a coherent task into tiny issues — Fable holds coherence across millions of tokens, and chopping the task throws that away. The Micro Workflow's *Spec it / Plan it* steps and the `design/` mockups **are** the spec; point the model at them.
+- **File memory is a force multiplier — ~3× more effective on Fable than Opus 4.8.** Session files, `design/`, `docs/DECISIONS.md`, and acceptance criteria are exactly the persistent notes Fable exploits to improve its own output. Keep them current; reference them explicitly in the task.
+- **Vision is a first-class input.** Fable 5 is state-of-the-art at vision and rebuilds UI from screenshots with minimal scaffolding — lean on `design/*.jsx` mockups and screenshot-vs-build diffs (see `@ui-reviewer`).
+- **Silent fallback caveat.** Fable routes <5% of sessions (cyber / bio-chem / distillation classifiers, conservatively tuned) to Opus 4.8 automatically and tells you when it does. Defensive RLS/auth work won't trip it in normal use — but if a session unexpectedly feels a tier weaker, check for a fallback notice before chasing a phantom regression.
+- **Agents:** model in agent frontmatter. `@architect` pins `claude-fable-5` — architecture decisions are where being wrong compounds, so they get the frontier tier. Reviewers (`@code-review`, `@pm`, `@doc-consistency`, `@tape-reader`) stay Sonnet. `@ui-reviewer` stays Sonnet but is worth bumping to Opus 4.8 / Fable for vision-heavy mockup-vs-build review.
+- **New agents:** default to Sonnet. Add a `model:` line only when the agent's job is architecture- or vision-level reasoning.
 
 ## PR Workflow
 
@@ -303,63 +115,36 @@ npx supabase gen types typescript --local > src/lib/supabase/types.ts
 
 ### Production branch (DEC-S022)
 
-`main` is the always-active trunk. Bushel currently deploys straight off `main`:
-- `/kill-this` opens PRs into `main` per task.
-- `/retro` patch-bumps per merged PR + minor-bumps at phase close, tagging on `main` immediately.
+`main` is the always-active trunk. Every task PRs into `main`; `/retro` patch-bumps per merged PR + minor-bumps at phase close, tagging on `main` immediately. This is the same workflow whether or not the project deploys.
 
-Adopting a `production` deploy branch later (optional — a downstream pointer Vercel watches):
+Deployable projects add a `production` branch — a downstream deploy pointer the host (Vercel, etc.) watches. It is **never** a PR base and is never touched by the sync. Ship with `/promote-production`, which ff-merges `main` → `production` and pushes (the version tag is already on the commit from the bump — promotion does not tag).
+
+Adopting a production branch:
 ```
 git checkout -b production main && git push -u origin production
 ```
-Then repoint Vercel's production branch from `main` to `production` (Settings → Git → Production Branch) **before** `main` takes new work, or WIP auto-deploys to prod. After that, ship with `/promote-production`, which ff-merges `main` → `production` and pushes (the tag is already on the commit from the bump — promotion does not tag). `production` is never a PR base and never read by sync; `/promote-production` gates on `origin/production`, so opting in/out is just the branch existing.
-
-### Mobile PR review (developer notes)
-- GitHub mobile app, not web.
-- Tap the preview URL first — prefer the stable `preview.baybranchfarm.com` over the per-PR Vercel URL (see below).
-- Auto-merge enabled per PR after CI green.
-- Branch protection: require CI green; skip reviewer-count requirements for solo phase.
-
-### Stable preview URL — `preview.baybranchfarm.com`
-
-To keep the preview URL bookmarkable on a phone, a fixed subdomain points at whichever task branch's preview deployment you're currently reviewing. Reassigned per active branch.
-
-**DNS (Cloudflare, one-time):**
-- Record: `CNAME`, Name `preview`, Target `cname.vercel-dns.com`.
-- **Proxy: DNS only** (gray cloud). Orange-cloud proxying breaks Vercel's TLS chain.
-
-**Vercel domain (one-time):**
-- Project → Settings → Domains → Add `preview.baybranchfarm.com`.
-
-**Per-branch reassignment (every new task branch):**
-- Project → Settings → Domains → `preview.baybranchfarm.com` → **Edit** → Git Branch → select `task/X.Y-current-branch` → Save.
-- New preview build for that branch repoints the subdomain. ~30s.
-
-**Supabase OAuth allowlist (one-time):**
-- Supabase Dashboard → Authentication → URL Configuration → Redirect URLs → add `https://preview.baybranchfarm.com/**`.
-- **Double-star, not single-star.** `/*` matches one path segment only (so `/auth/callback` fails to match); `/**` matches any path. A single-star slip costs an hour of "auth almost works" debugging — Supabase silently falls back to Site URL on a non-match, and the user lands on `/?code=...` with the callback route never running. Session 19 (2026-05-14) burned this exact hour.
-
-If the subdomain returns 500 or 404 right after reassignment, the new branch hasn't pushed a commit yet — Vercel only builds on new SHAs (404 = no deployment exists for that branch; 500 = deployment exists but is broken, usually a different bug). An empty commit (`git commit --allow-empty -m "Trigger preview"`) kicks a build.
+Then repoint the host's production branch from `main` to `production` (e.g. Vercel → Settings → Git → Production Branch) — **before** `main` takes active work, or WIP auto-deploys to prod. Removing it: delete the branch and point the host back at `main`. No skill changes to opt in or out — only `/promote-production` cares (it gates on `origin/production`).
 
 ## Versioning
 
-Bushel carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. `/retro` is now the sole place version bumps happen (DEC-S013 moved patch bumps out of `/its-dead`).
+Every dev project carries a SemVer version in `package.json`, mirrored to a git tag (`vX.Y.Z`) on `main`. `/retro` is the sole place version bumps happen (DEC-S013 moved patch bumps out of `/its-dead`).
 
 **Three triggers (all run at `/retro` per DEC-S013):**
 - **Patch:** `/retro` Step 8.2 — one bump + CHANGELOG entry per PR merged in the phase window. Title pulled from GitHub.
 - **Minor:** `/retro` Step 8.3 — at phase close after all patches. CHANGELOG entry summarizes the phase.
 - **Major:** `/bump-major` manual. User supplies the breaking-change rationale.
 
-**Tag rule:** tags are applied on the active trunk (`main`) at bump time (DEC-S022). A `production` deploy branch, if adopted, receives the already-tagged commit via `/promote-production` ff-merge — promotion does not tag.
+**Tag rule:** tags are applied on the active trunk (`main`) at bump time (DEC-S022). A `production` deploy branch, if present, receives the already-tagged commit via `/promote-production` ff-merge — promotion does not tag.
 
 **Detection:** these skills check `package.json` exists at the repo root before bumping. If it doesn't (template/markdown-only project), they no-op silently.
 
 ### `<VersionTag />` component
 
-Build-time version display at `src/components/VersionTag.tsx`. Reads `process.env.NEXT_PUBLIC_APP_VERSION` + `process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`. Renders e.g. `v1.2.3 (a1b2c3)`.
+Build-time version display, reads `process.env.NEXT_PUBLIC_APP_VERSION` + `process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`. Renders e.g. `v1.2.3 (a1b2c3)`.
 
 Wiring:
-- `next.config.ts` forwards `npm_package_version` → `NEXT_PUBLIC_APP_VERSION`. Critical — without `NEXT_PUBLIC_`, client trees silently render `v0.0.0`.
-- Currently rendered in the placeholder home page footer at `src/app/page.tsx`. Login screen now exists at `src/app/login/page.tsx`; **moving the tag to the login screen + a global footer is a Phase 6.1 polish task.**
+- `next.config.ts` (or `next.config.js`) forwards `npm_package_version` → `NEXT_PUBLIC_APP_VERSION`. Critical — without `NEXT_PUBLIC_`, client trees silently render `v0.0.0`.
+- Wire into login screen and footer.
 - Vercel sets `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` automatically. Local `npm run dev` outside Vercel omits the commit hash — that's intentional.
 
 ```tsx
@@ -382,16 +167,25 @@ Format (Keep-a-Changelog inspired but simpler):
 - PR #41: Fix dashboard query
 ```
 
+### PR Review on Mobile (developer notes)
+
+Doing PR reviews from your phone is tolerable if you structure for it:
+- **GitHub mobile app, not web.** The native app's diff + approve + merge flow is usable. The mobile web is not.
+- **Tap the preview URL first.** Vercel posts it as a comment. 60 seconds of clicking the actual feature catches more than reading the diff would.
+- **Enable auto-merge.** Repo Settings → enable auto-merge, then "Enable auto-merge" on each PR. Checks pass → it merges itself. One less thing to remember to do.
+- **Branch protection:** require CI green (Vercel build + Playwright). Skip reviewer count requirements for solo dev — they add friction with no benefit.
+- **Checklist PR descriptions.** `/kill-this` should populate: does this PR have a migration? RLS change? UI change at 375px? A checkbox list is fast to scan on a small screen.
+- **`gh` CLI on your dev server** is faster than any UI when you're at a keyboard: `gh pr list`, `gh pr view 42 --web`, `gh pr merge 42 --auto`.
+
 ## Workflow Notes
-- **Diagnostic commands** (build, lint, type, test): run directly.
-- **Environment-changing commands** (npm install, migrations, push, deploys): output for user to run.
-- **Never rebase a task branch with commits on origin.** Use GitHub's "Update branch" at merge time.
-- **Before starting `npm run dev`:** run `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` first. If it returns 200, skip the start — a server is already up. Only start a new one if the check fails.
-- **Debugging CI failures:** Before any multi-step local debug (spawning servers, reading cookies, modifying middleware), confirm the environment is functional: "Can you run `npx playwright test` locally right now? What env vars are set?" One environmental check before any code change.
-- **Stale `next start` on port 3001:** Playwright's webServer config reuses an existing server on port 3001 when one is running. A `next start` left over from an earlier debug run will serve the previous build's bundle to every test in the new run, producing phantom failures (asset 404s, "old code" assertions, hydration mismatches) that vanish on a fresh process. Before the first targeted `npx playwright test` invocation in a session — especially after build changes — kill any orphan: `lsof -ti:3001 | xargs -r kill -9` (or `pkill -f "next start"`). Re-check with `lsof -ti:3001` — empty output means the port is clean. Do this once per session, not per test run.
-- **No `source .envrc` for `npx playwright test`:** Playwright reads `.env.local` via `dotenv` in `playwright.config.ts` — it does not need `.envrc`. The `source .envrc &&` prefix is for `supabase link` / `supabase db push` only (lines above), because those need `SUPABASE_ACCESS_TOKEN`. Prefixing test commands with `source .envrc &&` triggers a permission prompt per invocation (the leading `source` falls outside `Bash(npx *)`), and each variation — different spec, project, or pipe target — is a new prompt. Run tests bare: `npx playwright test tests/foo.spec.ts --project=desktop`.
+- **Diagnostic commands** (build, lint, type check, test): run directly — see errors, fix them, don't bother the user.
+- **Environment-changing commands** (npm install, supabase migrations, git push, deploys): output these for the user to run.
+- **Never rebase a task branch that already has commits on origin.** If main has advanced while a PR branch is open, leave the branch as-is — GitHub's "Update branch" button handles this at merge time. Rebasing rewrites remote history and requires a force-push. Use `git merge --ff-only` only if explicitly asked.
+- **Debugging CI failures:** Before any multi-step local debug (spawning servers, reading cookies, modifying middleware), confirm the environment is functional: "Can you run the test suite locally right now? What env vars are set?" One environmental check before any code change.
 - **JSON parsing in Bash:** Prefer `gh ... --jq '...'` (built-in jq via `gh`) or `jq` over `python3 -c "import json,sys; ..."` one-liners. The python invocations trigger per-pattern permission prompts (each unique argument list is a new allowlist entry), while `gh --jq` runs under the existing `Bash(gh ...)` allowance. For non-`gh` JSON, install/use `jq` directly. Reserve python for cases where the data shape genuinely needs control flow.
 - **Bug reports:** create a GitHub issue, label `bug`, add to current or next phase.
+
+Project-specific debugging gotchas (dev-server checks, stale-process traps, auth-redirect quirks) live in `.claude/CLAUDE-context.md` under `## Workflow Notes (project)`.
 
 ## Approval Before Action (all tasks)
 
@@ -402,12 +196,11 @@ For every task — not just bugs — explain the plan and wait for approval befo
 3. Wait for "go", "do it", or equivalent
 4. Do not edit files or run commands until approved
 
-**Includes the full test suite.** Database may be in use. Targeted runs OK during dev; full suite never automatic.
-
 ## Bug Reports & Questions
-1. Explain cause + proposed fix
-2. Wait for approval
-3. No edits until go-ahead
+When a bug is reported or a question is asked:
+1. Explain the cause and your proposed fix
+2. Wait for approval before making any changes
+3. Do not edit files, run commands, or implement fixes until given the go-ahead
 
 ## Scope Discipline
 Check `docs/SPEC.md` "Not V1" before adding anything.
@@ -415,8 +208,13 @@ Check `docs/SPEC.md` "Not V1" before adding anything.
 If a task feels bigger than its estimate:
 1. Stop, re-estimate
 2. Update PROJECT_PLAN.md (at next phase boundary, or via Issue if mid-phase)
-3. If now a 13, break it down
-4. If scope creep, flag and move on
+3. If scope creep, flag and move on
+
+**Splitting is a reviewability call, not a model-capability one.** Points size *estimation*; they don't cap how much gets built in one run. Fable holds coherence across far more than an 8, and splitting a *coherent* task fragments context — two stitched-together 5s can land worse than one well-specified 8. So:
+- **Don't split a coherent 8** (one feature, one migration, one subsystem) just to honor a ceiling — run it as one unit with the full spec up front.
+- **Do split** when the diff is too large to review well, the blast radius or reversibility worries you, there's a migration conflict (see PR Workflow), or an "8" is secretly two unrelated things.
+- **Still break genuine 13s** — for review and risk, and because a 13 usually means the task isn't understood well enough yet. Not because the model can't hold it.
+- Larger units lean harder on a complete spec + crisp ACs and the `@architect` gate. Raise the ceiling only with those in place.
 
 ## Tone
 Occasional dry humor and sarcasm welcome. One good line beats three forced ones.
@@ -438,6 +236,20 @@ If a turn ends with a tidy bullet list followed by three paragraphs of prose, th
 Mid-session updates: one sentence per state change. "Found X." "Switching to Y." "Build green." Not a paragraph.
 
 This rule applies double at session end. The session-summary block is the first thing I read next session — make it dense, not voluminous. Five bullets of work and a wall of text means I cannot actually use the summary. Cut the wall.
+
+## Narration
+
+`Response Length` and `Verbosity` above are the standing baseline. This is the switchable knob on top of them — Opus 4.8 / Fable narrate more by default, so name the level and I'll hold it for the session.
+
+- **Terse** (default): Silence between tool calls. One sentence only when I find something, change direction, or hit a blocker. No "Now I'll…", "Let me check…", "Looking at…", no recapping what you just watched. Close with one or two sentences on the outcome.
+- **Normal**: Brief progress notes at meaningful steps — not every action.
+- **Narrate**: Explain reasoning as I go. For teaching, debugging, or watching a tricky change land.
+
+Switch any time: `narration: terse|normal|narrate`.
+
+Two mechanics move narration the same direction, independent of level:
+- **Keep adaptive thinking on.** With thinking disabled, 4.8 / Fable spill reasoning into the visible answer — which reads as *more* narrative. Adaptive keeps reasoning in thinking blocks and the response clean.
+- **Lower `effort`** (`low` / `medium`) trims preamble and confirmations — a coarser lever than the levels above.
 
 ## Cost and Waste
 
