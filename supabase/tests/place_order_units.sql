@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(19);
 
 -- ============================================================
 -- 6.5d — place_order RPC under multi-unit (DEC-032)
@@ -262,6 +262,92 @@ select throws_like(
      ) $$,
   '%has no active units%',
   'product with zero active units raises a targeted error (not the unit-mismatch message)'
+);
+
+-- ============================================================
+-- 9. DEC-036 / #132 — a product already at qty_available = 0 rejects the
+--    order. Optimistic oversell (DEC-012) applies only while qty > 0; at
+--    zero the whole order rolls back: inventory stays 0, no order row.
+--    The product's trigger-spawned base unit means the RPC resolves a unit
+--    fine, so the rejection is purely the qty=0 guard — not "no units".
+-- ============================================================
+insert into public.customers (id, name, token)
+values ('dddd0000-0000-0000-0000-000000000006'::uuid, 'Sold Out Customer', 'token-soldout-036');
+
+insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000005'::uuid, 'Zero Stock', 'bunch', 300, 0.00, 5, 'Herbs');
+
+select throws_like(
+  $$ select public.place_order(
+       'dddd0000-0000-0000-0000-000000000006'::uuid,
+       '2026-06-01'::date,
+       'delivery', '222 Soldout St', '', '', '',
+       jsonb_build_array(
+         jsonb_build_object(
+           'product_id', 'dddd0000-0000-0000-0000-aaaa00000005'::text,
+           'qty',        1,
+           'unit_price_cents', 300
+         )
+       )
+     ) $$,
+  '%is sold out%',
+  'place_order against a qty=0 product raises sold-out (DEC-036)'
+);
+
+select is(
+  (select qty_available from public.products
+   where id = 'dddd0000-0000-0000-0000-aaaa00000005'::uuid),
+  0.00::numeric(10,2),
+  'sold-out product stays at 0 — not driven negative (rejection rolled back the decrement)'
+);
+
+select is(
+  (select count(*)::int from public.orders
+   where customer_id = 'dddd0000-0000-0000-0000-000000000006'::uuid
+     and week_of = '2026-06-01'),
+  0,
+  'no order row created — the whole transaction rolled back'
+);
+
+-- ============================================================
+-- 10. Multi-item atomicity (DEC-036). An order containing an in-stock item
+--     AND a sold-out item is rejected as a whole: the in-stock item is
+--     listed FIRST so it gets inserted + decremented before the loop reaches
+--     the sold-out item and raises — proving the prior item's write rolls
+--     back too. No partial order.
+-- ============================================================
+insert into public.customers (id, name, token)
+values ('dddd0000-0000-0000-0000-000000000007'::uuid, 'Multi Item Customer', 'token-multi-036');
+
+insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000006'::uuid, 'In Stock Item', 'bunch', 400, 9.00, 6, 'Herbs');
+
+select throws_like(
+  $$ select public.place_order(
+       'dddd0000-0000-0000-0000-000000000007'::uuid,
+       '2026-06-01'::date,
+       'delivery', '333 Multi St', '', '', '',
+       jsonb_build_array(
+         jsonb_build_object('product_id', 'dddd0000-0000-0000-0000-aaaa00000006'::text, 'qty', 1, 'unit_price_cents', 400),
+         jsonb_build_object('product_id', 'dddd0000-0000-0000-0000-aaaa00000005'::text, 'qty', 1, 'unit_price_cents', 300)
+       )
+     ) $$,
+  '%is sold out%',
+  'multi-item order with one sold-out line is rejected as a whole'
+);
+
+select is(
+  (select qty_available from public.products
+   where id = 'dddd0000-0000-0000-0000-aaaa00000006'::uuid),
+  9.00::numeric(10,2),
+  'in-stock item in a rejected multi-item order is NOT decremented (its write rolled back)'
+);
+
+select is(
+  (select count(*)::int from public.orders
+   where customer_id = 'dddd0000-0000-0000-0000-000000000007'::uuid),
+  0,
+  'no order row from the rejected multi-item order'
 );
 
 select * from finish();

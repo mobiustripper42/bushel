@@ -113,4 +113,23 @@ test.describe("/c/[token] state — closed + all sold out (DEC-031)", () => {
       page.getByRole("heading", { name: /Order received/i }),
     ).toBeVisible();
   });
+
+  // #132 / DEC-036 — the inverse of the closed-race above. DEC-012 optimism
+  // lets a customer oversell the "last few" (qty>0), but it does NOT extend to
+  // a product that is already at qty=0. A stale tab (loaded with stock →
+  // inventory hit 0 → submit) must be rejected, not driven negative.
+  test("sold-out mid-order race: product hits qty=0 after load, submit is rejected (DEC-036)", async ({ page }) => {
+    // Customer loads with stock and adds eggs.
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    const eggsRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.eggs.name });
+    await eggsRow.getByRole("button", { name: "increase" }).click();
+
+    // Eggs sell out under them (admin edit or another customer's order).
+    await setProductQty(TEST_PRODUCTS.eggs.id, 0);
+
+    // Submit is rejected — no redirect, friendly error, order not created.
+    await page.locator(".submit-btn").click();
+    await expect(page.locator(".submit-error")).toContainText(/sold out/i);
+    await expect(page).toHaveURL(/\/c\/[^/]+$/);
+  });
 });
