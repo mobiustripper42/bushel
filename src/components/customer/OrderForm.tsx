@@ -346,15 +346,27 @@ export function OrderForm({
     // canonical unit_price_cents + conversion_to_base from product_units
     // at RPC time (6.5d). unit_price_cents is sent for display continuity
     // but the RPC ignores it — strict "price at moment of order" semantics.
-    const payloadItems = itemsWithQty.map((p) => {
+    // #149 — a hydrated draft can carry qty for a product whose units were all
+    // deactivated since it was saved; unitFor then returns null. Drop those
+    // rather than dereference u!.id (a crash persistence newly made reachable).
+    // The row still renders as sold-out; it just isn't submittable.
+    const payloadItems = itemsWithQty.flatMap((p) => {
       const u = unitFor(p);
-      return {
-        product_id: p.id,
-        product_unit_id: u!.id,
-        qty: qty[p.id] ?? 0,
-        unit_price_cents: u?.unit_price_cents ?? p.price_cents,
-      };
+      if (!u) return [];
+      return [
+        {
+          product_id: p.id,
+          product_unit_id: u.id,
+          qty: qty[p.id] ?? 0,
+          unit_price_cents: u.unit_price_cents,
+        },
+      ];
     });
+    if (payloadItems.length === 0) {
+      setSubmitError("Those items are no longer available. Reload to see what's in stock.");
+      submittingRef.current = false;
+      return;
+    }
     // #149 — latch off persistence and clear the draft up front. On success the
     // action redirects and unmounts before any post-await code reliably runs,
     // so we can't clear there; on failure the error branches below unlatch and

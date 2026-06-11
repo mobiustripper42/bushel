@@ -6,6 +6,7 @@ import {
   admin,
   customerOrderUrl,
   resetCustomerOrderState,
+  setProductQty,
 } from "./helpers";
 
 async function getCustomerId(token: string): Promise<string> {
@@ -100,6 +101,34 @@ test.describe("/c/[token] place order", () => {
       Object.keys(sessionStorage).filter((k) => k.startsWith("bushel:cart:")),
     );
     expect(draftAfter.length).toBe(0);
+  });
+
+  // #149 — a FAILED submit must restore the optimistically-cleared draft and
+  // re-enable persistence, so a rotation after a failed submit still keeps the
+  // cart and later edits keep persisting. Uses the DEC-036 sold-out rejection
+  // as the failure trigger.
+  test("failed submit restores the draft and re-enables persistence", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    await stepUp(page, TEST_PRODUCTS.eggs.name, 1);
+
+    // Eggs sell out under them → submit is rejected (DEC-036), no redirect.
+    await setProductQty(TEST_PRODUCTS.eggs.id, 0);
+    await page.locator(".submit-btn").click();
+    await expect(page.locator(".submit-error")).toContainText(/sold out/i);
+
+    // Draft restored after the failed submit (not left cleared).
+    const restored = await page.evaluate(() =>
+      Object.keys(sessionStorage).filter((k) => k.startsWith("bushel:cart:")),
+    );
+    expect(restored.length).toBe(1);
+
+    // Persistence re-enabled: a subsequent edit re-writes the draft.
+    await stepUp(page, TEST_PRODUCTS.kale.name, 1);
+    const draft = await page.evaluate(() => {
+      const key = Object.keys(sessionStorage).find((k) => k.startsWith("bushel:cart:"));
+      return key ? sessionStorage.getItem(key) : null;
+    });
+    expect(draft).toContain(TEST_PRODUCTS.kale.id);
   });
 
   test("oversold qty sets needs_reconciliation = true (DEC-012)", async ({

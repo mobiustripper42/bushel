@@ -171,4 +171,22 @@ test.describe("/c/[token] order form", () => {
     ).toHaveValue("0");
     await fresh.close();
   });
+
+  // #149 — a corrupt/unparseable draft must be ignored, not crash the form.
+  test("corrupt sessionStorage draft is ignored; form renders empty", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    // The form writes an (empty) draft on mount; clobber it with junk, reload.
+    await page.evaluate(() => {
+      const key =
+        Object.keys(sessionStorage).find((k) => k.startsWith("bushel:cart:")) ?? "bushel:cart:x";
+      sessionStorage.setItem(key, "{ not valid json");
+    });
+    await page.reload();
+
+    // Form renders (no crash), products visible, cart empty.
+    await expect(page.getByText(TEST_PRODUCTS.kale.name, { exact: true }).first()).toBeVisible();
+    await expect(
+      page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name }).locator(".stepper-val"),
+    ).toHaveValue("0");
+  });
 });
