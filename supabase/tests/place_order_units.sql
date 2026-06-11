@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(19);
 
 -- ============================================================
 -- 6.5d — place_order RPC under multi-unit (DEC-032)
@@ -307,6 +307,47 @@ select is(
      and week_of = '2026-06-01'),
   0,
   'no order row created — the whole transaction rolled back'
+);
+
+-- ============================================================
+-- 10. Multi-item atomicity (DEC-036). An order containing an in-stock item
+--     AND a sold-out item is rejected as a whole: the in-stock item is
+--     listed FIRST so it gets inserted + decremented before the loop reaches
+--     the sold-out item and raises — proving the prior item's write rolls
+--     back too. No partial order.
+-- ============================================================
+insert into public.customers (id, name, token)
+values ('dddd0000-0000-0000-0000-000000000007'::uuid, 'Multi Item Customer', 'token-multi-036');
+
+insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000006'::uuid, 'In Stock Item', 'bunch', 400, 9.00, 6, 'Herbs');
+
+select throws_like(
+  $$ select public.place_order(
+       'dddd0000-0000-0000-0000-000000000007'::uuid,
+       '2026-06-01'::date,
+       'delivery', '333 Multi St', '', '', '',
+       jsonb_build_array(
+         jsonb_build_object('product_id', 'dddd0000-0000-0000-0000-aaaa00000006'::text, 'qty', 1, 'unit_price_cents', 400),
+         jsonb_build_object('product_id', 'dddd0000-0000-0000-0000-aaaa00000005'::text, 'qty', 1, 'unit_price_cents', 300)
+       )
+     ) $$,
+  '%is sold out%',
+  'multi-item order with one sold-out line is rejected as a whole'
+);
+
+select is(
+  (select qty_available from public.products
+   where id = 'dddd0000-0000-0000-0000-aaaa00000006'::uuid),
+  9.00::numeric(10,2),
+  'in-stock item in a rejected multi-item order is NOT decremented (its write rolled back)'
+);
+
+select is(
+  (select count(*)::int from public.orders
+   where customer_id = 'dddd0000-0000-0000-0000-000000000007'::uuid),
+  0,
+  'no order row from the rejected multi-item order'
 );
 
 select * from finish();
