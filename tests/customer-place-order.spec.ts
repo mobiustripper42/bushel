@@ -79,6 +79,29 @@ test.describe("/c/[token] place order", () => {
     expect(kale?.qty_available).toBe(TEST_PRODUCTS.kale.qty_available - 2);
   });
 
+  // #149 — a successful submit clears the persisted cart draft, so a back-nav
+  // to /c/[token] (or any later visit in the same tab) doesn't resurrect a
+  // stale cart on top of the now-placed order.
+  test("submit clears the persisted cart draft", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    await stepUp(page, TEST_PRODUCTS.kale.name, 1);
+
+    // Draft exists while ordering.
+    const draftBefore = await page.evaluate(() =>
+      Object.keys(sessionStorage).filter((k) => k.startsWith("bushel:cart:")),
+    );
+    expect(draftBefore.length).toBe(1);
+
+    await page.locator(".submit-btn").click();
+    await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+
+    // sessionStorage survives the same-tab nav to /confirmed; the key is gone.
+    const draftAfter = await page.evaluate(() =>
+      Object.keys(sessionStorage).filter((k) => k.startsWith("bushel:cart:")),
+    );
+    expect(draftAfter.length).toBe(0);
+  });
+
   test("oversold qty sets needs_reconciliation = true (DEC-012)", async ({
     page,
   }) => {

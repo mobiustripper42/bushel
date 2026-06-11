@@ -23,6 +23,20 @@ function formatPrice(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+// A server action's redirect() throws NEXT_REDIRECT on the client, which lands
+// in our submit catch. It carries a `digest` string like "NEXT_REDIRECT;…".
+// Distinguish it from a real failure so the success path doesn't get treated
+// as an error (and doesn't restore the cart draft we just cleared).
+function isRedirectError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "digest" in err &&
+    typeof (err as { digest?: unknown }).digest === "string" &&
+    (err as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
 // Press-and-hold tuning: pause before repeating, then a steady cadence that
 // accelerates after a few ticks so wholesale qty (24, 50…) is reachable
 // without 50 taps. Manual feel — not exercised by tests.
@@ -218,7 +232,73 @@ export function OrderForm({
   // latch; the server action is idempotent on the second call but the second
   // request still hits the network unnecessarily.
   const submittingRef = useRef(false);
+  // #149 — once a submit is in flight we stop persisting: the redirect on
+  // success unmounts before any post-await code runs, and a re-render during
+  // the submit transition would otherwise re-fire the persist effect and
+  // resurrect the draft we just cleared. Reset on a failed submit.
+  const submittedRef = useRef(false);
   const fulfillRef = useRef<HTMLElement>(null);
+
+  // #149 — persist the in-progress cart to sessionStorage so a reload or an
+  // Android orientation change (which can evict the bfcache and remount this
+  // component) doesn't wipe it. Keyed by customer so drafts can't bleed across
+  // tokens in one tab. sessionStorage, not localStorage: it survives a same-tab
+  // reload but not a tab close — a tokened weekly order shouldn't resurrect days
+  // later (matches the AC: reopen via SMS link = fresh order).
+  const draftKey = `bushel:cart:${customer.id}`;
+  const [hydrated, setHydrated] = useState(false);
+
+  const writeDraft = () => {
+    try {
+      sessionStorage.setItem(
+        draftKey,
+        JSON.stringify({ qty, selectedUnit, mode, pickupNote, deliveryPreference, notes }),
+      );
+    } catch {
+      // Private-mode / quota / storage disabled — persistence is best-effort.
+    }
+  };
+  const clearDraft = () => {
+    try {
+      sessionStorage.removeItem(draftKey);
+    } catch {
+      // ignore — see writeDraft
+    }
+  };
+
+  // Hydrate once on mount (client-only — sessionStorage is undefined during
+  // SSR). A stored qty/unit for a product that's since gone sold-out or hidden
+  // is harmless: itemsWithQty filters against the live product list and unitFor
+  // falls back to the first active unit.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.qty && typeof d.qty === "object") setQty(d.qty);
+        if (d.selectedUnit && typeof d.selectedUnit === "object") setSelectedUnit(d.selectedUnit);
+        if (d.mode === "delivery" || d.mode === "pickup") setMode(d.mode);
+        if (typeof d.pickupNote === "string") setPickupNote(d.pickupNote);
+        if (typeof d.deliveryPreference === "string") setDeliveryPreference(d.deliveryPreference);
+        if (typeof d.notes === "string") setNotes(d.notes);
+      }
+    } catch {
+      // Corrupt/unreadable draft — start fresh.
+    }
+    setHydrated(true);
+    // Mount-only; draftKey is stable for the component's life (customer.id).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist on every cart-state change — but only after hydration, so the
+  // initial empty state on first render can't clobber a stored draft before
+  // the mount effect loads it.
+  useEffect(() => {
+    if (!hydrated || submittedRef.current) return;
+    writeDraft();
+    // writeDraft closes over the current state; deps list the persisted fields.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, qty, selectedUnit, mode, pickupNote, deliveryPreference, notes]);
 
   const scrollToFulfill = () => {
     fulfillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -275,6 +355,12 @@ export function OrderForm({
         unit_price_cents: u?.unit_price_cents ?? p.price_cents,
       };
     });
+    // #149 — latch off persistence and clear the draft up front. On success the
+    // action redirects and unmounts before any post-await code reliably runs,
+    // so we can't clear there; on failure the error branches below unlatch and
+    // re-persist so a rotation after a failed submit still keeps the cart.
+    submittedRef.current = true;
+    clearDraft();
     startTransition(async () => {
       try {
         const result = await placeOrder({
@@ -287,13 +373,22 @@ export function OrderForm({
         if (result?.error) {
           setSubmitError(result.error);
           submittingRef.current = false; // allow retry after a failed submit
+          submittedRef.current = false; // re-enable persistence
+          writeDraft(); // restore the draft we optimistically cleared
         }
         // On success the action redirects; page unmounts, latch stays true.
       } catch (err) {
+        // A server-action redirect() surfaces here as a thrown NEXT_REDIRECT —
+        // that's the SUCCESS path (order placed, Next is navigating to
+        // /confirmed). Leave the draft cleared and the latch set; the page is
+        // unmounting. Only a genuine failure restores the draft + unlatches.
+        if (isRedirectError(err)) return;
         // Thrown errors (network failure, action exception) used to leave the
         // ref stuck true and silently swallow every subsequent click. Reset.
         setSubmitError(err instanceof Error ? err.message : "Submit failed.");
         submittingRef.current = false;
+        submittedRef.current = false; // re-enable persistence
+        writeDraft(); // restore the draft we optimistically cleared
       }
     });
   };

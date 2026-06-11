@@ -130,4 +130,45 @@ test.describe("/c/[token] order form", () => {
     expect(afterY).toBeGreaterThan(beforeY);
     expect(page.url()).not.toContain("/confirmed");
   });
+
+  // #149 — cart draft persists to sessionStorage so a same-tab reload (the
+  // Android-rotation bfcache-evict remount) doesn't wipe it.
+  test("cart draft survives a same-tab reload (sessionStorage persistence)", async ({ page }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+    const kaleRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+    await kaleRow.getByRole("button", { name: "increase" }).click();
+    await kaleRow.getByRole("button", { name: "increase" }).click();
+    await expect(kaleRow.locator(".stepper-val")).toHaveValue("2");
+
+    // Also flip mode + add a note so we cover the non-qty fields too.
+    await page.getByRole("tab", { name: /pickup/i }).click();
+    await page.locator("section.notes textarea").fill("leave at side door");
+
+    await page.reload();
+
+    // Cart + mode + note all restored from the draft.
+    await expect(
+      page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name }).locator(".stepper-val"),
+    ).toHaveValue("2");
+    await expect(page.getByRole("tab", { name: /pickup/i })).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("section.notes textarea")).toHaveValue("leave at side door");
+  });
+
+  // #149 — sessionStorage is per-tab: a fresh context (reopening the SMS link
+  // in a new tab/session) starts empty, not resurrected from an old draft.
+  test("cart draft does NOT cross into a fresh browser context", async ({ page, browser }) => {
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    const kaleRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+    await kaleRow.getByRole("button", { name: "increase" }).click();
+    await expect(kaleRow.locator(".stepper-val")).toHaveValue("1");
+
+    const fresh = await browser.newContext();
+    const freshPage = await fresh.newPage();
+    await freshPage.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    await expect(
+      freshPage.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name }).locator(".stepper-val"),
+    ).toHaveValue("0");
+    await fresh.close();
+  });
 });
