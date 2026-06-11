@@ -67,7 +67,19 @@ export async function placeOrder(
     p_items: payload.items as unknown as Json,
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    // #132 / DEC-036: place_order rejects items whose product is sold out
+    // (qty_available = 0) at submit time — the stale-tab race. Surface a
+    // friendly, actionable message instead of the raw RPC text; reloading
+    // re-fetches inventory and greys the sold-out rows.
+    if (error.message.includes("is sold out")) {
+      return {
+        error:
+          "Some items sold out while you were ordering. Reload to see what's still available.",
+      };
+    }
+    return { error: error.message };
+  }
 
   // Best-effort admin alert (DEC-033). Failure is swallowed inside the
   // wrapper — order placement never blocks on a notification miss. We
