@@ -30,12 +30,11 @@ GitHub issues closed back into the parking lot — premature to commit work with
 - **10DLC brand registration + A2P migration** (DEC-026) — was #139 (1 pt code + 4–8 week carrier approval clock). Reverses operator-sent SMS in part: migrate send path from `sms:` deep link → API send. Trigger: ~50 messages/week sustained, OR Annabel asks for unattended sends, OR carriers start filtering Bushel-derived links.
 - **Minimum delivery amount** — was #138 (2 pts). Per-fulfillment-type dollar threshold; block submit below it for delivery (pickup probably exempt). Open Q: per-customer override (some restaurants free, some $40). Trigger: a $6 delivery to a restaurant actually happens and bites.
 - **Realtime inventory subscription** (was Phase 3.8 ship-or-skip) — was #53 (5 pts). Supabase Realtime push of `products.qty_available` + `is_available` to the customer order form, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag. Tightens DEC-012's optimistic-placement window without replacing `needs_reconciliation`. Trigger: oversell becomes a frequent operational problem (e.g. Annabel reconciling multiple orders a week).
-- **Make `product_units` strictly authoritative** — was #174. Drop the denormalized `products.unit` + `products.price_cents` columns and the bidirectional mirror triggers added in PR #175 (`task/7.x-inline-debug`). Replace remaining `products.unit` / `products.price_cents` readers (`src/lib/admin/orders-queries.ts:112` legacy fallback, `src/components/customer/OrderForm.tsx` defensive fallbacks) with `product_units` joins; saveInventory stops writing the mirror columns; migration drops them. Trigger: a third drift symptom from the dual-storage mirror, OR the inline-debug stack settles enough that this cleanup is worth the migration cost.
 - **Inventory drag-reorder above/below precision** — was #168. Split each row into upper/lower halves by cursor Y (`getBoundingClientRect().top + height/2`); below-half drops splice *after* the target. ~20 LOC + an `insertPosition: 'before' | 'after'` param on `reorderRows`. Bundled: "Save N changes" copy could special-case reorder-only diffs (one-row drag currently reports "Save 3 changes" because every row's sort_order shifts). Trigger: Annabel notices the down-drag asymmetry, OR a second person hits the surprising copy.
 
 ## Promoted
 
-*(empty — entries move here with a `→ #NNN` link when filed as issues)*
+- **Make `product_units` strictly authoritative** → [#212](https://github.com/mobiustripper42/bushel/issues/212) — promoted 2026-06-11. Trigger met: #208 surfaced the dual-storage drift again. Split out of #208; drop the denormalized `products.unit` + `products.price_cents` mirror columns + PR #175 triggers.
 
 ## Dropped
 

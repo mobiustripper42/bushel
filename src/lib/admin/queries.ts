@@ -9,6 +9,7 @@ export async function getInventoryCount(): Promise<number> {
   const { count, error } = await supabase
     .from("products")
     .select("id", { count: "exact", head: true })
+    .eq("is_active", true)
     .eq("is_available", true);
   if (error) throw new Error(`getInventoryCount: ${error.message}`);
   return count ?? 0;

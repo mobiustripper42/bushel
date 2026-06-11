@@ -57,7 +57,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   const router = useRouter();
   const [rows, setRows] = useState<InventoryRowState[]>(initialRows);
   const [baseline, setBaseline] = useState<InventoryRowState[]>(initialRows);
-  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const [showHidden, setShowHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
   const [unitsOpenFor, setUnitsOpenFor] = useState<string | null>(null);
@@ -71,7 +71,10 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   }, [baseline]);
 
   const dirtyCount = useMemo(() => {
-    let count = deletedIds.length;
+    // #207 — hiding is an is_active field change on the row (persisted via the
+    // normal Save), so the JSON diff below already counts it. No separate
+    // deleted-ids tally.
+    let count = 0;
     for (const row of rows) {
       if (row.isNew) {
         count += 1;
@@ -83,7 +86,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
       }
     }
     return count;
-  }, [rows, baselineMap, deletedIds]);
+  }, [rows, baselineMap]);
 
   const dirty = dirtyCount > 0;
   // #129 — suspend the guard while a save is in flight; the success path
@@ -108,11 +111,24 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   // admin V1.
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
+  // Only adopt fresh server data when it actually differs from our current
+  // baseline. This guards two cases that would otherwise clobber an edit:
+  //   1. The mount run — useState already seeded rows + baseline from
+  //      initialRows, so re-setting them is redundant.
+  //   2. A spurious re-render that hands us a new initialRows *reference* with
+  //      identical content (observed on WebKit/mobile during hydration). The
+  //      old reference-only guard would fire setRows(initialRows) and drop a
+  //      qty edit typed in the same tick — the local field draft survives, so
+  //      the input shows the new value while the dirty count silently stays 0.
+  // A genuine change (router.refresh() after save / prepopulate, or a
+  // concurrent-tab write) differs in content and resyncs as before.
+  const baselineRef = useRef(baseline);
+  baselineRef.current = baseline;
   useEffect(() => {
     if (dirtyRef.current) return;
+    if (JSON.stringify(initialRows) === JSON.stringify(baselineRef.current)) return;
     setRows(initialRows);
     setBaseline(initialRows);
-    setDeletedIds([]);
   }, [initialRows]);
 
   function update(id: string, patch: Partial<InventoryRowState>) {
@@ -120,11 +136,20 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
     setError(null);
   }
 
-  function remove(id: string) {
-    setRows((rs) => rs.filter((r) => r.id !== id));
-    if (!id.startsWith("new-")) {
-      setDeletedIds((ids) => [...ids, id]);
+  // #207 — the trash button hides instead of deleting. A never-saved new row
+  // has no DB row to keep, so it drops locally; a saved row is soft-hidden
+  // (is_active=false) and persists on the next Save.
+  function hide(id: string) {
+    if (id.startsWith("new-")) {
+      setRows((rs) => rs.filter((r) => r.id !== id));
+    } else {
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, is_active: false } : r)));
     }
+    setError(null);
+  }
+
+  function restore(id: string) {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, is_active: true } : r)));
     setError(null);
   }
 
@@ -145,6 +170,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
         price_cents: 0,
         qty_available: 0,
         is_available: true,
+        is_active: true,
         sort_order: maxOrder + 10,
       },
     ]);
@@ -153,7 +179,6 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
 
   function handleDiscard() {
     setRows(baseline);
-    setDeletedIds([]);
     setError(null);
   }
 
@@ -196,9 +221,9 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
             price_cents: r.price_cents,
             qty_available: r.qty_available,
             is_available: r.is_available,
+            is_active: r.is_active,
             sort_order: r.sort_order,
           })),
-          deletedIds,
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Save failed. Try again.");
@@ -221,12 +246,14 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
       }
 
       setBaseline(mapped);
-      setDeletedIds([]);
       router.refresh();
     });
   }
 
-  const productCount = rows.length;
+  const activeRows = rows.filter((r) => r.is_active);
+  const hiddenCount = rows.length - activeRows.length;
+  const visibleRows = showHidden ? rows : activeRows;
+  const productCount = activeRows.length;
 
   return (
     <>
@@ -235,6 +262,15 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
         title="Inventory"
         titleSuffix={weekLabel}
       >
+        {hiddenCount > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => setShowHidden((v) => !v)}
+            aria-pressed={showHidden}
+          >
+            {showHidden ? `Hide hidden (${hiddenCount})` : `Show hidden (${hiddenCount})`}
+          </Button>
+        )}
         <PrepopulateButton />
         <Button
           variant="primary"
@@ -292,7 +328,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {visibleRows.map((row) => {
               const units = initialUnits[row.id] ?? [];
               return (
                 <InventoryRow
@@ -302,7 +338,8 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
                   inactiveExtrasCount={Math.max(0, units.filter((u) => !u.is_active).length)}
                   soldThisWeek={soldByProductId[row.id] ?? 0}
                   onUpdate={(patch) => update(row.id, patch)}
-                  onRemove={() => remove(row.id)}
+                  onRemove={() => hide(row.id)}
+                  onRestore={() => restore(row.id)}
                   onOpenUnits={row.isNew ? undefined : () => setUnitsOpenFor(row.id)}
                   isDragging={draggingId === row.id}
                   isDropTarget={dropTargetId === row.id && draggingId !== row.id}

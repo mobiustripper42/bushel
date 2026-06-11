@@ -182,6 +182,19 @@ export async function resetProductSortOrder(): Promise<void> {
   }
 }
 
+// #207 — products are soft-hidden (is_active=false) from the UI, never
+// hard-deleted, so a test that adds a throwaway product can't clean up through
+// the editor. This removes it at the DB level for test isolation.
+export async function deleteProductByName(name: string): Promise<void> {
+  await admin().from("products").delete().eq("name", name);
+}
+
+// #207 — flip a product's soft-delete flag. Hidden products (is_active=false)
+// drop out of the customer order form and the default admin view.
+export async function setProductActive(id: string, active: boolean): Promise<void> {
+  await admin().from("products").update({ is_active: active }).eq("id", id);
+}
+
 // Patches the singleton ordering_schedule row. Pass only the fields you want
 // to change. Used by the inventory meta-pill tests to walk all three open
 // states (closed / open manual / open via schedule).
