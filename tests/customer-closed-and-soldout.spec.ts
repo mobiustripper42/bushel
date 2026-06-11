@@ -7,6 +7,7 @@ import {
   restoreProductQty,
   setAllProductsSoldOut,
   setOrderingOpen,
+  setProductActive,
   setProductQty,
 } from "./helpers";
 
@@ -74,6 +75,25 @@ test.describe("/c/[token] state — closed + all sold out (DEC-031)", () => {
     await expect(eggsRow).not.toHaveClass(/is-sold-out/);
     await eggsRow.getByRole("button", { name: "increase" }).click();
     await expect(eggsRow.locator(".stepper-val")).toHaveValue("1");
+  });
+
+  // #207 — a hidden product (is_active=false) is gone from the customer form
+  // entirely, regardless of is_available/qty. Distinct from sold-out, which
+  // still renders the row greyed.
+  test("hidden product: is_active=false excludes the row from the customer form", async ({ page }) => {
+    try {
+      await setProductActive(TEST_PRODUCTS.honey.id, false);
+
+      await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+
+      // Honey is absent — not greyed, not present at all.
+      await expect(page.locator(".item-row", { hasText: TEST_PRODUCTS.honey.name })).toHaveCount(0);
+      // Other products still render and the form is interactive.
+      const kaleRow = page.locator(".item-row", { hasText: TEST_PRODUCTS.kale.name });
+      await expect(kaleRow).toBeVisible();
+    } finally {
+      await setProductActive(TEST_PRODUCTS.honey.id, true);
+    }
   });
 
   test("closed mid-order race: page loaded open, schedule flips closed, submit still succeeds (DEC-031 soft hint)", async ({ page }) => {

@@ -138,8 +138,8 @@ export function CustomersPage({ customers }: Props) {
             aria-pressed={showDeactivated}
           >
             {showDeactivated
-              ? `Hide deactivated (${deactivatedCount})`
-              : `Show deactivated (${deactivatedCount})`}
+              ? `Hide hidden (${deactivatedCount})`
+              : `Show hidden (${deactivatedCount})`}
           </Button>
         )}
         <Button variant="secondary" disabled title="Coming later">
@@ -180,7 +180,7 @@ export function CustomersPage({ customers }: Props) {
                 <td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--ink-500)" }}>
                   {showDeactivated
                     ? "No customers."
-                    : "No active customers. Add one to get started."}
+                    : "No visible customers. Add one to get started."}
                 </td>
               </tr>
             )}

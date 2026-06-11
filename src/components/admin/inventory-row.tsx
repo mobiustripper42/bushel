@@ -15,6 +15,9 @@ export type InventoryRowState = {
   price_cents: number;
   qty_available: number;
   is_available: boolean;
+  // #207 soft-delete. false = hidden: filtered out of the default view,
+  // excluded from the customer order form. Persisted via the normal Save.
+  is_active: boolean;
   sort_order: number | null;
 };
 
@@ -24,7 +27,9 @@ type Props = {
   inactiveExtrasCount?: number;
   soldThisWeek?: number;
   onUpdate: (patch: Partial<InventoryRowState>) => void;
+  // #207 — trash hides (active rows) or drops unsaved new rows; restore unhides.
   onRemove: () => void;
+  onRestore?: () => void;
   onOpenUnits?: () => void;
   // Drag-to-reorder (#143). The row is only `draggable` while the grip is
   // armed (onMouseDown on grip → arm; onDragEnd → disarm) so clicks into
@@ -58,6 +63,7 @@ export function InventoryRow({
   soldThisWeek = 0,
   onUpdate,
   onRemove,
+  onRestore,
   onOpenUnits,
   isDragging = false,
   isDropTarget = false,
@@ -81,6 +87,7 @@ export function InventoryRow({
 
   const rowClass =
     "data-row" +
+    (!row.is_active ? " is-hidden" : "") +
     (!row.is_available ? " is-disabled" : "") +
     (isDragging ? " is-dragging" : "") +
     (isDropTarget ? " is-drop-target" : "");
@@ -266,20 +273,32 @@ export function InventoryRow({
           />
         </td>
         <td className="row-actions">
-          <button
-            type="button"
-            className="row-trash"
-            onClick={onRemove}
-            title="Delete row"
-            aria-label={`Delete ${row.name || "new row"}`}
-          >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18" />
-              <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-              <path d="M19 6 17.5 20a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6 M14 11v6" />
-            </svg>
-          </button>
+          {row.is_active ? (
+            <button
+              type="button"
+              className="row-trash"
+              onClick={onRemove}
+              title="Hide row"
+              aria-label={`Hide ${row.name || "new row"}`}
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                <path d="M19 6 17.5 20a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6 M14 11v6" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="row-restore"
+              onClick={onRestore}
+              title="Restore row"
+              aria-label={`Restore ${row.name || "row"}`}
+            >
+              Restore
+            </button>
+          )}
         </td>
       </tr>
       {descOpen && (

@@ -115,6 +115,7 @@ export default async function InventoryPage() {
     price_cents: p.price_cents,
     qty_available: p.qty_available,
     is_available: p.is_available,
+    is_active: p.is_active,
     sort_order: p.sort_order,
   }));
 

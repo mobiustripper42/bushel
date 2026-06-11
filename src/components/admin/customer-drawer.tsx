@@ -20,7 +20,8 @@ export type CustomerDrawerState = {
   priority: string;
   send_weekly_link: boolean;
   token: string;
-  // #61 — when false, the drawer swaps "Delete customer" for "Reactivate".
+  // #61 — when false, the drawer swaps "Hide customer" for "Restore" (#207
+  // unified the wording across the inventory + customer screens to Hide/Show).
   is_active: boolean;
 };
 
@@ -150,7 +151,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
         <header className="drawer-head">
           <div>
             <div className="eyebrow">
-              {isNew ? "new customer" : isInactive ? "deactivated customer" : "edit customer"}
+              {isNew ? "new customer" : isInactive ? "hidden customer" : "edit customer"}
             </div>
             <h2 className="drawer-title">
               {isNew ? "Add a new customer" : initial.name || "—"}
@@ -255,7 +256,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
               onClick={handleDelete}
               disabled={deleting || saving}
             >
-              {deleting ? "Deactivating…" : "Delete customer"}
+              {deleting ? "Hiding…" : "Hide customer"}
             </Button>
           )}
           {isInactive && (
@@ -264,7 +265,7 @@ export function CustomerDrawer({ initial, onClose, onSaved }: Props) {
               onClick={handleReactivate}
               disabled={reactivating || saving || deleting}
             >
-              {reactivating ? "Reactivating…" : "Reactivate customer"}
+              {reactivating ? "Restoring…" : "Restore customer"}
             </Button>
           )}
           <div style={{ flex: 1 }} />

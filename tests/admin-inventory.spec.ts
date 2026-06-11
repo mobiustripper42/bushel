@@ -4,6 +4,7 @@ import {
   TEST_PRODUCTS,
   clearOrdersForWeek,
   customerIds,
+  deleteProductByName,
   resetProductSortOrder,
   seedOrder,
   setOrderingSchedule,
@@ -187,35 +188,60 @@ test.describe("admin inventory", () => {
     await expect(saveButton(page, 1)).toBeEnabled();
   });
 
-  test("add row, save, then delete the added row", async ({ page }) => {
-    await page.goto("/admin/inventory");
+  // #207 — products are never hard-deleted. The trash button hides them
+  // (is_active=false): gone from the default view + the customer order form,
+  // recoverable via "Show hidden" → Restore.
+  test("add row, hide it, then restore via Show hidden", async ({ page }) => {
+    try {
+      await page.goto("/admin/inventory");
 
-    await page.getByRole("button", { name: /add row/i }).click();
+      await page.getByRole("button", { name: /add row/i }).click();
 
-    const added = newRow(page);
-    await added.getByRole("textbox", { name: "Product name" }).fill("Test Carrots");
-    // Price input flipped from type=number to type=text + inputMode=decimal
-    // to fix the controlled-decimal-input cursor-jump bug. Role is now
-    // textbox, not spinbutton.
-    await added.getByRole("textbox", { name: /price/i }).fill("4.00");
-    await added.getByRole("textbox", { name: "Unit" }).fill("per lb");
-    await added.getByRole("textbox", { name: /quantity/i }).fill("20");
+      const added = newRow(page);
+      await added.getByRole("textbox", { name: "Product name" }).fill("Test Carrots");
+      // Price input flipped from type=number to type=text + inputMode=decimal
+      // to fix the controlled-decimal-input cursor-jump bug. Role is now
+      // textbox, not spinbutton.
+      await added.getByRole("textbox", { name: /price/i }).fill("4.00");
+      await added.getByRole("textbox", { name: "Unit" }).fill("per lb");
+      await added.getByRole("textbox", { name: /quantity/i }).fill("20");
 
-    await expect(saveButton(page, 1)).toBeEnabled();
-    await saveButton(page, 1).click();
-    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+      await expect(saveButton(page, 1)).toBeEnabled();
+      await saveButton(page, 1).click();
+      await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
 
-    await page.reload();
-    const saved = rowByName(page, "Test Carrots");
-    await expect(saved).toBeVisible();
+      await page.reload();
+      const saved = rowByName(page, "Test Carrots");
+      await expect(saved).toBeVisible();
 
-    await saved.getByRole("button", { name: /^Delete/ }).click();
-    await expect(saveButton(page, 1)).toBeEnabled();
-    await saveButton(page, 1).click();
-    await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+      // Hide it: trash stages is_active=false; save persists.
+      await saved.getByRole("button", { name: /^Hide Test Carrots/ }).click();
+      await expect(saveButton(page, 1)).toBeEnabled();
+      await saveButton(page, 1).click();
+      await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
 
-    await page.reload();
-    await expect(rowByName(page, "Test Carrots")).toHaveCount(0);
+      // Gone from the default view, but not deleted.
+      await page.reload();
+      await expect(rowByName(page, "Test Carrots")).toHaveCount(0);
+
+      // "Show hidden (N)" reveals it with a Restore button.
+      await page.getByRole("button", { name: /^Show hidden \(\d+\)$/ }).click();
+      const hidden = rowByName(page, "Test Carrots");
+      await expect(hidden).toBeVisible();
+      await expect(hidden).toHaveClass(/is-hidden/);
+
+      await hidden.getByRole("button", { name: /^Restore Test Carrots/ }).click();
+      await expect(saveButton(page, 1)).toBeEnabled();
+      await saveButton(page, 1).click();
+      await expect(page.getByRole("button", { name: /^Saved$/ })).toBeVisible();
+
+      // Restored: back in the default view, no "Show hidden" button.
+      await page.reload();
+      await expect(rowByName(page, "Test Carrots")).toBeVisible();
+      await expect(page.getByRole("button", { name: /^Show hidden/ })).toHaveCount(0);
+    } finally {
+      await deleteProductByName("Test Carrots");
+    }
   });
 
   // #129 — guard fires on in-app navigation when the form is dirty;

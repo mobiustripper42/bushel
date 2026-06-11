@@ -20,6 +20,7 @@ export async function getAvailableProducts(): Promise<ProductRow[]> {
   const { data, error } = await supabase
     .from("products")
     .select("*, product_units(*)")
+    .eq("is_active", true)
     .eq("is_available", true)
     .order("sort_order", { ascending: true });
   if (error) throw new Error(`getAvailableProducts: ${error.message}`);

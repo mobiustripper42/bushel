@@ -79,7 +79,7 @@ test.describe("admin customers", () => {
     await expect(rowByName(page, uniqueName)).toBeVisible();
   });
 
-  test("Delete customer deactivates and drops the row from the list", async ({ page }) => {
+  test("Hide customer deactivates and drops the row from the list", async ({ page }) => {
     // Seed phone so beforeEach-cleaned customer can be edited
     const supabase = admin();
     await supabase.from("customers").update({ phone: "216-555-0100" }).eq("token", TEST_CUSTOMERS.restaurant.token);
@@ -87,7 +87,7 @@ test.describe("admin customers", () => {
     await page.goto("/admin/customers");
     await rowByName(page, TEST_CUSTOMERS.restaurant.name).click();
     await expect(drawer(page)).toBeVisible();
-    await drawer(page).getByRole("button", { name: /delete customer/i }).click();
+    await drawer(page).getByRole("button", { name: /hide customer/i }).click();
     await expect(drawer(page)).toHaveCount(0);
     await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).toHaveCount(0);
   });
@@ -199,12 +199,13 @@ test.describe("admin customers", () => {
     expect(flipped).not.toBe(initial);
   });
 
-  // #61 — deactivated customers are hidden by default; a header toggle reveals
-  // them with a distinct "is-inactive" treatment, and the drawer swaps
-  // "Delete customer" for "Reactivate customer". The next test's beforeEach
-  // (resetTestCustomers) restores is_active=true on both seed rows so the
-  // bare deactivate doesn't leak.
-  test("Show deactivated reveals inactive rows; drawer Reactivate restores them", async ({ page }) => {
+  // #61 — hidden customers are dropped from the default view; a header toggle
+  // reveals them with a distinct "is-inactive" treatment, and the drawer swaps
+  // "Hide customer" for "Restore customer". #207 unified this wording to
+  // Hide/Show across the customer + inventory screens. The next test's
+  // beforeEach (resetTestCustomers) restores is_active=true on both seed rows
+  // so the bare hide doesn't leak.
+  test("Show hidden reveals inactive rows; drawer Restore restores them", async ({ page }) => {
     const supabase = admin();
     await supabase
       .from("customers")
@@ -220,8 +221,8 @@ test.describe("admin customers", () => {
     // Eyebrow reflects active count only — 1 active row, not 2 accounts.
     await expect(page.getByText(/1 account · /)).toBeVisible();
 
-    // Toggle appears with the deactivated count.
-    const toggle = page.getByRole("button", { name: /show deactivated \(1\)/i });
+    // Toggle appears with the hidden count.
+    const toggle = page.getByRole("button", { name: /show hidden \(1\)/i });
     await expect(toggle).toBeVisible();
     await toggle.click();
 
@@ -232,19 +233,19 @@ test.describe("admin customers", () => {
     // Subscribed switch is disabled on a deactivated row.
     await expect(restaurantRow.getByRole("switch")).toBeDisabled();
 
-    // Drawer on the inactive row swaps Delete → Reactivate.
+    // Drawer on the inactive row swaps Hide → Restore.
     await restaurantRow.locator(".cust-name").click();
     await expect(drawer(page)).toBeVisible();
-    await expect(drawer(page).getByText(/deactivated customer/i)).toBeVisible();
-    await expect(drawer(page).getByRole("button", { name: /^delete customer$/i })).toHaveCount(0);
+    await expect(drawer(page).getByText(/hidden customer/i)).toBeVisible();
+    await expect(drawer(page).getByRole("button", { name: /^hide customer$/i })).toHaveCount(0);
 
-    await drawer(page).getByRole("button", { name: /^reactivate customer$/i }).click();
+    await drawer(page).getByRole("button", { name: /^restore customer$/i }).click();
     await expect(drawer(page)).toHaveCount(0);
 
-    // Row is back in the default view; toggle is gone (no more deactivated).
+    // Row is back in the default view; toggle is gone (no more hidden).
     await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).toBeVisible();
     await expect(rowByName(page, TEST_CUSTOMERS.restaurant.name)).not.toHaveClass(/is-inactive/);
-    await expect(page.getByRole("button", { name: /show deactivated/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /show hidden/i })).toHaveCount(0);
   });
 
   // #129 — drawer is the most complex consumer of the unsaved-changes

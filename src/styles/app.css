@@ -164,6 +164,19 @@
 .data-table tbody tr.data-row.is-disabled .field-input,
 .data-table tbody tr.data-row.is-disabled .field-num,
 .data-table tbody tr.data-row.is-disabled .field-select { color: var(--ink-500); }
+/* #207 — hidden (soft-deleted) products. Diagonal hatch matches the
+   deactivated-customer treatment so "hidden" reads the same on both screens.
+   Only visible when "Show hidden" is toggled on. */
+.data-table tbody tr.data-row.is-hidden td {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ink-100) 0 6px,
+    transparent 6px 12px
+  );
+}
+.data-table tbody tr.data-row.is-hidden .field-input,
+.data-table tbody tr.data-row.is-hidden .field-num,
+.data-table tbody tr.data-row.is-hidden .field-select { color: var(--ink-500); }
 
 /* Drag-to-reorder (#143) */
 .data-table tbody tr.data-row.is-dragging td { opacity: 0.4; }
@@ -197,6 +210,16 @@
   transition: background 0.1s, color 0.1s;
 }
 .row-trash:hover { background: rgba(178,59,46,0.08); color: var(--rose-600); }
+/* #207 — restore swaps in for the trash icon on hidden rows. */
+.row-restore {
+  background: transparent; border: 1px solid var(--ink-300);
+  color: var(--ink-700);
+  font-size: 0.78rem; font-weight: 500;
+  padding: 4px 10px; border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.row-restore:hover { background: var(--cream); border-color: var(--leaf-600, var(--ink-500)); }
 
 /* Add row footer */
 .add-row {

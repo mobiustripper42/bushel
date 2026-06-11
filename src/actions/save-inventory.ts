@@ -16,12 +16,12 @@ export type InventoryRowInput = {
   price_cents: number;
   qty_available: number;
   is_available: boolean;
+  is_active: boolean;
   sort_order: number | null;
 };
 
 export type SaveInventoryInput = {
   rows: InventoryRowInput[];
-  deletedIds: string[];
 };
 
 export type SaveInventoryResult = {
@@ -59,11 +59,9 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
 
   const newIdMap: Record<string, string> = {};
 
-  if (input.deletedIds.length > 0) {
-    const { error } = await supabase.from("products").delete().in("id", input.deletedIds);
-    if (error) return { error: error.message, newIdMap };
-  }
-
+  // #207 — products are never hard-deleted; the editor's trash button stages a
+  // soft-hide (is_active=false), persisted through the row update below. This
+  // keeps order_items references intact.
   for (const row of input.rows) {
     const payload = {
       name: row.name.trim(),
@@ -73,6 +71,7 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
       price_cents: row.price_cents,
       qty_available: Math.round(row.qty_available * 100) / 100,
       is_available: row.is_available,
+      is_active: row.is_active,
       sort_order: row.sort_order,
       updated_at: now,
     };
