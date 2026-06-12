@@ -1,5 +1,5 @@
 begin;
-select plan(28);
+select plan(29);
 
 -- ============================================================
 -- Schema sanity (migration 20260522175735_multi_unit_products)
@@ -58,49 +58,32 @@ select throws_ok(
 );
 
 -- ============================================================
--- Safety-net trigger: new product spawns a default unit row
+-- DEC-037 schema shape: products.unit / products.price_cents are dropped
+-- and the mirror/spawn machinery is gone. The "every product has a base
+-- unit" invariant is enforced by app code (saveInventory) now, not the DB —
+-- these assertions pin the shape the app code relies on.
 -- ============================================================
-insert into public.products (id, name, unit, price_cents, qty_available, is_available)
-values ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'Test Multi Unit Item', 'each', 250, 7, true);
-
-select is(
-  (select count(*)::int from public.product_units
-    where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid),
-  1,
-  'product_units auto-spawned for newly inserted product'
-);
-
-select is(
-  (select label from public.product_units
-    where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid),
-  'each',
-  'auto-spawned unit copies products.unit'
-);
-
-select is(
-  (select unit_price_cents from public.product_units
-    where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid),
-  250,
-  'auto-spawned unit copies products.price_cents'
-);
-
-select is(
-  (select conversion_to_base from public.product_units
-    where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid),
-  1.0::numeric(10,4),
-  'auto-spawned unit has conversion_to_base = 1.0'
-);
-
-select is(
-  (select slug from public.product_units
-    where product_id = 'eeeeeeee-0000-0000-0000-000000000001'::uuid),
-  'test-multi-unit-item-eeeeeeee',
-  'auto-spawned unit slug = name-slug + product-id prefix'
-);
+select hasnt_column('public', 'products', 'unit',        'products.unit dropped (DEC-037)');
+select hasnt_column('public', 'products', 'price_cents', 'products.price_cents dropped (DEC-037)');
+select hasnt_function('public', 'mirror_product_to_base_unit',  'mirror_product_to_base_unit() dropped (DEC-037)');
+select hasnt_function('public', 'mirror_base_unit_to_product',  'mirror_base_unit_to_product() dropped (DEC-037)');
+select hasnt_function('public', 'products_spawn_default_unit',  'products_spawn_default_unit() dropped (DEC-037)');
+-- order_items_default_unit is out of DEC-037's scope and must survive — the
+-- legacy-caller fallback (order_items inserts without product_unit_id) still
+-- depends on it.
+select has_function('public', 'order_items_default_unit', 'order_items_default_unit() still present');
 
 -- ============================================================
--- Safety-net trigger: order_items inherits product_unit_id
+-- Safety-net trigger: order_items inherits product_unit_id.
+-- DEC-037: the product's base unit row is inserted explicitly (nothing
+-- spawns it anymore).
 -- ============================================================
+insert into public.products (id, name, qty_available, is_available)
+values ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'Test Multi Unit Item', 7, true);
+
+insert into public.product_units (product_id, label, conversion_to_base, unit_price_cents, is_active, slug)
+values ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'each', 1.0, 250, true, 'test-multi-unit-item-eeeeeeee');
+
 insert into public.customers (id, name, token)
 values ('ffffffff-0000-0000-0000-000000000001'::uuid, 'Multi Unit Customer', 'token-mu');
 

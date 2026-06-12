@@ -98,12 +98,10 @@ export default async function ConfirmedPage({
           {items.map((item) => {
             const product = item.products;
             const name = product?.name ?? "(item)";
-            // 6.5f: prefer the per-line unit label from product_units (what
-            // the customer actually selected). Fall back to the legacy
-            // products.unit only if the join misses (single-unit case where
-            // the safety-net trigger filled in the base unit anyway).
-            const unit =
-              item.product_units?.label ?? product?.unit ?? "";
+            // 6.5f/DEC-037: the per-line unit label comes from product_units
+            // (what the customer actually selected) — the sole source now
+            // that products.unit is dropped. A missed join renders unitless.
+            const unit = item.product_units?.label ?? "";
             return (
               <li key={item.id}>
                 <span className="confirm-line-name">

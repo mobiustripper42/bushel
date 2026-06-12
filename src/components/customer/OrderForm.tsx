@@ -321,8 +321,9 @@ export function OrderForm({
   const subtotalCents = useMemo(
     () =>
       itemsWithQty.reduce((sum, p) => {
-        const u = unitFor(p);
-        const price = u?.unit_price_cents ?? p.price_cents;
+        // unitFor only returns null when every unit is deactivated — that row
+        // isn't submittable (handleSubmit drops it), so it contributes $0.
+        const price = unitFor(p)?.unit_price_cents ?? 0;
         return sum + (qty[p.id] ?? 0) * price;
       }, 0),
     // unitFor reads selectedUnit; rebuild the subtotal when either map shifts.
@@ -442,8 +443,8 @@ export function OrderForm({
                   const current = qty[p.id] ?? 0;
                   const selected = unitFor(p);
                   const conv = selected?.conversion_to_base ?? 1;
-                  const label = selected?.label ?? p.unit;
-                  const priceCents = selected?.unit_price_cents ?? p.price_cents;
+                  const label = selected?.label ?? "";
+                  const priceCents = selected?.unit_price_cents ?? 0;
                   // Per-unit max: number of selected-unit chunks that fit in
                   // current base inventory. Floors fractional remainders so
                   // the stepper never offers a quantity that would oversell.
@@ -640,7 +641,7 @@ export function OrderForm({
                           {p.name}
                         </span>
                         <span className="rail-amt mono">
-                          ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? p.price_cents))}
+                          ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? 0))}
                         </span>
                       </li>
                     ))}
@@ -702,7 +703,7 @@ export function OrderForm({
                         {p.name}
                       </span>
                       <span className="rail-amt mono">
-                        ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? p.price_cents))}
+                        ${formatPrice((qty[p.id] ?? 0) * (unitFor(p)?.unit_price_cents ?? 0))}
                       </span>
                     </li>
                   ))}

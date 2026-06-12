@@ -125,14 +125,30 @@ export default async function globalSetup() {
   // Upsert test products so inventory tests are self-contained
   const { error: productsError } = await adminClient.from("products").upsert(
     [
-      { id: "cccccccc-0000-0000-0000-000000000001", name: "Kale",  unit: "bunch", price_cents: 300,  qty_available: 10, is_available: true,  sort_order: 1 },
-      { id: "cccccccc-0000-0000-0000-000000000002", name: "Eggs",  unit: "dozen", price_cents: 600,  qty_available: 5,  is_available: true,  sort_order: 2 },
-      { id: "cccccccc-0000-0000-0000-000000000003", name: "Honey", unit: "jar",   price_cents: 1200, qty_available: 8,  is_available: true,  sort_order: 3 },
+      { id: "cccccccc-0000-0000-0000-000000000001", name: "Kale",  qty_available: 10, is_available: true,  sort_order: 1 },
+      { id: "cccccccc-0000-0000-0000-000000000002", name: "Eggs",  qty_available: 5,  is_available: true,  sort_order: 2 },
+      { id: "cccccccc-0000-0000-0000-000000000003", name: "Honey", qty_available: 8,  is_available: true,  sort_order: 3 },
     ],
     { onConflict: "id" },
   );
   if (productsError)
     throw new Error(`products upsert failed: ${productsError.message}`);
+
+  // DEC-037: unit label + price live on the base product_units row and nothing
+  // auto-spawns it — upsert the base rows alongside the products. Keyed on
+  // (product_id, label) so a price drifted by a prior run is restored without
+  // colliding with leftover extra units (specs reset those via
+  // resetProductUnits / setProductUnits).
+  const { error: unitsError } = await adminClient.from("product_units").upsert(
+    [
+      { product_id: "cccccccc-0000-0000-0000-000000000001", label: "bunch", conversion_to_base: 1, unit_price_cents: 300,  is_active: true, sort_order: 0, slug: "kale-cccccccc" },
+      { product_id: "cccccccc-0000-0000-0000-000000000002", label: "dozen", conversion_to_base: 1, unit_price_cents: 600,  is_active: true, sort_order: 0, slug: "eggs-cccccccc" },
+      { product_id: "cccccccc-0000-0000-0000-000000000003", label: "jar",   conversion_to_base: 1, unit_price_cents: 1200, is_active: true, sort_order: 0, slug: "honey-cccccccc" },
+    ],
+    { onConflict: "product_id,label" },
+  );
+  if (unitsError)
+    throw new Error(`product_units upsert failed: ${unitsError.message}`);
 
   // Upsert test customers so customer-CRUD + prepopulate tests are self-contained.
   // is_active defaults true; tests that deactivate must reset to true.

@@ -56,8 +56,10 @@ export async function saveProductUnits(
     if (!(u.conversion_to_base > 0)) {
       return { error: `Conversion must be greater than zero (check "${u.label}").` };
     }
-    if (!Number.isInteger(u.unit_price_cents) || u.unit_price_cents < 0) {
-      return { error: `Price must be a non-negative amount (check "${u.label}").` };
+    // Matches the unit_price_cents > 0 DB CHECK — a $0 unit used to slip past
+    // validation and surface as a raw constraint violation.
+    if (!Number.isInteger(u.unit_price_cents) || u.unit_price_cents <= 0) {
+      return { error: `Price must be greater than zero (check "${u.label}").` };
     }
   }
 
@@ -74,6 +76,22 @@ export async function saveProductUnits(
 
   if (!trimmed.some((u) => u.is_active)) {
     return { error: "At least one unit must stay active." };
+  }
+
+  // DEC-037: product_units is now authoritative and saveInventory's inline
+  // unit/price edits target the single conversion_to_base = 1.0 base row.
+  // Protect that invariant here — exactly one base unit must survive every
+  // save, or the inline editor's writes would silently miss (or hit two rows).
+  // Changing WHICH unit is the base is #208; this only guards against losing
+  // or doubling it.
+  const baseCount = trimmed.filter((u) => u.conversion_to_base === 1).length;
+  if (baseCount !== 1) {
+    return {
+      error:
+        baseCount === 0
+          ? "One unit must be the base unit (conversion of 1)."
+          : "Only one unit can be the base unit (conversion of 1).",
+    };
   }
 
   const supabase = await createClient();

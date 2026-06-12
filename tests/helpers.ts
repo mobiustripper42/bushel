@@ -23,6 +23,8 @@ export const TEST_CUSTOMERS = {
   },
 } as const;
 
+// `unit` / `price_cents` describe each product's seeded BASE product_units row
+// (conversion_to_base = 1) — DEC-037 dropped the products-table columns.
 export const TEST_PRODUCTS = {
   kale:  { id: "cccccccc-0000-0000-0000-000000000001", name: "Kale",  unit: "bunch", price_cents: 300,  qty_available: 10 },
   eggs:  { id: "cccccccc-0000-0000-0000-000000000002", name: "Eggs",  unit: "dozen", price_cents: 600,  qty_available: 5  },
@@ -253,17 +255,22 @@ export async function setProductQty(id: string, qty: number): Promise<void> {
   await sb.from("products").update({ qty_available: qty }).eq("id", id);
 }
 
-// Resets a product's units to the single base row the 6.5a safety-net
-// trigger originally seeded: label = product.unit, conv = 1, price =
-// basePriceCents, active = true, slug = "<name-slug>-<id8>" (trigger's
-// format). Deletes every existing product_units row first to clear any
-// leaked slug/label drift from a prior failed test run, then re-inserts
-// a fresh base row. Used by beforeEach/afterEach in units-drawer specs.
-export async function resetProductUnits(productId: string, basePriceCents: number): Promise<void> {
+// Resets a product's units to a single base row: label = baseLabel, conv = 1,
+// price = basePriceCents, active = true, slug = "<name-slug>-<id8>" (the
+// saveInventory/backfill format). DEC-037 dropped products.unit, so the base
+// label is the caller's to supply (TEST_PRODUCTS carries the seeded values).
+// Deletes every existing product_units row first to clear any leaked
+// slug/label drift from a prior failed test run, then re-inserts a fresh
+// base row. Used by beforeEach/afterEach in units-drawer specs.
+export async function resetProductUnits(
+  productId: string,
+  basePriceCents: number,
+  baseLabel: string,
+): Promise<void> {
   const sb = admin();
   const { data: product } = await sb
     .from("products")
-    .select("name, unit")
+    .select("name")
     .eq("id", productId)
     .single();
   if (!product) return;
@@ -280,7 +287,7 @@ export async function resetProductUnits(productId: string, basePriceCents: numbe
 
   await sb.from("product_units").insert({
     product_id: productId,
-    label: product.unit,
+    label: baseLabel,
     conversion_to_base: 1,
     unit_price_cents: basePriceCents,
     is_active: true,

@@ -72,10 +72,16 @@ insert into public.customers (id, name, token) values
   ('aaaaaaaa-0000-0000-0000-000000000001'::uuid, 'Customer A', 'token-a'),
   ('aaaaaaaa-0000-0000-0000-000000000002'::uuid, 'Customer B', 'token-b');
 
-insert into public.products (id, name, unit, price_cents, qty_available, is_available) values
-  ('bbbbbbbb-0000-0000-0000-000000000001'::uuid, 'Kale', 'bunch', 300, 10, true),
-  ('bbbbbbbb-0000-0000-0000-000000000002'::uuid, 'Hidden Item', 'each', 500, 5, false);
+insert into public.products (id, name, qty_available, is_available) values
+  ('bbbbbbbb-0000-0000-0000-000000000001'::uuid, 'Kale', 10, true),
+  ('bbbbbbbb-0000-0000-0000-000000000002'::uuid, 'Hidden Item', 5, false);
 
+-- DEC-037: base product_units rows are inserted explicitly (no spawn trigger).
+-- The order_items inserts below omit product_unit_id and rely on the
+-- order_items_default_unit trigger resolving these rows.
+insert into public.product_units (product_id, label, conversion_to_base, unit_price_cents, is_active, slug) values
+  ('bbbbbbbb-0000-0000-0000-000000000001'::uuid, 'bunch', 1.0, 300, true, 'kale-bbbbbbbb'),
+  ('bbbbbbbb-0000-0000-0000-000000000002'::uuid, 'each',  1.0, 500, true, 'hidden-item-bbbbbbbb');
 
 insert into public.orders (id, customer_id, week_of, fulfillment_type, status) values
   ('dddddddd-0000-0000-0000-000000000001'::uuid,
@@ -113,7 +119,7 @@ select is_empty(
   'anon cannot read unavailable products'
 );
 select throws_ok(
-  $$ insert into public.products (name, unit, price_cents) values ('X', 'each', 100) $$,
+  $$ insert into public.products (name) values ('X') $$,
   '42501', null, 'anon cannot insert products'
 );
 reset role;
@@ -121,8 +127,8 @@ reset role;
 set local role authenticated;
 select isnt_empty($$ select * from public.products $$, 'authenticated can read all products');
 select lives_ok(
-  $$ insert into public.products (name, unit, price_cents, qty_available)
-     values ('Test Product', 'lb', 200, 5) $$,
+  $$ insert into public.products (name, qty_available)
+     values ('Test Product', 5) $$,
   'authenticated can insert products'
 );
 reset role;

@@ -95,7 +95,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
       .from("products")
       .update({ qty_available: TEST_PRODUCTS.honey.qty_available })
       .eq("id", TEST_PRODUCTS.honey.id);
-    await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents);
+    await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents, TEST_PRODUCTS.kale.unit);
   });
 
   test("button restores last week's ordered qty onto current inventory", async ({ page }) => {
@@ -215,7 +215,7 @@ test.describe("admin inventory — pre-populate from last week", () => {
         .from("products")
         .update({ qty_available: TEST_PRODUCTS.kale.qty_available })
         .eq("id", TEST_PRODUCTS.kale.id);
-      await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents);
+      await resetProductUnits(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.price_cents, TEST_PRODUCTS.kale.unit);
     });
 
     test("restores qty unit-aware; unit prices are NOT touched", async ({ page }) => {
