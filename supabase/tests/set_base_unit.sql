@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(17);
 
 -- ============================================================
 -- #208 (DEC-038) — set_base_unit RPC
@@ -62,6 +62,25 @@ values ('ee080000-0000-0000-0000-dddd00000001'::uuid,
         'ee080000-0000-0000-0000-bbbb00000002'::uuid,
         3, 600);
 
+-- Third product to exercise the scale guard: a tiny "mg" unit (conv 0.0001,
+-- the numeric(10,4) floor) alongside a big "crate" (conv 3). Promoting crate
+-- would rescale mg to round(0.0001/3, 4) = 0.0000, tripping the
+-- conversion_to_base > 0 CHECK — set_base_unit must reject it up front.
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('ee080000-0000-0000-0000-aaaa00000003'::uuid, 'Bulk', 9.00, 3, 'Other');
+
+insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
+values
+  ('ee080000-0000-0000-0000-eeee00000001'::uuid,
+   'ee080000-0000-0000-0000-aaaa00000003'::uuid,
+   'kg', 1, 500, true, 'bulk-kg-ee080000', 0),
+  ('ee080000-0000-0000-0000-eeee00000002'::uuid,
+   'ee080000-0000-0000-0000-aaaa00000003'::uuid,
+   'mg', 0.0001, 1, true, 'bulk-mg-ee080000', 1),
+  ('ee080000-0000-0000-0000-eeee00000003'::uuid,
+   'ee080000-0000-0000-0000-aaaa00000003'::uuid,
+   'crate', 3, 9000, true, 'bulk-crate-ee080000', 2);
+
 -- ============================================================
 -- 1. Guard rails: cross-product, missing, and inactive units raise.
 -- ============================================================
@@ -87,6 +106,17 @@ select throws_like(
        'ee080000-0000-0000-0000-bbbb00000003'::uuid) $$,
   '%is inactive%',
   'inactive unit cannot become the base'
+);
+
+-- Promoting "crate" (conv 3) would round "mg" (conv 0.0001) to 0.0000 and
+-- violate the conversion_to_base > 0 CHECK — rejected with a remedy message,
+-- not a raw constraint error.
+select throws_like(
+  $$ select public.set_base_unit(
+       'ee080000-0000-0000-0000-aaaa00000003'::uuid,
+       'ee080000-0000-0000-0000-eeee00000003'::uuid) $$,
+  '%too far apart in scale%',
+  'rebase that would round a conversion to zero is rejected'
 );
 
 -- ============================================================

@@ -53,6 +53,20 @@ begin
     return;
   end if;
 
+  -- Guard the conversion_to_base > 0 CHECK: a large rescale factor (a tiny
+  -- unit promoted onto a much bigger base) can round a small conversion down
+  -- to 0.0000 and abort the whole rebase with a raw constraint error. Catch
+  -- it up front with a remedy-shaped message instead.
+  if exists (
+    select 1 from public.product_units
+     where product_id = p_product_id
+       and round(conversion_to_base / v_old_conv, 4) <= 0
+  ) then
+    raise exception
+      'set_base_unit: units on product % are too far apart in scale to switch the base unit (a conversion would round to zero)',
+      p_product_id;
+  end if;
+
   -- Rescale every unit's conversion by the same factor. The new base becomes
   -- round(v_old_conv / v_old_conv, 4) = exactly 1.0000.
   update public.product_units

@@ -38,6 +38,12 @@ export async function setBaseUnit(
         error: "That unit doesn't belong to this product. Reload and try again.",
       };
     }
+    if (error.message.includes("too far apart in scale")) {
+      return {
+        error:
+          "These units are too far apart in size to switch the base unit. Adjust the conversions closer first.",
+      };
+    }
     return { error: error.message };
   }
 
