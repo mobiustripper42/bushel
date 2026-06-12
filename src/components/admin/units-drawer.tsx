@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Switch } from "@/components/ui/switch";
 import { saveProductUnits, type UnitInput } from "@/actions/save-product-units";
+import { setBaseUnit } from "@/actions/set-base-unit";
 import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
 
 export type ProductUnitState = {
@@ -65,6 +67,10 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
+  // #208 — "Make base" promotion. Target unit pending confirmation, plus its
+  // own transition so the Save button's label/disabled logic stays untouched.
+  const [makeBaseTarget, setMakeBaseTarget] = useState<ProductUnitState | null>(null);
+  const [rebasing, startRebasing] = useTransition();
 
   const baseId = useMemo(() => pickBaseId(initialUnits), [initialUnits]);
 
@@ -95,6 +101,8 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
   const guardActive = dirty && !saving;
   useUnsavedChangesGuard(guardActive);
 
+  const busy = saving || rebasing;
+
   function tryClose() {
     if (guardActive && !window.confirm("You have unsaved changes — leave anyway?")) {
       return;
@@ -104,13 +112,15 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !saving) tryClose();
+      // While the Make-base confirm is up, Escape belongs to the modal
+      // (ConfirmModal handles its own keydown) — don't also close the drawer.
+      if (e.key === "Escape" && !busy && !makeBaseTarget) tryClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-    // tryClose closes over guardActive/onClose; saving is also a dep.
+    // tryClose closes over guardActive/onClose; busy + the modal flag are deps too.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose, saving, guardActive]);
+  }, [onClose, busy, guardActive, makeBaseTarget]);
 
   function update(id: string, patch: Partial<ProductUnitState>) {
     setUnits((us) => us.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -203,9 +213,34 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
     });
   }
 
+  // #208 — promote the confirmed unit to base. Calls the atomic set_base_unit
+  // RPC immediately (NOT staged into the drawer's Save — it rescales live
+  // stock server-side). Only reachable from a clean drawer, so closing via
+  // onSaved() can't clobber staged edits; reopening shows the rebased units.
+  function handleMakeBase() {
+    if (!makeBaseTarget) return;
+    const target = makeBaseTarget;
+    startRebasing(async () => {
+      let result;
+      try {
+        result = await setBaseUnit(productId, target.id);
+      } catch (e) {
+        setMakeBaseTarget(null);
+        setError(e instanceof Error ? e.message : "Couldn't change the base unit. Try again.");
+        return;
+      }
+      if (result.error) {
+        setMakeBaseTarget(null);
+        setError(result.error);
+        return;
+      }
+      onSaved();
+    });
+  }
+
   return (
     <>
-      <div className="drawer-scrim" onClick={() => !saving && tryClose()} aria-hidden="true" />
+      <div className="drawer-scrim" onClick={() => !busy && tryClose()} aria-hidden="true" />
       <aside
         className="drawer units-drawer"
         role="dialog"
@@ -225,7 +260,7 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
             className="drawer-close"
             onClick={tryClose}
             aria-label="Close drawer"
-            disabled={saving}
+            disabled={busy}
           >
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 6l12 12 M18 6 6 18" />
@@ -249,6 +284,9 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
 
             {units.map((u) => {
               const isBase = u.id === baseId;
+              // "Make base" only on saved, active, non-base rows — a new row
+              // has no DB id to promote, and an inactive unit can't be base.
+              const canMakeBase = !isBase && !u.isNew && u.is_active;
               return (
                 <UnitRow
                   key={u.id}
@@ -256,6 +294,13 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
                   isBase={isBase}
                   onUpdate={(patch) => update(u.id, patch)}
                   onRemove={() => remove(u.id)}
+                  onMakeBase={canMakeBase ? () => setMakeBaseTarget(u) : null}
+                  // Re-basing closes + reloads the drawer, which would clobber
+                  // staged edits — require a clean drawer first.
+                  makeBaseDisabled={dirty || busy}
+                  makeBaseTitle={
+                    dirty ? "Save your unit changes first" : `Make ${u.label || "this unit"} the base unit`
+                  }
                 />
               );
             })}
@@ -278,12 +323,30 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
           <div style={{ flex: 1 }} />
           {/* Cancel is the explicit "discard" button — skips the guard
               intentionally. Scrim/X/Escape still prompt. */}
-          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave} disabled={!dirty || saving} dirty={dirty}>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!dirty || busy} dirty={dirty}>
             {saving ? "Saving…" : dirty ? "Save units" : "Saved"}
           </Button>
         </footer>
       </aside>
+
+      {makeBaseTarget && (
+        <ConfirmModal
+          title={`Make "${makeBaseTarget.label}" the base unit?`}
+          body={
+            <>
+              <strong>{productName || "This product"}</strong> will be counted and sold in{" "}
+              <strong>{makeBaseTarget.label}</strong> — conversions and stock are recalculated
+              to match, and customers will see {makeBaseTarget.label} by default. Prices
+              don&apos;t change.
+            </>
+          }
+          confirmLabel="Make base"
+          busy={rebasing}
+          onConfirm={handleMakeBase}
+          onCancel={() => !rebasing && setMakeBaseTarget(null)}
+        />
+      )}
     </>
   );
 }
@@ -293,11 +356,18 @@ function UnitRow({
   isBase,
   onUpdate,
   onRemove,
+  onMakeBase,
+  makeBaseDisabled,
+  makeBaseTitle,
 }: {
   unit: ProductUnitState;
   isBase: boolean;
   onUpdate: (patch: Partial<ProductUnitState>) => void;
   onRemove: () => void;
+  // null hides the affordance (base row, new row, inactive unit)
+  onMakeBase: (() => void) | null;
+  makeBaseDisabled: boolean;
+  makeBaseTitle: string;
 }) {
   // Decimal-bug: type="number" + a re-formatted controlled value fights
   // mid-typing ("1.5" reformats to "1.50" before the 5 lands, cursor
@@ -324,6 +394,18 @@ function UnitRow({
           aria-label={isBase ? "Base unit label" : "Unit label"}
         />
         {isBase && <span className="units-base-badge">BASE</span>}
+        {onMakeBase && (
+          <button
+            type="button"
+            className="units-make-base"
+            onClick={onMakeBase}
+            disabled={makeBaseDisabled}
+            title={makeBaseTitle}
+            aria-label={`Make ${unit.label || "unit"} the base unit`}
+          >
+            Make base
+          </button>
+        )}
       </div>
       <div className="units-col-conv">
         <input
