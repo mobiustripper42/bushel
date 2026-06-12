@@ -52,8 +52,9 @@ export type OrderItem = {
   // 5.2 mapping (e.g. "KALE-BUNCH"). Null when unset — Wave just gets a blank
   // Item Number cell, which Annabel fills before posting the invoice.
   description: string | null;
-  // Legacy single-unit base label from products.unit. Kept for callers that
-  // need the product-level unit (export, etc.); display surfaces should use
+  // Product-level base unit label (the product_units row with
+  // conversion_to_base = 1.0, per DEC-037). Used where a per-product unit is
+  // needed (fulfillment report "total N <base>"); display surfaces should use
   // unitLabel for per-line accuracy under multi-unit.
   unit: string;
   // 6.5f: per-line unit label resolved from product_units.label via
@@ -121,7 +122,8 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
          status, needs_reconciliation,
          customers(id, name, phone),
          order_items(product_id, qty, unit_price_cents,
-           products(name, description, unit, qty_available),
+           products(name, description, qty_available,
+             product_units(label, conversion_to_base)),
            product_units(label, conversion_to_base))`,
       )
       .eq("week_of", weekOf)
@@ -174,8 +176,13 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         products: {
           name: string;
           description: string | null;
-          unit: string;
           qty_available: number;
+          // The product's full unit set (reverse join). Only the base row
+          // (conversion_to_base = 1.0) is read here, for OrderItem.unit.
+          product_units: Array<{
+            label: string;
+            conversion_to_base: number;
+          }>;
         } | null;
         product_units: {
           label: string;
@@ -183,21 +190,28 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
         } | null;
       }>)
         .filter((i) => i.products !== null)
-        .map((i) => ({
-          productId: i.product_id,
-          name: i.products!.name,
-          description: i.products!.description,
-          unit: i.products!.unit,
-          // 6.5f: per-line unit label from product_units. The legacy
-          // safety-net is the products.unit string — only kicks in if the
-          // join misses, which 6.5a's invariant (every product has ≥1 unit
-          // row) prevents in practice.
-          unitLabel: i.product_units?.label ?? i.products!.unit,
-          conversionToBase: Number(i.product_units?.conversion_to_base ?? 1),
-          qty: i.qty,
-          unitPriceCents: i.unit_price_cents,
-          qtyAvailable: i.products!.qty_available,
-        }));
+        .map((i) => {
+          // DEC-037: the product-level unit is the base product_units row.
+          const baseLabel = (i.products!.product_units ?? []).find(
+            (u) => Number(u.conversion_to_base) === 1,
+          )?.label;
+          // Per-line unit label from the order line's product_units join
+          // (6.5f). The base label is the fallback; both missing means the
+          // unit row was deleted out from under the order — render blank
+          // rather than invent a unit.
+          const unitLabel = i.product_units?.label ?? baseLabel ?? "";
+          return {
+            productId: i.product_id,
+            name: i.products!.name,
+            description: i.products!.description,
+            unit: baseLabel ?? unitLabel,
+            unitLabel,
+            conversionToBase: Number(i.product_units?.conversion_to_base ?? 1),
+            qty: i.qty,
+            unitPriceCents: i.unit_price_cents,
+            qtyAvailable: i.products!.qty_available,
+          };
+        });
       const totalCents = items.reduce(
         (s, i) => s + i.qty * i.unitPriceCents,
         0,

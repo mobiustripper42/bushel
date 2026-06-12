@@ -17,14 +17,11 @@ select plan(19);
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000001'::uuid, 'PlaceOrder Customer', 'token-place-order-65d');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
-values ('dddd0000-0000-0000-0000-aaaa00000001'::uuid, 'Basil', 'bunch', 350, 10.00, 1, 'Herbs');
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000001'::uuid, 'Basil', 10.00, 1, 'Herbs');
 
 -- Two units: bunch (base) + lb (conv=2 — one lb = 2 bunches' worth).
--- The trigger from 6.5a will have spawned a base unit on insert; we'll
--- replace that with deterministic rows for assertion stability.
-delete from public.product_units where product_id = 'dddd0000-0000-0000-0000-aaaa00000001'::uuid;
-
+-- DEC-037: unit rows are inserted explicitly (nothing spawns them).
 insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
 values
   ('dddd0000-0000-0000-0000-bbbb00000001'::uuid,
@@ -108,10 +105,9 @@ select is(
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000002'::uuid, 'Oversell Customer', 'token-oversell-65d');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
-values ('dddd0000-0000-0000-0000-aaaa00000002'::uuid, 'Mint', 'bunch', 250, 3.00, 2, 'Herbs');
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000002'::uuid, 'Mint', 3.00, 2, 'Herbs');
 
-delete from public.product_units where product_id = 'dddd0000-0000-0000-0000-aaaa00000002'::uuid;
 insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
 values
   ('dddd0000-0000-0000-0000-cccc00000001'::uuid,
@@ -162,10 +158,9 @@ select is(
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000003'::uuid, 'Single-Unit Customer', 'token-single-unit-65d');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
-values ('dddd0000-0000-0000-0000-aaaa00000003'::uuid, 'Chives', 'bunch', 200, 20.00, 3, 'Herbs');
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000003'::uuid, 'Chives', 20.00, 3, 'Herbs');
 
-delete from public.product_units where product_id = 'dddd0000-0000-0000-0000-aaaa00000003'::uuid;
 insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
 values
   ('dddd0000-0000-0000-0000-eeee00000001'::uuid,
@@ -240,12 +235,10 @@ select is(
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000005'::uuid, 'No Units Customer', 'token-no-units-65d');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
-values ('dddd0000-0000-0000-0000-aaaa00000004'::uuid, 'Phantom', 'unit', 100, 5.00, 4, 'Herbs');
-
--- Wipe all units (including the trigger-spawned default) so the product
--- has zero active units, which is the case the error path covers.
-delete from public.product_units where product_id = 'dddd0000-0000-0000-0000-aaaa00000004'::uuid;
+-- DEC-037: nothing spawns units anymore — a product inserted with no
+-- product_units rows IS the zero-active-units case the error path covers.
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000004'::uuid, 'Phantom', 5.00, 4, 'Herbs');
 
 select throws_like(
   $$ select public.place_order(
@@ -268,14 +261,19 @@ select throws_like(
 -- 9. DEC-036 / #132 — a product already at qty_available = 0 rejects the
 --    order. Optimistic oversell (DEC-012) applies only while qty > 0; at
 --    zero the whole order rolls back: inventory stays 0, no order row.
---    The product's trigger-spawned base unit means the RPC resolves a unit
---    fine, so the rejection is purely the qty=0 guard — not "no units".
+--    An explicit base unit (DEC-037) means the RPC resolves a unit fine,
+--    so the rejection is purely the qty=0 guard — not "no units".
 -- ============================================================
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000006'::uuid, 'Sold Out Customer', 'token-soldout-036');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
-values ('dddd0000-0000-0000-0000-aaaa00000005'::uuid, 'Zero Stock', 'bunch', 300, 0.00, 5, 'Herbs');
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000005'::uuid, 'Zero Stock', 0.00, 5, 'Herbs');
+
+insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
+values ('dddd0000-0000-0000-0000-ffff00000001'::uuid,
+        'dddd0000-0000-0000-0000-aaaa00000005'::uuid,
+        'bunch', 1, 300, true, 'zero-stock-dddd0000', 0);
 
 select throws_like(
   $$ select public.place_order(
@@ -319,8 +317,13 @@ select is(
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000007'::uuid, 'Multi Item Customer', 'token-multi-036');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
-values ('dddd0000-0000-0000-0000-aaaa00000006'::uuid, 'In Stock Item', 'bunch', 400, 9.00, 6, 'Herbs');
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('dddd0000-0000-0000-0000-aaaa00000006'::uuid, 'In Stock Item', 9.00, 6, 'Herbs');
+
+insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
+values ('dddd0000-0000-0000-0000-ffff00000002'::uuid,
+        'dddd0000-0000-0000-0000-aaaa00000006'::uuid,
+        'bunch', 1, 400, true, 'in-stock-item-dddd0000', 0);
 
 select throws_like(
   $$ select public.place_order(

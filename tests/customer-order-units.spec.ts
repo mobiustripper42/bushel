@@ -39,7 +39,7 @@ test.describe("/c/[token] · per-product unit picker", () => {
   });
 
   test.afterEach(async () => {
-    await resetProductUnits(KALE.id, KALE_BUNCH_PRICE);
+    await resetProductUnits(KALE.id, KALE_BUNCH_PRICE, KALE.unit);
   });
 
   test("multi-unit row renders a picker with both options; single-unit row has none", async ({ page }) => {

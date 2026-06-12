@@ -56,8 +56,10 @@ export async function saveProductUnits(
     if (!(u.conversion_to_base > 0)) {
       return { error: `Conversion must be greater than zero (check "${u.label}").` };
     }
-    if (!Number.isInteger(u.unit_price_cents) || u.unit_price_cents < 0) {
-      return { error: `Price must be a non-negative amount (check "${u.label}").` };
+    // Matches the unit_price_cents > 0 DB CHECK — a $0 unit used to slip past
+    // validation and surface as a raw constraint violation.
+    if (!Number.isInteger(u.unit_price_cents) || u.unit_price_cents <= 0) {
+      return { error: `Price must be greater than zero (check "${u.label}").` };
     }
   }
 

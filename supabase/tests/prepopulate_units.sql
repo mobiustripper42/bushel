@@ -23,19 +23,13 @@ delete from public.orders where week_of = (current_date - interval '7 days')::da
 insert into public.customers (id, name, token)
 values ('eeee0000-0000-0000-0000-000000000001'::uuid, 'Prepop Customer', 'token-prepop-overwrite');
 
-insert into public.products (id, name, unit, price_cents, qty_available, sort_order, category)
+insert into public.products (id, name, qty_available, sort_order, category)
 values
-  ('eeee0000-0000-0000-0000-aaaa00000001'::uuid, 'TestBasil',   'bunch', 350, 10.00, 90, 'Herbs'),
-  ('eeee0000-0000-0000-0000-aaaa00000002'::uuid, 'TestChives',  'bunch', 200, 20.00, 91, 'Herbs'),
-  ('eeee0000-0000-0000-0000-aaaa00000003'::uuid, 'TestParsley', 'bunch', 250, 15.00, 92, 'Herbs');
+  ('eeee0000-0000-0000-0000-aaaa00000001'::uuid, 'TestBasil',   10.00, 90, 'Herbs'),
+  ('eeee0000-0000-0000-0000-aaaa00000002'::uuid, 'TestChives',  20.00, 91, 'Herbs'),
+  ('eeee0000-0000-0000-0000-aaaa00000003'::uuid, 'TestParsley', 15.00, 92, 'Herbs');
 
--- Replace trigger-spawned units with deterministic ones.
-delete from public.product_units where product_id in (
-  'eeee0000-0000-0000-0000-aaaa00000001'::uuid,
-  'eeee0000-0000-0000-0000-aaaa00000002'::uuid,
-  'eeee0000-0000-0000-0000-aaaa00000003'::uuid
-);
-
+-- DEC-037: unit rows (base + extras) are inserted explicitly.
 insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
 values
   ('eeee0000-0000-0000-0000-bbbb00000001'::uuid,

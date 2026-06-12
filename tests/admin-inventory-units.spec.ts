@@ -26,13 +26,13 @@ test.describe("admin inventory · units drawer", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
   test.beforeEach(async () => {
-    await resetProductUnits(KALE.id, KALE.price_cents);
-    await resetProductUnits(EGGS.id, EGGS.price_cents);
+    await resetProductUnits(KALE.id, KALE.price_cents, KALE.unit);
+    await resetProductUnits(EGGS.id, EGGS.price_cents, EGGS.unit);
   });
 
   test.afterEach(async () => {
-    await resetProductUnits(KALE.id, KALE.price_cents);
-    await resetProductUnits(EGGS.id, EGGS.price_cents);
+    await resetProductUnits(KALE.id, KALE.price_cents, KALE.unit);
+    await resetProductUnits(EGGS.id, EGGS.price_cents, EGGS.unit);
   });
 
   test("single-unit product shows '+ Add unit' chip and opens drawer", async ({ page }) => {

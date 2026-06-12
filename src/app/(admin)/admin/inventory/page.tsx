@@ -106,18 +106,28 @@ export default async function InventoryPage() {
     soldByProductId[row.product_id] = (soldByProductId[row.product_id] ?? 0) + row.qty * conv;
   }
 
-  const initialRows: InventoryRowState[] = (productsRes.data ?? []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    category: p.category,
-    description: p.description,
-    unit: p.unit,
-    price_cents: p.price_cents,
-    qty_available: p.qty_available,
-    is_available: p.is_available,
-    is_active: p.is_active,
-    sort_order: p.sort_order,
-  }));
+  // DEC-037: products no longer carry unit/price columns — the inline editor's
+  // Unit/Price cells are the base product_units row (conversion_to_base = 1.0),
+  // picked from the units already loaded above. A missing base row violates the
+  // saveInventory invariant; fall back to empty/0 so the broken row is loudly
+  // uneditable (save rejects blank unit / zero price) instead of silently wrong.
+  const initialRows: InventoryRowState[] = (productsRes.data ?? []).map((p) => {
+    const base = (unitsByProductId[p.id] ?? []).find(
+      (u) => u.conversion_to_base === 1,
+    );
+    return {
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      description: p.description,
+      unit: base?.label ?? "",
+      price_cents: base?.unit_price_cents ?? 0,
+      qty_available: p.qty_available,
+      is_available: p.is_available,
+      is_active: p.is_active,
+      sort_order: p.sort_order,
+    };
+  });
 
   return (
     <main style={{ padding: "28px 32px 60px", maxWidth: 1200, width: "100%" }}>

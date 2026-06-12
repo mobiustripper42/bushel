@@ -281,7 +281,7 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     });
 
     test.afterEach(async () => {
-      await resetProductUnits(TEST_PRODUCTS.kale.id, BUNCH_PRICE);
+      await resetProductUnits(TEST_PRODUCTS.kale.id, BUNCH_PRICE, TEST_PRODUCTS.kale.unit);
       await setProductQty(TEST_PRODUCTS.kale.id, TEST_PRODUCTS.kale.qty_available);
     });
 

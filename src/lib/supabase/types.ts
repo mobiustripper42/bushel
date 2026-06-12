@@ -359,10 +359,8 @@ export type Database = {
           is_active: boolean
           is_available: boolean
           name: string
-          price_cents: number
           qty_available: number
           sort_order: number | null
-          unit: string
           updated_at: string
         }
         Insert: {
@@ -373,10 +371,8 @@ export type Database = {
           is_active?: boolean
           is_available?: boolean
           name: string
-          price_cents: number
           qty_available?: number
           sort_order?: number | null
-          unit: string
           updated_at?: string
         }
         Update: {
@@ -387,10 +383,8 @@ export type Database = {
           is_active?: boolean
           is_available?: boolean
           name?: string
-          price_cents?: number
           qty_available?: number
           sort_order?: number | null
-          unit?: string
           updated_at?: string
         }
         Relationships: []
