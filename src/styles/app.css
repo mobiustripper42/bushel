@@ -664,6 +664,35 @@
   flex-shrink: 0;
 }
 
+/* #208 — promote-to-base affordance on non-base rows. Echoes the BASE badge
+   (same size/radius) but as an outlined button: deliberate, not decorative. */
+.units-make-base {
+  flex-shrink: 0;
+  font-family: var(--sans);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  background: transparent;
+  border: 1px solid var(--ink-300);
+  border-radius: 3px;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.units-make-base:hover:not(:disabled) {
+  background: var(--leaf-50);
+  border-color: var(--leaf-600);
+  color: var(--leaf-700);
+}
+.units-make-base:disabled { opacity: 0.45; cursor: not-allowed; }
+/* At phone widths the label track is narrow — let the badge/button wrap
+   under the input instead of crushing it. */
+@media (max-width: 480px) {
+  .units-col-label { flex-wrap: wrap; }
+}
+
 .units-col-conv .field-input:disabled,
 .units-col-conv .field-input[disabled] {
   background: var(--ink-100);

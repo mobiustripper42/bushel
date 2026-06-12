@@ -432,6 +432,10 @@ export type Database = {
           product_id: string
         }[]
       }
+      set_base_unit: {
+        Args: { p_new_base_unit_id: string; p_product_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
