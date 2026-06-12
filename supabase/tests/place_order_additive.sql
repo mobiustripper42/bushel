@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(25);
 
 -- ============================================================
 -- #211 / DEC-039 — additive orders: place_order appends to the
@@ -22,6 +22,10 @@ select plan(24);
 insert into public.customers (id, name, token)
 values ('ee390000-0000-0000-0000-000000000001'::uuid, 'Additive Customer', 'token-additive-039');
 
+-- Second customer for the foreign-submission_id scoping check.
+insert into public.customers (id, name, token)
+values ('ee390000-0000-0000-0000-000000000002'::uuid, 'Other Customer', 'token-additive-039-b');
+
 -- DEC-037: unit rows are inserted explicitly (nothing spawns them).
 insert into public.products (id, name, qty_available, sort_order, category)
 values ('ee390000-0000-0000-0000-aaaa00000001'::uuid, 'Add Basil', 20.00, 1, 'Herbs');
@@ -30,6 +34,16 @@ insert into public.product_units (id, product_id, label, conversion_to_base, uni
 values ('ee390000-0000-0000-0000-bbbb00000001'::uuid,
         'ee390000-0000-0000-0000-aaaa00000001'::uuid,
         'bunch', 1, 500, true, 'add-basil-ee390000', 0);
+
+-- In-stock product for the foreign-submission_id scoping check (test 25 runs
+-- after Add Basil has been driven oversold-negative, so B needs its own stock).
+insert into public.products (id, name, qty_available, sort_order, category)
+values ('ee390000-0000-0000-0000-aaaa00000003'::uuid, 'Add Scope', 5.00, 3, 'Herbs');
+
+insert into public.product_units (id, product_id, label, conversion_to_base, unit_price_cents, is_active, slug, sort_order)
+values ('ee390000-0000-0000-0000-bbbb00000003'::uuid,
+        'ee390000-0000-0000-0000-aaaa00000003'::uuid,
+        'bunch', 1, 400, true, 'add-scope-ee390000', 0);
 
 -- Zero-stock product for the DEC-036-on-append cases.
 insert into public.products (id, name, qty_available, sort_order, category)
@@ -386,6 +400,32 @@ select is(
      and week_of = '2026-06-01'),
   true,
   'needs_reconciliation flipped true by the oversold append'
+);
+
+-- ============================================================
+-- 25. Foreign-submission_id scoping: customer B replaying customer A's
+--     submission_id must NOT resolve to A's order — the replay check is
+--     scoped to (customer, week), so B gets their own fresh order.
+-- ============================================================
+select isnt(
+  (select t.order_id from public.place_order(
+     'ee390000-0000-0000-0000-000000000002'::uuid,
+     '2026-06-01'::date,
+     'pickup', '', '', 'B pickup', '',
+     jsonb_build_array(
+       jsonb_build_object(
+         'product_id',      'ee390000-0000-0000-0000-aaaa00000003'::text,
+         'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000003'::text,
+         'qty',             1,
+         'unit_price_cents', 400
+       )
+     ),
+     'ee39aaaa-0000-0000-0000-000000000001'::uuid  -- A's submission_id
+   ) t),
+  (select id from public.orders
+    where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
+      and week_of = '2026-06-01'),
+  'replaying another customer''s submission_id returns B''s own order, not A''s'
 );
 
 select * from finish();

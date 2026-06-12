@@ -103,9 +103,16 @@ begin
   -- replaces the old ON CONFLICT no-op for the double-tap / retried-POST
   -- case (which under DEC-039 would otherwise APPEND a duplicate).
   if p_submission_id is not null then
+    -- Scoped to this customer's week: submission_id is a client-supplied UUID
+    -- with no unique constraint, so a replayed FOREIGN submission_id must not
+    -- resolve to someone else's order. A collision/forge finds nothing here
+    -- and falls through to create/append under the caller's own identity.
     select oi.order_id into v_order_id
       from public.order_items oi
+      join public.orders o on o.id = oi.order_id
      where oi.submission_id = p_submission_id
+       and o.customer_id = p_customer_id
+       and o.week_of = p_week_of
      limit 1;
     if v_order_id is not null then
       -- Report `appended` consistently with the original call: the
@@ -147,10 +154,33 @@ begin
      where o.customer_id = p_customer_id and o.week_of = p_week_of
        for update;
 
+    -- In-lock replay re-check — closes the create-vs-append race on a shared
+    -- submission_id. The outside-the-lock replay check above is not enough: two
+    -- concurrent requests with the same submission_id can both pass it (neither
+    -- has committed items yet), one wins the on-conflict insert and the other
+    -- arrives here. A unique index on submission_id can't arbitrate (one
+    -- submission legitimately inserts many items sharing the id), so we lock the
+    -- order row, then re-check: the winner's items are now committed and visible
+    -- (READ COMMITTED), so we short-circuit instead of decrementing twice.
+    if p_submission_id is not null and exists (
+      select 1 from public.order_items oi
+       where oi.order_id = v_order_id
+         and oi.submission_id = p_submission_id
+    ) then
+      return query
+        select v_order_id,
+               exists (
+                 select 1 from public.order_items oi
+                  where oi.order_id = v_order_id
+                    and oi.submission_id is distinct from p_submission_id
+               );
+      return;
+    end if;
+
     -- Terminal guard: the box has already been handed over — appending is
-    -- refused, nothing is written. ('picked_up' variant included defensively;
-    -- the app writes hyphenated statuses per orders-queries.ts.)
-    if v_status in ('picked-up', 'delivered', 'picked_up') then
+    -- refused, nothing is written. The app writes hyphenated statuses
+    -- (orders-queries.ts isTerminalStatus); keep this list identical to it.
+    if v_status in ('picked-up', 'delivered') then
       raise exception 'place_order: order already fulfilled'
         using errcode = 'P0001';
     end if;

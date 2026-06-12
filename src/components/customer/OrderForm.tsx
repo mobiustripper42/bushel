@@ -362,8 +362,13 @@ export function OrderForm({
   );
   const lineCount = itemsWithQty.length;
 
-  const setItemQty = (id: string, n: number) =>
+  const setItemQty = (id: string, n: number) => {
+    // Belt-and-suspenders with the persist effect: editing the cart starts a
+    // new submission attempt, so drop the idempotency key here at the edit
+    // site too — a changed cart must never be swallowed as a replay no-op.
+    submissionIdRef.current = null;
     setQty((q) => ({ ...q, [id]: n }));
+  };
 
   const handleSubmit = () => {
     if (lineCount === 0 || submittingRef.current) return;
