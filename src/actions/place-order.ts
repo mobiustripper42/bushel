@@ -29,6 +29,13 @@ export type PlaceOrderPayload = {
   delivery_preference: string;
   pickup_note: string;
   notes: string;
+  // DEC-039: client-generated per-submit-attempt UUID. The RPC's idempotency
+  // key — a replay (double-tap slipping the latch, transport-level POST
+  // retry) of an already-applied submission returns the existing order
+  // without appending or decrementing again. Generated in the FORM, not
+  // here: a server-generated id would mint a fresh one per retried request
+  // and guard nothing.
+  submission_id: string;
 };
 
 export async function placeOrder(
@@ -54,18 +61,25 @@ export async function placeOrder(
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase.rpc("place_order", {
-    p_customer_id: customer.id,
-    p_week_of: weekOfMondayNY(),
-    p_fulfillment_type: payload.mode,
-    p_delivery_address:
-      payload.mode === "delivery" ? (customer.delivery_address ?? "") : "",
-    p_delivery_preference:
-      payload.mode === "delivery" ? payload.delivery_preference.trim() : "",
-    p_pickup_note: payload.mode === "pickup" ? payload.pickup_note.trim() : "",
-    p_notes: payload.notes.trim(),
-    p_items: payload.items as unknown as Json,
-  });
+  // DEC-039: place_order returns table(order_id, appended) — `appended`
+  // tells us whether this submission created the week's order or topped up
+  // an existing one, which picks the alert copy below. .single() collapses
+  // the one-row set.
+  const { data, error } = await supabase
+    .rpc("place_order", {
+      p_customer_id: customer.id,
+      p_week_of: weekOfMondayNY(),
+      p_fulfillment_type: payload.mode,
+      p_delivery_address:
+        payload.mode === "delivery" ? (customer.delivery_address ?? "") : "",
+      p_delivery_preference:
+        payload.mode === "delivery" ? payload.delivery_preference.trim() : "",
+      p_pickup_note: payload.mode === "pickup" ? payload.pickup_note.trim() : "",
+      p_notes: payload.notes.trim(),
+      p_items: payload.items as unknown as Json,
+      p_submission_id: payload.submission_id,
+    })
+    .single();
 
   if (error) {
     // #132 / DEC-036: place_order rejects items whose product is sold out
@@ -78,8 +92,18 @@ export async function placeOrder(
           "Some items sold out while you were ordering. Reload to see what's still available.",
       };
     }
+    // #211 / DEC-039: appending to a picked-up/delivered order is refused —
+    // the box is already packed and gone. Stale add-mode tab is the only
+    // route here (the /confirmed hub hides the add button on terminal).
+    if (error.message.includes("already fulfilled")) {
+      return {
+        error:
+          "This order's already been packed — text Annabel to add more.",
+      };
+    }
     return { error: error.message };
   }
+  const appended = data?.appended ?? false;
 
   // Best-effort admin alert (DEC-033). Failure is swallowed inside the
   // wrapper — order placement never blocks on a notification miss. We
@@ -99,6 +123,10 @@ export async function placeOrder(
     itemCount: totalItemCount(payload.items),
     totalCents: total,
     adminOrdersUrl: `${adminBaseUrl()}/admin/orders`,
+    // DEC-039: append → "Order updated — <name> added N items" so Annabel
+    // can tell a top-up from a brand-new order. Count/total describe the
+    // added items only (the payload), not the merged order.
+    appended,
   });
 
   redirect(`/c/${token}/confirmed`);

@@ -181,9 +181,11 @@ test.describe("/c/[token] place order", () => {
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
     // The link is "your weekly order" — revisiting after submit must NOT
-    // re-show the empty form. The page-level redirect handles this; without
-    // it, a curious customer would see the form again and either re-tap
-    // (the RPC's ON CONFLICT catches that) or be confused.
+    // re-show the empty form (adding more goes through ?add=1, which is
+    // customer-additional-orders.spec.ts territory). DEC-039 note: a second
+    // submit with NEW items now APPENDS to the same order row rather than
+    // no-opping — the true no-op is a same-submission_id replay (covered in
+    // pgTAP place_order_additive.sql). Either way the row count below stays 1.
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
     await expect(
@@ -193,9 +195,10 @@ test.describe("/c/[token] place order", () => {
       TEST_PRODUCTS.kale.name,
     );
 
-    // And exactly one orders row exists for the current week — no duplicate.
-    // (Filtered to this week so the global-setup prior-order fixture
-    // doesn't inflate the count.)
+    // And exactly one orders row exists for the current week — DEC-039 keeps
+    // the unique (customer_id, week_of) constraint, so even appends never
+    // create a second row. (Filtered to this week so the global-setup
+    // prior-order fixture doesn't inflate the count.)
     const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
     const sb = admin();
     const { data: orders } = await sb
