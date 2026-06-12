@@ -32,6 +32,10 @@ GitHub issues closed back into the parking lot — premature to commit work with
 - **Realtime inventory subscription** (was Phase 3.8 ship-or-skip) — was #53 (5 pts). Supabase Realtime push of `products.qty_available` + `is_available` to the customer order form, behind `NEXT_PUBLIC_REALTIME_INVENTORY` flag. Tightens DEC-012's optimistic-placement window without replacing `needs_reconciliation`. Trigger: oversell becomes a frequent operational problem (e.g. Annabel reconciling multiple orders a week).
 - **Inventory drag-reorder above/below precision** — was #168. Split each row into upper/lower halves by cursor Y (`getBoundingClientRect().top + height/2`); below-half drops splice *after* the target. ~20 LOC + an `insertPosition: 'before' | 'after'` param on `reorderRows`. Bundled: "Save N changes" copy could special-case reorder-only diffs (one-row drag currently reports "Save 3 changes" because every row's sort_order shifts). Trigger: Annabel notices the down-drag asymmetry, OR a second person hits the surprising copy.
 
+### Parked from issues (2026-06-12)
+
+- **PWA admin: home-screen install + push notifications** — was #170 (3 pts). Web-app manifest + service worker for home-screen install on Annabel's phone, plus web push for new-order alerts. Trigger: Annabel asks for an app-like launch off her home screen, OR wants to be alerted of new orders without opening the page. Why parked: polish, not blocking the order workflow — the real signal is Annabel wanting it. No dependency.
+
 ## Promoted
 
 - **Make `product_units` strictly authoritative** → [#212](https://github.com/mobiustripper42/bushel/issues/212) — promoted 2026-06-11. Trigger met: #208 surfaced the dual-storage drift again. Split out of #208; drop the denormalized `products.unit` + `products.price_cents` mirror columns + PR #175 triggers.
