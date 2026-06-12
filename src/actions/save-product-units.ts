@@ -78,6 +78,22 @@ export async function saveProductUnits(
     return { error: "At least one unit must stay active." };
   }
 
+  // DEC-037: product_units is now authoritative and saveInventory's inline
+  // unit/price edits target the single conversion_to_base = 1.0 base row.
+  // Protect that invariant here — exactly one base unit must survive every
+  // save, or the inline editor's writes would silently miss (or hit two rows).
+  // Changing WHICH unit is the base is #208; this only guards against losing
+  // or doubling it.
+  const baseCount = trimmed.filter((u) => u.conversion_to_base === 1).length;
+  if (baseCount !== 1) {
+    return {
+      error:
+        baseCount === 0
+          ? "One unit must be the base unit (conversion of 1)."
+          : "Only one unit can be the base unit (conversion of 1).",
+    };
+  }
+
   const supabase = await createClient();
 
   const { data: product, error: prodErr } = await supabase

@@ -121,6 +121,8 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
         slug: baseUnitSlug(row.name.trim(), data.id),
       });
       if (unitError) {
+        // Best-effort compensating delete — if it fails we leak a base-unit-less
+        // product, but the original error is the one worth surfacing.
         await supabase.from("products").delete().eq("id", data.id);
         return { error: `${rowLabel}: ${unitError.message}`, newIdMap };
       }
@@ -130,11 +132,15 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
       if (error) return { error: error.message, newIdMap };
 
       // Existing product: the inline unit/price fields edit the base unit row.
-      const { error: unitError } = await supabase
+      // Capture the affected id — a zero-row update means the product has no
+      // conversion_to_base = 1.0 row (a violated invariant, normally prevented
+      // by saveProductUnits). Fail loud rather than silently dropping the edit.
+      const { data: updated, error: unitError } = await supabase
         .from("product_units")
         .update({ label: unitLabel, unit_price_cents: row.price_cents })
         .eq("product_id", row.id)
-        .eq("conversion_to_base", 1.0);
+        .eq("conversion_to_base", 1.0)
+        .select("id");
       if (unitError) {
         if (isUniqueViolation(unitError.code)) {
           return {
@@ -143,6 +149,12 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
           };
         }
         return { error: `${rowLabel}: ${unitError.message}`, newIdMap };
+      }
+      if (!updated || updated.length === 0) {
+        return {
+          error: `${rowLabel}: no base unit found for "${row.name.trim()}". Open its units and set one unit's conversion to 1.`,
+          newIdMap,
+        };
       }
     }
   }

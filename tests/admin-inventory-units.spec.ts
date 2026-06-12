@@ -159,6 +159,25 @@ test.describe("admin inventory · units drawer", () => {
     await expect(drawer(page).getByRole("alert")).toContainText(/at least one unit must stay active/i);
   });
 
+  // DEC-037 (#212): product_units is authoritative and the inline editor writes
+  // the single conversion_to_base = 1.0 base row. A new unit defaults to
+  // conversion 1, so saving without changing it would create two base rows —
+  // saveProductUnits now rejects that to protect the invariant.
+  test("validation: two units at conversion 1 (duplicate base) is rejected", async ({ page }) => {
+    await page.goto("/admin/inventory");
+    await chip(page, KALE.name).click();
+
+    await drawer(page).getByRole("button", { name: /add another unit/i }).click();
+    const newRow = drawer(page).locator(".units-row").nth(1);
+    await newRow.getByRole("textbox", { name: "Unit label" }).fill("per case");
+    await newRow.getByRole("textbox", { name: "Unit price" }).fill("20.00");
+    // leave Conversion to base at its default of 1 → two base units
+    await drawerSave(page).click();
+    await expect(drawer(page).getByRole("alert")).toContainText(
+      /only one unit can be the base unit/i,
+    );
+  });
+
   test("new (unsaved) row hides the units chip", async ({ page }) => {
     await page.goto("/admin/inventory");
     await page.getByRole("button", { name: /add row/i }).click();
