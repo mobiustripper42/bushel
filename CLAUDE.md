@@ -87,21 +87,25 @@ Project coding conventions — typing, component structure, data fetching, auth/
 
 ## Model Selection
 
-Three tiers. Default low; escalate by **task length and complexity** — Fable 5's lead over Sonnet/Opus is smallest on short scoped tasks and widens the longer and more complex the work (migrations, schema design, cross-cutting refactors, long autonomous runs).
+Default to the cheapest model that does the job. **Opus 4.8 is the standing model** for real development and architecture; Sonnet handles cheap/scoped work; Fable is a deliberate, on-demand escalation for *bundled* long-horizon work — never the default, because $10/$50 per MTok (2× Opus) drains usage fast.
 
 | Tier | Model | Use for |
 |------|-------|---------|
-| Workhorse | `claude-sonnet-4-6` | Default main session and most agents. Single-file edits, scoped tasks, reviews. |
-| Hard | `claude-opus-4-8` | The "stuck" escalation; RLS/schema work; anything where being wrong is expensive but the task is bounded. |
-| Frontier | `claude-fable-5` | Long-horizon, multi-file, high-autonomy work where holding coherence across the whole change is the bottleneck — and architecture decisions (see `@architect`). $10/$50 per MTok, 2× Opus both directions; reserve accordingly. |
+| Cheap | `claude-sonnet-4-6` | Trivial/scoped agents and reviews — fast, low-cost. |
+| Default | `claude-opus-4-8` | The standing model for development and architecture. Most work runs here. |
+| Frontier (on demand) | `claude-fable-5` | A *bundled* long-horizon unit — several related tasks combined into one coherent multi-file run. Spawned deliberately and scope-confirmed; the bundling is what amortizes the premium. One-off task → stay on Opus. |
 
-- **Reach for `effort` before reaching for a tier.** `effort` (`low`/`medium`/`high`/`xhigh`/`max`, set via `output_config`) buys quality more cheaply than a model jump on a task the current model can already do. `xhigh` is the floor for coding/agentic work, `high` for intelligence-sensitive work, `max` only when correctness must beat cost. Fable 5 reaches production-quality code at *medium* effort and is more token-efficient than prior models — frontier quality does **not** require max effort.
-- **Spec up front, then let it run.** Front-load the full task spec in one turn and let the model work long at high effort rather than over-decomposing a coherent task into tiny issues — Fable holds coherence across millions of tokens, and chopping the task throws that away. The Micro Workflow's *Spec it / Plan it* steps and the `design/` mockups **are** the spec; point the model at them.
-- **File memory is a force multiplier — ~3× more effective on Fable than Opus 4.8.** Session files, `design/`, `docs/DECISIONS.md`, and acceptance criteria are exactly the persistent notes Fable exploits to improve its own output. Keep them current; reference them explicitly in the task.
-- **Vision is a first-class input.** Fable 5 is state-of-the-art at vision and rebuilds UI from screenshots with minimal scaffolding — lean on `design/*.jsx` mockups and screenshot-vs-build diffs (see `@ui-reviewer`).
-- **Silent fallback caveat.** Fable routes <5% of sessions (cyber / bio-chem / distillation classifiers, conservatively tuned) to Opus 4.8 automatically and tells you when it does. Defensive RLS/auth work won't trip it in normal use — but if a session unexpectedly feels a tier weaker, check for a fallback notice before chasing a phantom regression.
-- **Agents:** model in agent frontmatter. `@architect` pins `claude-fable-5` — architecture decisions are where being wrong compounds, so they get the frontier tier. Reviewers (`@code-review`, `@pm`, `@doc-consistency`, `@tape-reader`) stay Sonnet. `@ui-reviewer` stays Sonnet but is worth bumping to Opus 4.8 / Fable for vision-heavy mockup-vs-build review.
-- **New agents:** default to Sonnet. Add a `model:` line only when the agent's job is architecture- or vision-level reasoning.
+**The Fable trigger — bundle, then escalate.** Fable's lead is largest on long, coherent, multi-file work, which is also where its cost amortizes across the most output — so don't route individual tasks to it.
+- When several queued/related tasks form one coherent unit, **Claude suggests** bundling them into a single Fable run *before* starting, with the proposed scope.
+- The **operator can request the same**: say `bundle for fable` (or describe the bundle). Either party can raise it.
+- A Fable run is opt-in and announced — confirm scope before spawning. Give it the full combined spec up front (Fable holds coherence across millions of tokens) and run it at high effort. That front-loaded spec is what makes the premium pay off.
+
+- **Reach for `effort` before reaching for a tier.** `effort` (`low`/`medium`/`high`/`xhigh`/`max`, via `output_config`) buys quality more cheaply than a model jump on a task the current model can already do. `xhigh` is the floor for coding/agentic work, `high` for intelligence-sensitive work, `max` only when correctness must beat cost.
+- **File memory is a force multiplier — ~3× more effective on Fable than Opus 4.8.** Session files, `design/`, `docs/DECISIONS.md`, and acceptance criteria are the persistent notes the model exploits to improve its own output. Keep them current and reference them explicitly — this matters most on a bundled Fable run.
+- **Vision.** Fable 5 is state-of-the-art at vision and rebuilds UI from screenshots with minimal scaffolding — a legitimate reason to escalate a vision-heavy unit (mockup-vs-build, `design/*.jsx`).
+- **Silent fallback caveat.** Fable routes <5% of sessions (cyber / bio-chem / distillation classifiers, conservatively tuned) to Opus 4.8 automatically and tells you when it does. Defensive RLS/auth work won't trip it in normal use — but if a Fable run unexpectedly feels a tier weaker, check for a fallback notice before chasing a phantom regression.
+- **Agents:** model in agent frontmatter. `@architect` runs Opus 4.8; escalate it to a Fable run for genuinely hard or bundled design work (Claude or operator suggests). Reviewers (`@code-review`, `@pm`, `@doc-consistency`, `@tape-reader`) and `@ui-reviewer` stay Sonnet.
+- **New agents:** default to Sonnet; pin `model: opus` only when the agent's standing job needs it. Don't pin Fable — reach it via the on-demand bundle trigger.
 
 ## PR Workflow
 
