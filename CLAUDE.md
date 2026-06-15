@@ -104,7 +104,7 @@ Default to the cheapest model that does the job. **Opus 4.8 is the standing mode
 - **File memory is a force multiplier — ~3× more effective on Fable than Opus 4.8.** Session files, `design/`, `docs/DECISIONS.md`, and acceptance criteria are the persistent notes the model exploits to improve its own output. Keep them current and reference them explicitly — this matters most on a bundled Fable run.
 - **Vision.** Fable 5 is state-of-the-art at vision and rebuilds UI from screenshots with minimal scaffolding — a legitimate reason to escalate a vision-heavy unit (mockup-vs-build, `design/*.jsx`).
 - **Silent fallback caveat.** Fable routes <5% of sessions (cyber / bio-chem / distillation classifiers, conservatively tuned) to Opus 4.8 automatically and tells you when it does. Defensive RLS/auth work won't trip it in normal use — but if a Fable run unexpectedly feels a tier weaker, check for a fallback notice before chasing a phantom regression.
-- **Agents:** model in agent frontmatter. `@architect` runs Opus 4.8; escalate it to a Fable run for genuinely hard or bundled design work (Claude or operator suggests). Reviewers (`@code-review`, `@pm`, `@doc-consistency`, `@tape-reader`) and `@ui-reviewer` stay Sonnet.
+- **Agents:** model in agent frontmatter. `@architect` pins `claude-fable-5` — architecture decisions are where being wrong compounds, so bushel keeps them on the frontier tier rather than routing them through the on-demand bundle trigger. Reviewers (`@code-review`, `@pm`, `@doc-consistency`, `@tape-reader`) and `@ui-reviewer` stay Sonnet.
 - **New agents:** default to Sonnet; pin `model: opus` only when the agent's standing job needs it. Don't pin Fable — reach it via the on-demand bundle trigger.
 
 ## PR Workflow
