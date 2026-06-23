@@ -218,6 +218,31 @@ Forecast at 0.80 active h/pt (Phase 7 headline) → ~6.4h active for the opening
 
 ---
 
+## Phase 9 — Open-Order Pivot (21 pts → ~17 h active @ 0.80 h/pt)
+
+Re-keys order identity from the week to the open order, kills the scheduled-close cron, fixes the SKU/`description` export landmine and the `picked_up` status split, and reworks the admin orders list for the new model. Design locked in the planning memo + an `@architect` pass (2026-06-22, Opus — Fable unavailable). DEC-040–045.
+
+**Hard cutover** at go-live: wipe `orders`/`order_items`/`customer_sends`, keep `products`/`product_units`/`customers` — no history, no backfill, brief quiet-minute outage accepted (DEC-041).
+
+**Step 0 (infra gate, not a task):** bootstrap the `production` deploy branch (`git checkout -b production main && git push -u origin production`) + repoint Vercel's Production Branch to `production` **before** `main` takes Phase 9 work — else WIP auto-deploys to prod (DEC-S022).
+
+**Sequencing:** 9.1 (merge #218) before 9.3a (`CREATE OR REPLACE` of #218's `place_order`); 9.3a before 9.3b; 9.5 before 9.3b (shared `report.ts` lines).
+
+| # | Task | Pts | Status |
+|---|---|---|---|
+| 9.1 | Merge #211/#218 additive orders + whole-order summary + "Update order" copy | 2 | [#224](https://github.com/mobiustripper42/bushel/issues/224) |
+| 9.2 | Disable scheduled-close cron — always-open (DEC-040) | 1 | [#225](https://github.com/mobiustripper42/bushel/issues/225) |
+| 9.3a | Open-order identity — partial unique index + `place_order` re-key (DEC-041) | 5 | [#226](https://github.com/mobiustripper42/bushel/issues/226) |
+| 9.3b | Customer open-order UX — editable open order, terminal read-only (DEC-042) | 3 | [#227](https://github.com/mobiustripper42/bushel/issues/227) |
+| 9.4 | Per-unit editable SKU; remove `description` from Wave export (DEC-043) | 3 | [#228](https://github.com/mobiustripper42/bushel/issues/228) |
+| 9.5 | BUG: canonicalize `order_status` to `picked_up` (DEC-044) | 2 | [#229](https://github.com/mobiustripper42/bushel/issues/229) |
+| 9.6 | Inventory hidden-state visual — "Hidden" pill + accent bar | 2 | [#230](https://github.com/mobiustripper42/bushel/issues/230) |
+| 9.8 | Admin orders list — drop week filter, active + past-orders view (DEC-045) | 3 | [#231](https://github.com/mobiustripper42/bushel/issues/231) |
+
+DEC-039 (#218's additive-orders decision) lands in `DECISIONS.md` when 9.1 merges; DEC-040–045 are already written. Customer-facing order history (#136) stays in the backlog.
+
+---
+
 ## `seeds` Backports (track via `/sync-config`)
 
 1. **Test scaffolding** — Playwright config, pgTAP layout, `supabase/seed.sql`, GitHub Actions workflow. Coordinate with parallel session.
