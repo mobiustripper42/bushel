@@ -100,7 +100,11 @@ select is(
 
 -- ============================================================
 -- 5. Oversell-by-unit reconciliation. New customer + product so we get
---    a clean (customer, week) — place_order otherwise no-ops on conflict.
+--    a clean (customer, week) — under DEC-039 a second call for the same
+--    (customer, week) APPENDS to the existing order (the old on-conflict
+--    no-op is gone; the true no-op is a submission_id replay — see
+--    place_order_additive.sql), so isolation here comes from the fresh
+--    customer, not from place_order ignoring the call.
 -- ============================================================
 insert into public.customers (id, name, token)
 values ('dddd0000-0000-0000-0000-000000000002'::uuid, 'Oversell Customer', 'token-oversell-65d');

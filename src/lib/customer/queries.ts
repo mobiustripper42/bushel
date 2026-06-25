@@ -46,6 +46,17 @@ export async function getAvailableProducts(): Promise<ProductRow[]> {
   });
 }
 
+// 6.5d: orderable means at least one active unit fits in current base
+// inventory. A product with only a conv=4 unit and qty_available=2 is
+// effectively sold out even though qty_available > 0. Shared by /c/[token]
+// (all-sold-out shell, DEC-031) and /c/[token]/confirmed (gates the
+// "Add to your order" affordance, DEC-039) so the two can't drift.
+export function anyOrderable(products: ProductRow[]): boolean {
+  return products.some((p) =>
+    p.units.some((u) => p.qty_available >= u.conversion_to_base),
+  );
+}
+
 // Reads the ordering_schedule singleton. Customer page uses this to decide
 // between the open form, the manual-closed shell, and the all-sold-out shell
 // (DEC-031). DEC-030 guarantees a single row exists — .single() lets a
@@ -80,7 +91,8 @@ export async function getLatestDeliveryPreference(
 // Pulls the customer's order for a specific week (typically the current NY-time
 // week), joined with its line items + product names + per-line unit labels
 // (product_units, DEC-037). Returns null if no order exists for that week.
-// Used by /confirmed.
+// Used by /confirmed (which also gates its "Add to your order" affordance on
+// `status`, DEC-039) and by /c/[token]'s ?add=1 add-mode entry.
 export async function getCurrentWeekOrder(customerId: string, weekOf: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -94,6 +106,7 @@ export async function getCurrentWeekOrder(customerId: string, weekOf: string) {
       delivery_preference,
       pickup_note,
       notes,
+      status,
       created_at,
       order_items (
         id,

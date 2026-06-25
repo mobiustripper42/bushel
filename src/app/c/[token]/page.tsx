@@ -3,7 +3,9 @@ import { AllSoldOutShell } from "@/components/customer/AllSoldOutShell";
 import { ClosedShell } from "@/components/customer/ClosedShell";
 import { OrderForm } from "@/components/customer/OrderForm";
 import { PausedShell } from "@/components/customer/PausedShell";
+import { isTerminalStatus } from "@/lib/admin/orders-queries";
 import {
+  anyOrderable,
   getAvailableProducts,
   getCurrentWeekOrder,
   getLatestDeliveryPreference,
@@ -14,10 +16,13 @@ import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
 
 export default async function CustomerTokenPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ add?: string }>;
 }) {
   const { token } = await params;
+  const { add } = await searchParams;
   const customer = await lookupCustomerByToken(token);
   if (!customer) notFound();
 
@@ -39,8 +44,18 @@ export default async function CustomerTokenPage({
   // than re-showing the empty form. The server-side place_order RPC would
   // catch a re-submit either way, but seeing the empty form again is
   // confusing UX.
+  //
+  // #211 / DEC-039: ?add=1 (the /confirmed hub's "Add to your order" link)
+  // skips that bounce and renders the form in ADD MODE — new items append to
+  // the existing order. A terminal order (picked-up/delivered) can't take
+  // appends, so it bounces back to /confirmed, where the gated-off reason
+  // copy lives.
   const existingOrder = await getCurrentWeekOrder(customer.id, weekOfMondayNY());
-  if (existingOrder) redirect(`/c/${token}/confirmed`);
+  const addMode = add === "1" && existingOrder !== null;
+  if (existingOrder && !addMode) redirect(`/c/${token}/confirmed`);
+  if (addMode && existingOrder && isTerminalStatus(existingOrder.status)) {
+    redirect(`/c/${token}/confirmed`);
+  }
 
   const [products, priorDeliveryPreference, schedule] = await Promise.all([
     getAvailableProducts(),
@@ -58,10 +73,7 @@ export default async function CustomerTokenPage({
   // 6.5d: orderable means at least one active unit fits in current base
   // inventory. A product with only a conv=4 unit and qty_available=2 is
   // effectively sold out even though qty_available > 0.
-  const anyOrderable = products.some((p) =>
-    p.units.some((u) => p.qty_available >= u.conversion_to_base),
-  );
-  if (!anyOrderable) {
+  if (!anyOrderable(products)) {
     return <AllSoldOutShell customerName={greetingName} />;
   }
 
@@ -75,6 +87,16 @@ export default async function CustomerTokenPage({
       products={products}
       priorDeliveryPreference={priorDeliveryPreference}
       weekLabel={weekOfLabel()}
+      existingOrder={
+        addMode && existingOrder
+          ? {
+              fulfillment_type: existingOrder.fulfillment_type,
+              delivery_address: existingOrder.delivery_address,
+              delivery_preference: existingOrder.delivery_preference,
+              pickup_note: existingOrder.pickup_note,
+            }
+          : null
+      }
     />
   );
 }

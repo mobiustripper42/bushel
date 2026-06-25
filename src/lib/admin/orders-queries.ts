@@ -27,6 +27,14 @@ export function statusAfterConfirmSend(current: OrderStatus): OrderStatus {
   return current === "new" ? "confirmed" : current;
 }
 
+// DEC-039: terminal = the box has been handed over. Appending to the week's
+// order is refused at this point (place_order raises; the /confirmed hub and
+// the ?add=1 entry both gate on it). Takes raw text because orders.status is
+// app-enforced text in the DB (DEC-010) — customer-side reads arrive untyped.
+export function isTerminalStatus(status: string): boolean {
+  return status === "picked-up" || status === "delivered";
+}
+
 // DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked-up | delivered).
 // Confirmed is optional — new → ready stays valid (Annabel may pack before
 // texting). Fulfillment type pins which terminal state is valid. Pure +

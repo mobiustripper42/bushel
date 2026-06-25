@@ -10,11 +10,23 @@ type Customer = {
   delivery_address: string | null;
 };
 
+// #211 / DEC-039 — when set, the form is in ADD MODE: new items append to
+// this existing (customer, week) order. Fulfillment is shown read-only
+// (inherited from the order; change = text Annabel, DEC-015) and the submit
+// payload sends only the new line items — never fulfillment fields.
+export type ExistingOrderFulfillment = {
+  fulfillment_type: string;
+  delivery_address: string | null;
+  delivery_preference: string | null;
+  pickup_note: string | null;
+};
+
 type Props = {
   customer: Customer;
   products: ProductRow[];
   priorDeliveryPreference: string | null;
   weekLabel: string;
+  existingOrder: ExistingOrderFulfillment | null;
 };
 
 type Mode = "delivery" | "pickup";
@@ -212,7 +224,9 @@ export function OrderForm({
   products,
   priorDeliveryPreference,
   weekLabel,
+  existingOrder,
 }: Props) {
+  const addMode = existingOrder !== null;
   const [qty, setQty] = useState<Record<string, number>>({});
   // selectedUnit[productId] → product_units.id. Unset entries fall back to the
   // product's first active unit at render time. Switching units zeros qty for
@@ -229,14 +243,22 @@ export function OrderForm({
   // useTransition's isPending flips asynchronously — a fast cross-button tap
   // (sticky-bar → rail-card) within one frame can fire the handler twice
   // before React commits the disabled state. This ref is the synchronous
-  // latch; the server action is idempotent on the second call but the second
-  // request still hits the network unnecessarily.
+  // latch; the server action is idempotent on the second call (same
+  // submission_id → replay no-op, DEC-039) but the second request still hits
+  // the network unnecessarily.
   const submittingRef = useRef(false);
   // #149 — once a submit is in flight we stop persisting: the redirect on
   // success unmounts before any post-await code runs, and a re-render during
   // the submit transition would otherwise re-fire the persist effect and
   // resurrect the draft we just cleared. Reset on a failed submit.
   const submittedRef = useRef(false);
+  // #211 / DEC-039 — per-submit-attempt idempotency key. Minted lazily on the
+  // first submit and REUSED on a retry of the unchanged cart, so a retry of a
+  // submit that actually committed server-side (network error after the write)
+  // replays as a no-op instead of appending the cart twice. Any cart edit
+  // resets it (in the persist effect below): an edited cart is a new
+  // submission, and reusing the old id would make the server short-circuit it.
+  const submissionIdRef = useRef<string | null>(null);
   const fulfillRef = useRef<HTMLElement>(null);
 
   // #149 — persist the in-progress cart to sessionStorage so a reload or an
@@ -295,6 +317,10 @@ export function OrderForm({
   // the mount effect loads it.
   useEffect(() => {
     if (!hydrated || submittedRef.current) return;
+    // Cart state changed → this is no longer the same submission attempt.
+    // Drop the idempotency key so the next submit mints a fresh one (see
+    // submissionIdRef above). No-op on mount (ref starts null).
+    submissionIdRef.current = null;
     writeDraft();
     // writeDraft closes over the current state; deps list the persisted fields.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,8 +362,13 @@ export function OrderForm({
   );
   const lineCount = itemsWithQty.length;
 
-  const setItemQty = (id: string, n: number) =>
+  const setItemQty = (id: string, n: number) => {
+    // Belt-and-suspenders with the persist effect: editing the cart starts a
+    // new submission attempt, so drop the idempotency key here at the edit
+    // site too — a changed cart must never be swallowed as a replay no-op.
+    submissionIdRef.current = null;
     setQty((q) => ({ ...q, [id]: n }));
+  };
 
   const handleSubmit = () => {
     if (lineCount === 0 || submittingRef.current) return;
@@ -368,6 +399,22 @@ export function OrderForm({
       submittingRef.current = false;
       return;
     }
+    // Lazily mint the submission id; a retry of the unchanged cart reuses it
+    // (the persist effect resets it on any cart edit).
+    if (!submissionIdRef.current) {
+      submissionIdRef.current = crypto.randomUUID();
+    }
+    const submissionId = submissionIdRef.current;
+    // #211 / DEC-039 — in add mode the order's fulfillment is inherited, not
+    // edited: send the existing order's mode for the RPC's (ignored-on-append)
+    // fulfillment args and empty preference/note fields so the form never
+    // tries to mutate them.
+    const effectiveMode: Mode =
+      existingOrder !== null
+        ? existingOrder.fulfillment_type === "pickup"
+          ? "pickup"
+          : "delivery"
+        : mode;
     // #149 — latch off persistence and clear the draft up front. On success the
     // action redirects and unmounts before any post-await code reliably runs,
     // so we can't clear there; on failure the error branches below unlatch and
@@ -377,11 +424,12 @@ export function OrderForm({
     startTransition(async () => {
       try {
         const result = await placeOrder({
-          mode,
+          mode: effectiveMode,
           items: payloadItems,
-          delivery_preference: deliveryPreference,
-          pickup_note: pickupNote,
+          delivery_preference: addMode ? "" : deliveryPreference,
+          pickup_note: addMode ? "" : pickupNote,
           notes,
+          submission_id: submissionId,
         });
         if (result?.error) {
           setSubmitError(result.error);
@@ -546,6 +594,36 @@ export function OrderForm({
               </div>
             </section>
 
+            {addMode && existingOrder ? (
+              // #211 / DEC-039 — add mode inherits the order's fulfillment.
+              // Read-only summary, no inputs: customers don't edit fulfillment
+              // (DEC-015) — change = text Annabel.
+              <section className="fulfill" ref={fulfillRef}>
+                <div className="eyebrow">fulfillment</div>
+                <h2 className="section-title">Going with your order</h2>
+                <div className="fulfill-detail">
+                  <div className="addr-stack">
+                    <div className="label-sm">
+                      {existingOrder.fulfillment_type === "pickup"
+                        ? "Pickup at the farm"
+                        : "Delivery Wednesday"}
+                    </div>
+                    <div className="addr-text">
+                      {existingOrder.fulfillment_type === "pickup"
+                        ? existingOrder.pickup_note?.trim() ||
+                          "3612 W 114th St, Cleveland"
+                        : existingOrder.delivery_address ||
+                          existingOrder.delivery_preference?.trim() ||
+                          "Wednesday morning, 8am–noon"}
+                    </div>
+                  </div>
+                  <div className="fulfill-help">
+                    These items go out with the order you already placed. Need
+                    to change this? Text Annabel · 216-202-5718.
+                  </div>
+                </div>
+              </section>
+            ) : (
             <section className="fulfill" ref={fulfillRef}>
               <div className="eyebrow">fulfillment</div>
               <h2 className="section-title">How would you like it?</h2>
@@ -611,6 +689,7 @@ export function OrderForm({
                 </div>
               )}
             </section>
+            )}
 
             <section className="notes">
               <div className="eyebrow">notes</div>
@@ -654,11 +733,15 @@ export function OrderForm({
                   </div>
                 </div>
                 <div className="summary-sub">
-                  {mode === "delivery"
-                    ? customer.delivery_address
-                      ? `Wednesday delivery to ${customer.delivery_address.split(",")[0]}`
-                      : "Wednesday delivery"
-                    : "Pickup at the farm"}
+                  {addMode
+                    ? existingOrder?.fulfillment_type === "pickup"
+                      ? "Adding to your pickup order"
+                      : "Adding to your delivery order"
+                    : mode === "delivery"
+                      ? customer.delivery_address
+                        ? `Wednesday delivery to ${customer.delivery_address.split(",")[0]}`
+                        : "Wednesday delivery"
+                      : "Pickup at the farm"}
                 </div>
               </div>
               <button
@@ -670,6 +753,8 @@ export function OrderForm({
               >
                 {isPending ? (
                   <span className="btn-spinner" aria-hidden="true" />
+                ) : addMode ? (
+                  "Add to order"
                 ) : (
                   "Submit order"
                 )}
@@ -724,6 +809,8 @@ export function OrderForm({
               >
                 {isPending ? (
                   <span className="btn-spinner" aria-hidden="true" />
+                ) : addMode ? (
+                  "Add to order"
                 ) : (
                   "Submit order"
                 )}

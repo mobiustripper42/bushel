@@ -164,6 +164,7 @@ export type Database = {
           product_id: string
           product_unit_id: string
           qty: number
+          submission_id: string | null
           unit_price_cents: number
         }
         Insert: {
@@ -173,6 +174,7 @@ export type Database = {
           product_id: string
           product_unit_id: string
           qty: number
+          submission_id?: string | null
           unit_price_cents: number
         }
         Update: {
@@ -182,6 +184,7 @@ export type Database = {
           product_id?: string
           product_unit_id?: string
           qty?: number
+          submission_id?: string | null
           unit_price_cents?: number
         }
         Relationships: [
@@ -421,9 +424,13 @@ export type Database = {
           p_items: Json
           p_notes: string
           p_pickup_note: string
+          p_submission_id?: string
           p_week_of: string
         }
-        Returns: string
+        Returns: {
+          appended: boolean
+          order_id: string
+        }[]
       }
       prepopulate_inventory_from_last_week: {
         Args: never

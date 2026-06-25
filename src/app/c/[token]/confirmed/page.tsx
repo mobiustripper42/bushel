@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { PausedShell } from "@/components/customer/PausedShell";
 import { StatusShell } from "@/components/customer/StatusShell";
-import { getCurrentWeekOrder } from "@/lib/customer/queries";
+import { isTerminalStatus } from "@/lib/admin/orders-queries";
+import {
+  anyOrderable,
+  getAvailableProducts,
+  getCurrentWeekOrder,
+  getOrderingScheduleStatus,
+} from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
 import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
 
@@ -70,6 +76,18 @@ export default async function ConfirmedPage({
     0,
   );
   const greeting = customer.business_name ?? customer.name;
+
+  // #211 / DEC-039 — "Add to your order" entry point. Gated on the same
+  // predicates /c/[token] uses to render the form at all: ordering open
+  // (DEC-031 soft hint), at least one orderable product (anyOrderable —
+  // shared helper), and the order not terminal (picked-up/delivered means
+  // the box is gone; place_order refuses the append server-side too).
+  const [schedule, products] = await Promise.all([
+    getOrderingScheduleStatus(),
+    getAvailableProducts(),
+  ]);
+  const terminal = isTerminalStatus(order.status);
+  const canAdd = !terminal && schedule.is_open && anyOrderable(products);
 
   return (
     <StatusShell>
@@ -173,6 +191,24 @@ export default async function ConfirmedPage({
       </div>
 
       <div className="status-actions">
+        {canAdd ? (
+          <Link
+            href={`/c/${token}?add=1`}
+            className="btn btn-primary status-btn"
+          >
+            Add to your order
+          </Link>
+        ) : terminal ? (
+          <p className="status-fine">
+            This order&rsquo;s been packed — text Annabel to add more.
+          </p>
+        ) : !schedule.is_open ? (
+          <p className="status-fine">
+            Ordering&rsquo;s closed for this week.
+          </p>
+        ) : null}
+        {/* anyOrderable=false (everything sold out) shows no add affordance
+            and no reason line — nothing left to add is self-explanatory. */}
         <a href="sms:2162025718" className="btn btn-secondary status-btn">
           Need a change? Text Annabel · 216-202-5718
         </a>
