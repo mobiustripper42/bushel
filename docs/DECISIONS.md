@@ -473,6 +473,77 @@ PWA push notification remains the stretch upgrade per DEC-027's framing.
 **Idempotency:** `place_order`'s on-conflict no-op is replaced by a client-generated `order_items.submission_id` — replaying an already-applied submission returns the existing order with no second decrement. It doubles as a per-submission audit trail (which submit attempt created each line). The RPC now returns `table(order_id, appended)` so the action can pick "new order" vs "added N items" alert copy.
 
 **Rejected:** multiple order rows per customer-week — breaks `customer_sends` keying (`(customer_id, week_of, mode)` PK), `getCurrentWeekOrder`'s `maybeSingle()`, the 1:1 admin sends join, and doubles Annabel's per-customer fulfillment steps.
+---
+
+## DEC-040 — Store is always-open; scheduled-close cron disabled (amends DEC-030)
+
+**Decision:** `ordering_schedule.is_open` is operated **only** by the manual `toggleOrdering` button. The scheduled-close cron is **disabled** — the `crons` entry is removed from `vercel.json` so `/api/cron/check-schedule` never fires. The machinery (`save-schedule.ts`, the cron route, `SettingsScheduleCard`, and the `weekly_*` / `override_closes_at` columns) is **left in place, dormant** — removable anytime.
+
+**Why:** The farm wants continuous open, closed only by deliberate action. The cron is the *only* schedule-driven writer of `is_open` (the order page treats `is_open` as a soft UI hint; `toggle-ordering.ts` is the only other writer), so disabling it makes open/closed a manual-only decision and neutralizes the cron's UTC `getDay()`/`getHours()` timezone-edge bugs — without ripping out code.
+
+**Revised from the planning memo:** the original DEC-040 proposed *deleting* the machinery + dropping 5 schedule columns. Softened to disable-the-cron — it's built and harmless, removal can happen later. Saves a migration.
+
+**Accepted limitation:** `SettingsScheduleCard` stays settable but inert (no cron acts on a set schedule). Harmless; hiding it is deferred to whenever the machinery is fully removed.
+
+**Supersedes (DEC-030):** "scheduled close opt-in" — there is no scheduled close now, only the manual toggle.
+
+---
+
+## DEC-041 — Order identity is the open order, not the week
+
+**Decision:** Replace `orders`' `UNIQUE (customer_id, week_of)` with a **partial unique index**:
+
+```sql
+CREATE UNIQUE INDEX orders_one_open_per_customer
+  ON public.orders (customer_id)
+  WHERE status IN ('new', 'confirmed', 'ready');
+```
+
+A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`/`delivered`) drop out, freeing a new one. `week_of` is **demoted to an informational stamp** — still set at insert, still feeds the fulfillment sheet + Wave export, no longer identity. `place_order`'s find-existing clause (from #218/DEC-039) re-keys week → open-status; the `submission_id` replay guard is untouched.
+
+**Why:** "Always open + edit until fulfilled + new one after" is exactly "one row per (customer, non-terminal-status)." Postgres expresses it natively; no `week_of` arithmetic in the hot path. Demoting rather than dropping `week_of` keeps the weekly reports working.
+
+**The RPC re-key is NOT a one-clause change.** `week_of` is load-bearing in four spots in #218's `place_order`: the `ON CONFLICT` arbiter (must infer the partial index — the concurrency linchpin), the `FOR UPDATE` existing-order lock, the outside-lock replay join, and the in-lock re-check (order-keyed, fine). Three are concurrency-critical; sized 5pt accordingly (architect pass, 2026-06-22).
+
+**Cutover (hard cutover):** at go-live, wipe `orders` / `order_items` / `customer_sends`; keep `products` / `product_units` / `customers`. No history, no backfill. The old `UNIQUE (customer_id, week_of)` is dropped **in** the cutover, **not deferred** — it cannot coexist with the partial index through live traffic (it forbids the very second-same-week order the index allows). A brief quiet-minute outage is accepted.
+
+---
+
+## DEC-042 — Open-order edits: additive, terminal-only lock; send-state stays weekly
+
+**Decision:** Adopt #218's append semantics unchanged. A customer may append items to a non-terminal order (`new`/`confirmed`/`ready`); appending a `confirmed`/`ready` order resets it to `new` and re-enters the send pipeline (existing Re-send covers the stale SMS); appending a terminal order is refused server-side. Editing is **add/increase only** — no removal or decrease ("remove an item" = text Annabel, DEC-015).
+
+**Why:** Add-only keeps the `qty_available` decrement monotonic; allowing removal means re-incrementing, which races other carts and reopens the DEC-012 oversell window from the wrong side. The earlier "lock at `ready`" idea is dropped for #218's already-UAT'd through-`ready` behavior — a stray late append is a text-Annabel fix.
+
+**Send-state stays week-keyed (decided against re-keying).** `customer_sends` keeps PK `(customer_id, week_of, mode)`. Considered re-keying to `(order_id, mode)` to handle a same-week re-order after fulfillment, but **rejected**: the weekly blast (`weekly_update`) is sent *before* any order exists, so order-keying it is wrong, and a habitual always-has-an-open-order customer would be mishandled. The weekly reset is the correct operator model — Annabel sends once a week. **Accepted limitation:** in the rare case a customer is fulfilled mid-week and re-orders before the Sunday reset, their second order inherits the first's send-state (no re-send nudge) — the same text-Annabel escape hatch.
+
+---
+
+## DEC-043 — Per-unit editable SKU; `description` leaves the Wave export
+
+**Decision:** Add editable `sku text` (nullable) to **`product_units`**, exposed in the units drawer labeled **"SKU."** Repoint the Wave export: Item Number ← the line's `product_units.sku`, falling back to `product_units.slug`, then blank. Remove `products.description` from the export entirely — it reverts to its sole purpose, the customer-facing long description.
+
+**Why:** `description` is conflicted — the inventory editor presents it as the customer-facing long description while `export-orders.ts` emits it as Wave's Item Number, so a customer note silently becomes an invoice item number. Under multi-unit, SKU is a **per-unit** truth (one product → multiple Wave line items). Editable (not the auto `slug`) lets Annabel match Bushel's SKUs to her existing Wave item catalog.
+
+**Migration:** add `product_units.sku`; backfill NULL (Annabel fills as needed); `slug` stays as fallback.
+
+---
+
+## DEC-044 — Canonicalize `order_status` to snake_case (`picked_up`) — BUG
+
+**Decision:** `picked_up` (underscore) is canonical everywhere. Migrate the TS layer — `ORDER_STATUSES`, transition guards, `narrowStatus`, `order-actions.tsx`, `order-row.tsx`, `report.ts` — from the hyphen form to underscore. No data backfill: `orders` is wiped at cutover.
+
+**Why / symptom:** DB `codes` stores `picked_up`; the TS layer uses `picked-up`. `narrowStatus(s)` returns `"new"` for any DB value not in the hyphen-keyed `ORDER_STATUSES`, so a `picked_up` row reads back as **new** — fulfilled orders resurface as new in the admin list, and `report.ts`'s `o.status !== "picked-up"` exclusion misses them, so fulfilled orders keep printing on the harvest sheet. Underscore matches the DB convention (`needs_reconciliation`, `is_active`).
+
+---
+
+## DEC-045 — Admin orders list keyed to the open-order model (follows DEC-041)
+
+**Decision:** `/admin/orders` drops its current-week filter (`listOrders`' `.eq("week_of", weekOf)`) and defaults to **active (non-terminal)** orders, with a way to browse fulfilled/past orders. The stale `customer_sends` sends-join comment + logic ("one order per customer per week → `customer_id` maps 1:1 to an order") is corrected — the join stays week-keyed per DEC-042; only the broken 1:1 assumption is fixed.
+
+**Why:** Under DEC-041 orders are no longer week-aligned, so a week-filtered list silently drops orders that stay open across a week boundary. Fulfilled orders persist as rows (the open-order model only removes them from the partial index + the editable view), so "view past orders" is a read/UI feature — and this is its natural home.
+
+**Scope:** admin-only. Customer-facing history (#136, `/c/[token]/history`) stays in the backlog.
 
 ---
 
