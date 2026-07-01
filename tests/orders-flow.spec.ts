@@ -118,10 +118,13 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
       }, { timeout: 5000 })
       .toBe("delivered");
 
-    // Export → CSV contains the just-placed order's line item.
+    // Export → CSV contains the just-fulfilled order's line item. DEC-045:
+    // the delivered order lives in the Fulfilled view now — flip there first.
     // No invoice-number column anymore (Wave assigns on import) — match on
     // customer name + product name; column shape is
     //   Customer Name, Item Number, Quantity, Unit Price, Description, …
+    await adminPage.getByRole("button", { name: /^fulfilled/i }).click();
+    await expect(adminPage).toHaveURL(/view=fulfilled/);
     await adminPage.getByRole("button", { name: /export to wave/i }).click();
     const [download] = await Promise.all([
       adminPage.waitForEvent("download"),
@@ -148,7 +151,7 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await adminCtx.close();
   });
 
-  test("reconciliation pin holds across both column sort and week filter changes", async ({
+  test("reconciliation pin holds across both column sort and view changes", async ({
     browser,
   }, testInfo) => {
     test.skip(testInfo.project.name === "mobile", "Sort headers are hidden on mobile (card-stack layout); pin behavior is covered by the admin-orders mobile-specific test.");
@@ -193,11 +196,11 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await adminPage.getByRole("button", { name: /^Customer/i }).click();
     expect(await topOrderId()).toBe(recId);
 
-    // Flip to last week and back — pin must hold after a route change too
-    await adminPage.getByRole("button", { name: /^last week/i }).click();
-    await expect(adminPage).toHaveURL(/week=last/);
-    await adminPage.getByRole("button", { name: /^this week/i }).click();
-    await expect(adminPage).not.toHaveURL(/week=last/);
+    // Flip to Fulfilled and back — pin must hold after a route change too
+    await adminPage.getByRole("button", { name: /^fulfilled/i }).click();
+    await expect(adminPage).toHaveURL(/view=fulfilled/);
+    await adminPage.getByRole("button", { name: /^active/i }).click();
+    await expect(adminPage).not.toHaveURL(/view=fulfilled/);
     expect(await topOrderId()).toBe(recId);
     expect(await adminPage.locator("tr.ord-row").count()).toBe(2);
 
@@ -209,60 +212,68 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await adminCtx.close();
   });
 
-  test("export respects the active week filter", async ({ browser }) => {
+  test("export respects the active view (DEC-045)", async ({ browser }) => {
     await clearOrdersForWeek(thisWeek);
     await clearOrdersForWeek(lastWeek);
 
     const ids = await customerIds();
-    // farmStand=delivery this week with Kale; restaurant=pickup last week with
-    // Honey. Customer + product names are the unique markers — no invoice-
-    // number column anymore, so identification has to come from these.
+    // farmStand OPEN with Kale (stamped last week — cross-boundary orders
+    // must still export from Active); restaurant DELIVERED with Honey.
+    // Customer + product names are the unique markers. The global-setup
+    // prior-order fixture (farmStand, delivered, 2026-04-27) sits in the
+    // Fulfilled view but carries no items, so it emits no CSV rows.
     await seedOrder({
       customerId: ids.farmStand,
-      weekOf: thisWeek,
+      weekOf: lastWeek,
       fulfillmentType: "delivery",
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 3, unitPriceCents: 300 }],
     });
     await seedOrder({
       customerId: ids.restaurant,
-      weekOf: lastWeek,
+      weekOf: thisWeek,
       fulfillmentType: "pickup",
+      status: "delivered",
       items: [{ productId: TEST_PRODUCTS.honey.id, qty: 2, unitPriceCents: 1200 }],
     });
 
     const adminCtx = await browser.newContext({ storageState: ADMIN_STORAGE_STATE });
     const adminPage = await adminCtx.newPage();
 
-    // This-week default: export contains only this-week's line items
-    await adminPage.goto("/admin/orders");
-    await adminPage.getByRole("button", { name: /export to wave/i }).click();
-    const [thisDl] = await Promise.all([
-      adminPage.waitForEvent("download"),
-      adminPage.getByRole("button", { name: /download csv/i }).click(),
-    ]);
-    expect(thisDl.suggestedFilename()).toBe(`bushel-orders-${thisWeek}.csv`);
-    const thisText = await readDownloadText(thisDl);
-    expect(thisText).toContain(TEST_CUSTOMERS.farmStand.name);
-    expect(thisText).toContain(TEST_PRODUCTS.kale.name);
-    expect(thisText).not.toContain(TEST_CUSTOMERS.restaurant.name);
-    expect(thisText).not.toContain(TEST_PRODUCTS.honey.name);
+    try {
+      // Active default: only the open order's line items, any week.
+      await adminPage.goto("/admin/orders");
+      await adminPage.getByRole("button", { name: /export to wave/i }).click();
+      const [activeDl] = await Promise.all([
+        adminPage.waitForEvent("download"),
+        adminPage.getByRole("button", { name: /download csv/i }).click(),
+      ]);
+      expect(activeDl.suggestedFilename()).toBe(`bushel-orders-${thisWeek}.csv`);
+      const activeText = await readDownloadText(activeDl);
+      expect(activeText).toContain(TEST_CUSTOMERS.farmStand.name);
+      expect(activeText).toContain(TEST_PRODUCTS.kale.name);
+      expect(activeText).not.toContain(TEST_CUSTOMERS.restaurant.name);
+      expect(activeText).not.toContain(TEST_PRODUCTS.honey.name);
 
-    // Switch to Last week — re-export
-    await adminPage.getByRole("button", { name: /^last week/i }).click();
-    await expect(adminPage).toHaveURL(/week=last/);
-    await adminPage.getByRole("button", { name: /export to wave/i }).click();
-    const [lastDl] = await Promise.all([
-      adminPage.waitForEvent("download"),
-      adminPage.getByRole("button", { name: /download csv/i }).click(),
-    ]);
-    expect(lastDl.suggestedFilename()).toBe(`bushel-orders-${lastWeek}.csv`);
-    const lastText = await readDownloadText(lastDl);
-    expect(lastText).toContain(TEST_CUSTOMERS.restaurant.name);
-    expect(lastText).toContain(TEST_PRODUCTS.honey.name);
-    expect(lastText).not.toContain(TEST_CUSTOMERS.farmStand.name);
-    expect(lastText).not.toContain(TEST_PRODUCTS.kale.name);
-
-    await adminCtx.close();
+      // Switch to Fulfilled — re-export ships the terminal orders instead.
+      await adminPage.getByRole("button", { name: /^fulfilled/i }).click();
+      await expect(adminPage).toHaveURL(/view=fulfilled/);
+      await adminPage.getByRole("button", { name: /export to wave/i }).click();
+      const [doneDl] = await Promise.all([
+        adminPage.waitForEvent("download"),
+        adminPage.getByRole("button", { name: /download csv/i }).click(),
+      ]);
+      expect(doneDl.suggestedFilename()).toBe(`bushel-orders-fulfilled-${thisWeek}.csv`);
+      const doneText = await readDownloadText(doneDl);
+      expect(doneText).toContain(TEST_CUSTOMERS.restaurant.name);
+      expect(doneText).toContain(TEST_PRODUCTS.honey.name);
+      expect(doneText).not.toContain(TEST_CUSTOMERS.farmStand.name);
+      expect(doneText).not.toContain(TEST_PRODUCTS.kale.name);
+    } finally {
+      // The last-week open order would leak into other specs' Active view
+      // (and block farmStand's open-order identity).
+      await clearOrdersForWeek(lastWeek);
+      await adminCtx.close();
+    }
   });
 
   // 6.5f — multi-unit cross-cutting end-to-end. Exercises the full path:

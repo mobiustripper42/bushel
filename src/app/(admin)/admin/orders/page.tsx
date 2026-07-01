@@ -1,45 +1,44 @@
 import { OrdersPage } from "@/components/admin/orders-page";
-import { currentWeekOf, listOrders } from "@/lib/admin/orders-queries";
+import {
+  currentWeekOf,
+  listActiveOrders,
+  listFulfilledOrders,
+} from "@/lib/admin/orders-queries";
 import { getFulfillmentToken } from "@/lib/fulfillment/link";
-import { shiftWeek } from "@/lib/week";
 
 export const metadata = { title: "Orders — Bay Branch Farm" };
 
-function resolveWeekFilter(raw: string | undefined): "this" | "last" {
-  return raw === "last" ? "last" : "this";
+// DEC-045 (#231): orders are no longer week-aligned (DEC-041), so the list
+// keys on status, not week — Active (non-terminal, any week) by default,
+// Fulfilled (the browsable past) behind the second tab.
+function resolveView(raw: string | undefined): "active" | "fulfilled" {
+  return raw === "fulfilled" ? "fulfilled" : "active";
 }
 
 export default async function OrdersRoute({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const params = await searchParams;
-  const weekFilter = resolveWeekFilter(params.week);
-  const thisWeek = currentWeekOf();
-  const lastWeek = shiftWeek(thisWeek, -1);
-  const selectedWeek = weekFilter === "last" ? lastWeek : thisWeek;
+  const view = resolveView(params.view);
 
-  const [orders, thisWeekOrders, lastWeekOrders, harvestSheetToken] =
-    await Promise.all([
-      listOrders(selectedWeek),
-      weekFilter === "this" ? Promise.resolve(null) : listOrders(thisWeek),
-      weekFilter === "last" ? Promise.resolve(null) : listOrders(lastWeek),
-      getFulfillmentToken(),
-    ]);
-
-  const thisWeekCount =
-    weekFilter === "this" ? orders.length : (thisWeekOrders?.length ?? 0);
-  const lastWeekCount =
-    weekFilter === "last" ? orders.length : (lastWeekOrders?.length ?? 0);
+  // Both lists fetched so the tab counts are always live. Fine at this
+  // scale (single-digit customers, weekly cadence); revisit with pagination
+  // if Fulfilled ever grows past a few hundred rows.
+  const [activeOrders, fulfilledOrders, harvestSheetToken] = await Promise.all([
+    listActiveOrders(),
+    listFulfilledOrders(),
+    getFulfillmentToken(),
+  ]);
 
   return (
     <OrdersPage
-      orders={orders}
-      weekFilter={weekFilter}
-      weekOf={selectedWeek}
-      thisWeekCount={thisWeekCount}
-      lastWeekCount={lastWeekCount}
+      orders={view === "active" ? activeOrders : fulfilledOrders}
+      view={view}
+      weekOf={currentWeekOf()}
+      activeCount={activeOrders.length}
+      fulfilledCount={fulfilledOrders.length}
       harvestSheetToken={harvestSheetToken}
     />
   );

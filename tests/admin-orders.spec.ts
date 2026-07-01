@@ -10,7 +10,7 @@ import {
   seedOrder,
   setProductQty,
 } from "./helpers";
-import { weekOfMondayNY } from "@/lib/week";
+import { shiftWeek, weekOfMondayNY } from "@/lib/week";
 import type { Locator } from "@playwright/test";
 
 // #192: the per-order action stack (Mark/Confirm/Send buttons) renders only
@@ -112,6 +112,46 @@ test.describe("admin orders list", () => {
     ).toBeVisible();
   });
 
+  // DEC-045 (#231): the list keys on status, not week — Active shows open
+  // orders from ANY week (the DEC-041 cross-boundary case the old week
+  // filter silently dropped); Fulfilled holds the terminal ones.
+  test("active view shows cross-week open orders; fulfilled view holds terminal ones", async ({ page }) => {
+    const ids = await customerIds();
+    const lastWeek = shiftWeek(thisWeek, -1);
+    await clearOrdersForWeek(lastWeek);
+    const crossWeekId = await seedOrder({
+      customerId: ids.farmStand,
+      weekOf: lastWeek,
+      fulfillmentType: "pickup",
+      items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
+    });
+    const fulfilledId = await seedOrder({
+      customerId: ids.restaurant,
+      weekOf: thisWeek,
+      fulfillmentType: "delivery",
+      status: "delivered",
+      items: [{ productId: TEST_PRODUCTS.honey.id, qty: 1, unitPriceCents: 1200 }],
+    });
+
+    try {
+      await page.goto("/admin/orders");
+      // Active (default): the last-week open order is visible; terminal is not.
+      await expect(page.locator(`tr.ord-row[data-order-id="${crossWeekId}"]`)).toHaveCount(1);
+      await expect(page.locator(`tr.ord-row[data-order-id="${fulfilledId}"]`)).toHaveCount(0);
+
+      // Fulfilled: flipped.
+      await page.getByRole("button", { name: /^fulfilled/i }).click();
+      await expect(page).toHaveURL(/view=fulfilled/);
+      await expect(page.locator(`tr.ord-row[data-order-id="${fulfilledId}"]`)).toHaveCount(1);
+      await expect(page.locator(`tr.ord-row[data-order-id="${crossWeekId}"]`)).toHaveCount(0);
+      await expect(page.locator(`tr.ord-row[data-order-id="${fulfilledId}"] .pill-done`)).toHaveText("Delivered");
+    } finally {
+      // A leaked last-week open order would occupy farmStand's open-order
+      // identity and break later specs' fresh-form assumptions.
+      await clearOrdersForWeek(lastWeek);
+    }
+  });
+
   // #241: DEC-039 appends leave one order_items row per submission; the
   // detail panel folds same (product, unit, price) into one line.
   test("duplicate product rows consolidate to one line in the detail panel", async ({ page }) => {
@@ -188,8 +228,11 @@ test.describe("admin orders list", () => {
       .toBe("delivered");
 
     // Hard navigation (not page.reload — RSC streaming can hang reload after
-    // chained server actions in dev mode).
+    // chained server actions in dev mode). DEC-045: a delivered order leaves
+    // the Active view — it persists in Fulfilled.
     await page.goto("/admin/orders");
+    await expect(page.locator(`tr.ord-row[data-order-id="${orderId}"]`)).toHaveCount(0);
+    await page.goto("/admin/orders?view=fulfilled");
     const reloadedRow = page.locator(`tr.ord-row[data-order-id="${orderId}"]`);
     await expect(reloadedRow).toHaveAttribute("data-status", "delivered");
     await expect(reloadedRow.locator(".pill-done")).toHaveText("Delivered");
