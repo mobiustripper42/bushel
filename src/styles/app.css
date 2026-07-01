@@ -1860,6 +1860,18 @@
   display: flex; align-items: center; gap: 8px;
 }
 
+/* Build version, pinned to the bottom of the sidebar below the status row.
+   Inline (not floated like sailbook/muster); muted paper-alpha to sit quietly
+   on the dark sidebar. */
+.admin-side-version {
+  margin-top: 12px;
+  padding: 0 6px;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: rgba(251,250,245,0.45);
+  font-variant-numeric: tabular-nums;
+}
+
 .admin-main {
   display: flex; flex-direction: column;
   min-width: 0;
@@ -2102,6 +2114,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+/* Build version in the mobile drawer, between the Status row and Sign out
+   (the desktop sidebar it normally lives in is display:none on mobile). */
+.admin-mobile-version {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
 }
 .admin-mobile-signout-form { margin-top: 6px; }
 .admin-mobile-signout {

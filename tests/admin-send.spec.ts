@@ -285,6 +285,9 @@ test.describe("admin send-queue", () => {
     const drawer = page.locator(".admin-mobile-drawer.is-open");
     await expect(drawer).toBeVisible();
     await expect(drawer.getByRole("link", { name: /inventory/i })).toBeVisible();
+    // Build version rides in the drawer (the desktop sidebar it usually lives in
+    // is hidden at 375px). Sits between the Status row and Sign out.
+    await expect(drawer.locator("[data-testid='version-tag']")).toHaveText(/^v\d+\.\d+\.\d+/);
     await page.getByRole("button", { name: /close navigation/i }).click();
     await expect(page.locator(".admin-mobile-drawer.is-open")).toHaveCount(0);
   });

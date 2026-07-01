@@ -83,6 +83,13 @@ test.describe("admin shell — authenticated", () => {
     await expect(badge).toBeVisible();
     await expect(badge).toHaveText(/^\d+ listed$/);
   });
+
+  test("sidebar shows the build version tag below the status row", async ({ page }) => {
+    await page.goto("/admin");
+    const version = page.locator(".admin-side [data-testid='version-tag']");
+    await expect(version).toBeVisible();
+    await expect(version).toHaveText(/^v\d+\.\d+\.\d+/);
+  });
 });
 
 // Isolated from the shared-session block — sign-out invalidates the refresh
