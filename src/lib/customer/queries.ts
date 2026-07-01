@@ -103,6 +103,7 @@ const CUSTOMER_ORDER_SELECT = `
   created_at,
   order_items (
     id,
+    product_id,
     qty,
     unit_price_cents,
     products ( name ),

@@ -1,4 +1,5 @@
 // Admin order-list reads (Phase 5.1). Service-role client — admin only.
+import { consolidateItems } from "@/lib/order-items";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -253,7 +254,15 @@ async function queryOrders(filter: {
             qtyAvailable: i.products!.qty_available,
           };
         });
-      const totalCents = items.reduce(
+      // #241: appends land as separate rows per submission — fold same
+      // (product, unit, price) into one line here so every consumer of
+      // OrderRow (detail panel, items preview, packing slips, Wave export)
+      // renders the consolidated order.
+      const consolidated = consolidateItems(
+        items,
+        (i) => `${i.productId}|${i.unitLabel}|${i.unitPriceCents}`,
+      );
+      const totalCents = consolidated.reduce(
         (s, i) => s + i.qty * i.unitPriceCents,
         0,
       );
@@ -271,7 +280,7 @@ async function queryOrders(filter: {
         notes: o.notes,
         status: narrowStatus(o.status),
         needsReconciliation: o.needs_reconciliation,
-        items,
+        items: consolidated,
         totalCents,
         confirmSentAt: sent.confirm,
         reminderSentAt:

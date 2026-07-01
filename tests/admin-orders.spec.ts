@@ -112,6 +112,36 @@ test.describe("admin orders list", () => {
     ).toBeVisible();
   });
 
+  // #241: DEC-039 appends leave one order_items row per submission; the
+  // detail panel folds same (product, unit, price) into one line.
+  test("duplicate product rows consolidate to one line in the detail panel", async ({ page }) => {
+    const ids = await customerIds();
+    const orderId = await seedOrder({
+      customerId: ids.farmStand,
+      weekOf: thisWeek,
+      fulfillmentType: "pickup",
+      items: [
+        { productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 },
+        { productId: TEST_PRODUCTS.kale.id, qty: 2, unitPriceCents: 300 },
+        { productId: TEST_PRODUCTS.eggs.id, qty: 1, unitPriceCents: 600 },
+      ],
+    });
+
+    await page.goto("/admin/orders");
+    const row = page.locator(`tr.ord-row[data-order-id="${orderId}"]`);
+    // Items count sums qty across the raw rows (1 + 2 + 1 = 4)…
+    await expect(row.locator(".ord-items-count")).toContainText("4");
+    await expandRow(row);
+
+    // …but the detail panel shows ONE kale line at the summed qty.
+    const detail = detailRowFor(row, orderId);
+    const kaleLines = detail.locator(".ord-detail-list li", { hasText: TEST_PRODUCTS.kale.name });
+    await expect(kaleLines).toHaveCount(1);
+    await expect(kaleLines.locator(".ord-li-qty")).toHaveText("3×");
+    await expect(kaleLines.locator(".ord-li-amt")).toHaveText("$9.00");
+    await expect(detail.locator(".ord-li-total")).toContainText("$15.00");
+  });
+
   test("delivery order: new → ready → delivered persists across reload", async ({ page }) => {
     const ids = await customerIds();
     const orderId = await seedOrder({

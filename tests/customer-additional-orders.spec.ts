@@ -97,6 +97,53 @@ test.describe("/c/[token] additional orders", () => {
     expect(eggs?.qty_available).toBe(TEST_PRODUCTS.eggs.qty_available - 1);
   });
 
+  // #241: appends insert separate order_items rows per submission (audit +
+  // idempotency), but every view folds same (product, unit, price) into one
+  // line — a customer topping up cherry tomatoes twice must not read as
+  // three cherry-tomato lines.
+  test("same-product append consolidates to one line on receipt + add mode; DB rows stay granular", async ({
+    page,
+  }) => {
+    // Kale ×2 through the form…
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    await stepUp(page, TEST_PRODUCTS.kale.name, 2);
+    await page.locator(".submit-btn").click();
+    await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+
+    // …then top up the SAME product ×1.
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    await stepUp(page, TEST_PRODUCTS.kale.name, 1);
+    await page.locator(".submit-btn").click();
+    await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+
+    // Receipt: ONE kale line, qty 3, total 3 × $3.00.
+    const kaleLines = page.locator(".confirm-list li", { hasText: TEST_PRODUCTS.kale.name });
+    await expect(kaleLines).toHaveCount(1);
+    await expect(kaleLines.locator(".confirm-qty")).toHaveText("3×");
+    await expect(page.locator(".confirm-total")).toContainText("9.00");
+
+    // Add mode: the "Already ordered" group also shows one consolidated line.
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+    const existing = page.locator(".rail-existing:visible");
+    await expect(existing.locator("li", { hasText: TEST_PRODUCTS.kale.name })).toHaveCount(1);
+    await expect(existing).toContainText("3×");
+
+    // DB: still two granular rows, each carrying its submission_id.
+    const sb = admin();
+    const ids = await customerIds();
+    const { data: orders } = await sb
+      .from("orders")
+      .select("id")
+      .eq("customer_id", ids.farmStand)
+      .in("status", ["new", "confirmed", "ready"]);
+    const { data: rows } = await sb
+      .from("order_items")
+      .select("id, submission_id")
+      .eq("order_id", orders![0].id);
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows!.map((r) => r.submission_id)).size).toBe(2);
+  });
+
   test("open order renders the form in add mode with fulfillment read-only", async ({ page }) => {
     const ids = await customerIds();
     await seedOrder({
