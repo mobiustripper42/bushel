@@ -5,11 +5,11 @@ import { isTerminalStatus } from "@/lib/admin/orders-queries";
 import {
   anyOrderable,
   getAvailableProducts,
-  getCurrentWeekOrder,
+  getLatestOrder,
   getOrderingScheduleStatus,
 } from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
-import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
+import { weekOfLabel } from "@/lib/week";
 
 function formatPrice(cents: number): string {
   return (cents / 100).toFixed(2);
@@ -51,13 +51,18 @@ export default async function ConfirmedPage({
     return <PausedShell customerName={greetingName} reason="paused" />;
   }
 
-  const order = await getCurrentWeekOrder(customer.id, weekOfMondayNY());
+  // DEC-041/DEC-042 (#227): the receipt is the customer's most recent order
+  // in any status. Open → editable via "Add to your order"; terminal
+  // (picked_up/delivered) → read-only, with a "place a new order" path (the
+  // fulfilled order dropped out of the open-order identity, so a fresh one
+  // is allowed).
+  const order = await getLatestOrder(customer.id);
 
   if (!order) {
-    // Cold-navigation case: someone hit /confirmed without an order this week.
+    // Cold-navigation case: someone hit /confirmed without ever ordering.
     return (
       <StatusShell>
-        <h1 className="status-title">No order on file for this week.</h1>
+        <h1 className="status-title">No order on file.</h1>
         <p className="status-lede">
           Place an order to get started.
         </p>
@@ -80,8 +85,9 @@ export default async function ConfirmedPage({
   // #211 / DEC-039 — "Add to your order" entry point. Gated on the same
   // predicates /c/[token] uses to render the form at all: ordering open
   // (DEC-031 soft hint), at least one orderable product (anyOrderable —
-  // shared helper), and the order not terminal (picked-up/delivered means
-  // the box is gone; place_order refuses the append server-side too).
+  // shared helper), and the order not terminal. A terminal order instead
+  // offers "Place a new order" — under DEC-041 the fulfilled order freed
+  // the identity, and /c/[token] will render a fresh form.
   const [schedule, products] = await Promise.all([
     getOrderingScheduleStatus(),
     getAvailableProducts(),
@@ -193,15 +199,25 @@ export default async function ConfirmedPage({
       <div className="status-actions">
         {canAdd ? (
           <Link
-            href={`/c/${token}?add=1`}
+            href={`/c/${token}`}
             className="btn btn-primary status-btn"
           >
             Add to your order
           </Link>
         ) : terminal ? (
-          <p className="status-fine">
-            This order&rsquo;s been packed — text Annabel to add more.
-          </p>
+          <>
+            <p className="status-fine">
+              This order&rsquo;s been packed — it&rsquo;s on its way.
+            </p>
+            {schedule.is_open && anyOrderable(products) ? (
+              <Link
+                href={`/c/${token}`}
+                className="btn btn-primary status-btn"
+              >
+                Place a new order
+              </Link>
+            ) : null}
+          </>
         ) : !schedule.is_open ? (
           <p className="status-fine">
             Ordering&rsquo;s closed for this week.

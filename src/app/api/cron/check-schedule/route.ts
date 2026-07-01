@@ -4,7 +4,10 @@ import type { Database } from "@/lib/supabase/types";
 
 type ScheduleUpdate = Database["public"]["Tables"]["ordering_schedule"]["Update"];
 
-// Vercel Cron calls this every 5 minutes (vercel.json).
+// DORMANT (DEC-040): the vercel.json crons entry was removed — nothing calls
+// this route anymore. The store is always-open; is_open changes only via the
+// manual toggle. Machinery left in place, removable anytime.
+//
 // Checks ordering_schedule and flips is_open based on:
 //   1. override_closes_at — one-shot close; cleared after firing.
 //   2. weekly_open_day/time + weekly_close_day/time — recurring schedule.

@@ -1,19 +1,23 @@
 begin;
-select plan(25);
+select plan(31);
 
 -- ============================================================
--- #211 / DEC-039 — additive orders: place_order appends to the
--- week's single (customer, week) order.
+-- #211 / DEC-039 + #226 / DEC-041 — additive orders on the
+-- open-order identity model.
 --
--- Verifies the post-DEC-039 contract:
---   - first submission creates the order (appended = false); later
---     submissions APPEND order_items to it (appended = true) — still
---     exactly one orders row per (customer, week).
+-- Verifies the post-DEC-041 contract:
+--   - first submission creates the customer's OPEN order (appended =
+--     false); later submissions APPEND order_items to it (appended =
+--     true) — at most one open orders row per customer (partial
+--     unique index orders_one_open_per_customer).
 --   - a replay of an already-applied submission_id is a no-op: same
---     order_id back, no new items, no double decrement.
+--     order_id back, no new items, no double decrement — including a
+--     replay whose order has since gone terminal.
 --   - appending to a confirmed/ready order resets status to 'new'
---     (re-enters the pipeline); a picked-up/delivered order refuses
---     the append entirely and writes nothing.
+--     (re-enters the pipeline).
+--   - a terminal order (picked_up/delivered, DEC-044) drops out of
+--     the identity: the next submission CREATES a fresh open order,
+--     leaving the fulfilled one untouched.
 --   - the DEC-036 soldout reject + multi-line atomicity hold on the
 --     append path exactly as on the create path.
 -- ============================================================
@@ -35,7 +39,7 @@ values ('ee390000-0000-0000-0000-bbbb00000001'::uuid,
         'ee390000-0000-0000-0000-aaaa00000001'::uuid,
         'bunch', 1, 500, true, 'add-basil-ee390000', 0);
 
--- In-stock product for the foreign-submission_id scoping check (test 25 runs
+-- In-stock product for the foreign-submission_id scoping check (it runs
 -- after Add Basil has been driven oversold-negative, so B needs its own stock).
 insert into public.products (id, name, qty_available, sort_order, category)
 values ('ee390000-0000-0000-0000-aaaa00000003'::uuid, 'Add Scope', 5.00, 3, 'Herbs');
@@ -55,8 +59,9 @@ values ('ee390000-0000-0000-0000-bbbb00000002'::uuid,
         'bunch', 1, 300, true, 'add-zero-stock-ee390000', 0);
 
 -- ============================================================
--- 1–3. First submission creates the week's order: appended = false,
---      one orders row, inventory decremented.
+-- 1–3. First submission creates the open order: appended = false,
+--      one orders row, inventory decremented. week_of is a stamp,
+--      not identity (DEC-041).
 -- ============================================================
 select is(
   (select t.appended from public.place_order(
@@ -79,8 +84,7 @@ select is(
 
 select is(
   (select count(*)::int from public.orders
-   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and week_of = '2026-06-01'),
+   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
   1,
   'exactly one orders row after the first submission'
 );
@@ -93,8 +97,9 @@ select is(
 );
 
 -- ============================================================
--- 4–7. (a) Second submission APPENDS: appended = true, still one
---      orders row, item count grows, inventory decremented again.
+-- 4–7. (a) Second submission APPENDS to the open order: appended =
+--      true, still one orders row, item count grows, inventory
+--      decremented again.
 -- ============================================================
 select is(
   (select t.appended from public.place_order(
@@ -117,17 +122,15 @@ select is(
 
 select is(
   (select count(*)::int from public.orders
-   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and week_of = '2026-06-01'),
+   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
   1,
-  'still exactly one orders row after the append (unique constraint holds)'
+  'still exactly one orders row after the append (open-order identity holds)'
 );
 
 select is(
   (select count(*)::int from public.order_items oi
    join public.orders o on o.id = oi.order_id
-   where o.customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and o.week_of = '2026-06-01'),
+   where o.customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
   2,
   'append added a line item (2 total)'
 );
@@ -158,17 +161,16 @@ select is(
      ),
      'ee39aaaa-0000-0000-0000-000000000002'::uuid
    ) t),
-  (select id from public.orders
-   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and week_of = '2026-06-01'),
+  (select oi.order_id from public.order_items oi
+   where oi.submission_id = 'ee39aaaa-0000-0000-0000-000000000002'::uuid
+   limit 1),
   'replayed submission_id returns the existing order id'
 );
 
 select is(
   (select count(*)::int from public.order_items oi
    join public.orders o on o.id = oi.order_id
-   where o.customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and o.week_of = '2026-06-01'),
+   where o.customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
   2,
   'replay inserted no new items'
 );
@@ -186,8 +188,7 @@ select is(
 --        the stale confirmation SMS).
 -- ============================================================
 update public.orders set status = 'confirmed'
- where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-   and week_of = '2026-06-01';
+ where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid;
 
 select lives_ok(
   $$ select * from public.place_order(
@@ -209,15 +210,13 @@ select lives_ok(
 
 select is(
   (select status from public.orders
-   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and week_of = '2026-06-01'),
+   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
   'new',
   'append resets confirmed → new'
 );
 
 update public.orders set status = 'ready'
- where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-   and week_of = '2026-06-01';
+ where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid;
 
 select lives_ok(
   $$ select * from public.place_order(
@@ -239,91 +238,139 @@ select lives_ok(
 
 select is(
   (select status from public.orders
-   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and week_of = '2026-06-01'),
+   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
   'new',
   'append resets ready → new'
 );
 
 -- ============================================================
--- 15–18. (d) Appending to a terminal order (picked-up / delivered)
---        raises and writes nothing — the box is gone.
+-- 15–19. (d) DEC-041: a terminal order (picked_up) drops out of the
+--        identity — the next submission CREATES a fresh open order
+--        (appended = false), leaving the fulfilled order untouched.
 -- ============================================================
-update public.orders set status = 'picked-up'
- where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-   and week_of = '2026-06-01';
+update public.orders set status = 'picked_up'
+ where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid;
 
-select throws_like(
-  $$ select * from public.place_order(
-       'ee390000-0000-0000-0000-000000000001'::uuid,
-       '2026-06-01'::date,
-       'delivery', '123 Additive St', '', '', '',
-       jsonb_build_array(
-         jsonb_build_object(
-           'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
-           'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
-           'qty',             1,
-           'unit_price_cents', 500
-         )
-       ),
-       'ee39aaaa-0000-0000-0000-000000000005'::uuid
-     ) $$,
-  '%already fulfilled%',
-  'append to a picked-up order is refused'
+create temp table s5_result as
+select * from public.place_order(
+  'ee390000-0000-0000-0000-000000000001'::uuid,
+  '2026-06-08'::date,
+  'delivery', '123 Additive St', '', '', '',
+  jsonb_build_array(
+    jsonb_build_object(
+      'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
+      'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
+      'qty',             1,
+      'unit_price_cents', 500
+    )
+  ),
+  'ee39aaaa-0000-0000-0000-000000000005'::uuid
+);
+
+select is(
+  (select appended from s5_result),
+  false,
+  'submission against a picked_up order CREATES a new open order — appended = false'
+);
+
+select isnt(
+  (select order_id from s5_result),
+  (select oi.order_id from public.order_items oi
+   where oi.submission_id = 'ee39aaaa-0000-0000-0000-000000000001'::uuid
+   limit 1),
+  'the new open order is a different row than the fulfilled one'
+);
+
+select is(
+  (select count(*)::int from public.orders
+   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
+  2,
+  'two orders rows now: one picked_up, one new open'
 );
 
 select is(
   (select count(*)::int from public.order_items oi
-   join public.orders o on o.id = oi.order_id
-   where o.customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and o.week_of = '2026-06-01'),
+   where oi.order_id = (select o.id from public.orders o
+                        where o.customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
+                          and o.status = 'picked_up')),
   4,
-  'refused append wrote no items (still 4 from s1–s4)'
+  'the fulfilled order''s items are untouched (still 4 from s1–s4)'
 );
 
 select is(
   (select qty_available from public.products
    where id = 'ee390000-0000-0000-0000-aaaa00000001'::uuid),
-  13.00::numeric(10,2),
-  'refused append did not decrement inventory (still 13)'
-);
-
-update public.orders set status = 'delivered'
- where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-   and week_of = '2026-06-01';
-
-select throws_like(
-  $$ select * from public.place_order(
-       'ee390000-0000-0000-0000-000000000001'::uuid,
-       '2026-06-01'::date,
-       'delivery', '123 Additive St', '', '', '',
-       jsonb_build_array(
-         jsonb_build_object(
-           'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
-           'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
-           'qty',             1,
-           'unit_price_cents', 500
-         )
-       ),
-       'ee39aaaa-0000-0000-0000-000000000006'::uuid
-     ) $$,
-  '%already fulfilled%',
-  'append to a delivered order is refused'
+  12.00::numeric(10,2),
+  'inventory decremented for the new order (13 - 1 = 12)'
 );
 
 -- ============================================================
--- 19–22. (e) DEC-036 on the append path: a sold-out line rejects the
+-- 20–21. Partial unique index enforcement: a second OPEN order per
+--        customer is refused at the DB level; terminal rows fall
+--        outside the predicate and are allowed.
+-- ============================================================
+select throws_ok(
+  $$ insert into public.orders (customer_id, week_of, fulfillment_type, status)
+     values ('ee390000-0000-0000-0000-000000000001'::uuid, '2026-06-08'::date, 'delivery', 'new') $$,
+  '23505',
+  null,
+  'partial unique index refuses a second open order per customer'
+);
+
+select lives_ok(
+  $$ insert into public.orders (id, customer_id, week_of, fulfillment_type, status)
+     values ('ee390000-0000-0000-0000-dddd00000001'::uuid,
+             'ee390000-0000-0000-0000-000000000001'::uuid,
+             '2026-05-25'::date, 'delivery', 'delivered') $$,
+  'a terminal row is outside the index predicate — inserting one is allowed'
+);
+
+-- Remove the probe row so later counts stay legible.
+delete from public.orders where id = 'ee390000-0000-0000-0000-dddd00000001'::uuid;
+
+-- ============================================================
+-- 22–23. Delivered also frees a new order (both terminal statuses
+--        drop out of the identity).
+-- ============================================================
+update public.orders set status = 'delivered'
+ where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
+   and status = 'new';
+
+select is(
+  (select t.appended from public.place_order(
+     'ee390000-0000-0000-0000-000000000001'::uuid,
+     '2026-06-08'::date,
+     'delivery', '123 Additive St', '', '', '',
+     jsonb_build_array(
+       jsonb_build_object(
+         'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
+         'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
+         'qty',             1,
+         'unit_price_cents', 500
+       )
+     ),
+     'ee39aaaa-0000-0000-0000-000000000006'::uuid
+   ) t),
+  false,
+  'a delivered order also frees a new one — appended = false'
+);
+
+select is(
+  (select count(*)::int from public.orders
+   where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid),
+  3,
+  'three orders rows: picked_up, delivered, new open'
+);
+
+-- ============================================================
+-- 24–27. (e) DEC-036 on the append path: a sold-out line rejects the
 --        append; multi-line appends are atomic (the in-stock line's
 --        write rolls back when a later line is sold out).
 -- ============================================================
-update public.orders set status = 'new'
- where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-   and week_of = '2026-06-01';
-
 select throws_like(
   $$ select * from public.place_order(
        'ee390000-0000-0000-0000-000000000001'::uuid,
-       '2026-06-01'::date,
+       '2026-06-08'::date,
        'delivery', '123 Additive St', '', '', '',
        jsonb_build_array(
          jsonb_build_object(
@@ -345,7 +392,7 @@ select throws_like(
 select throws_like(
   $$ select * from public.place_order(
        'ee390000-0000-0000-0000-000000000001'::uuid,
-       '2026-06-01'::date,
+       '2026-06-08'::date,
        'delivery', '123 Additive St', '', '', '',
        jsonb_build_array(
          jsonb_build_object('product_id', 'ee390000-0000-0000-0000-aaaa00000001'::text, 'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text, 'qty', 1, 'unit_price_cents', 500),
@@ -360,8 +407,8 @@ select throws_like(
 select is(
   (select qty_available from public.products
    where id = 'ee390000-0000-0000-0000-aaaa00000001'::uuid),
-  13.00::numeric(10,2),
-  'in-stock line in the rejected multi-line append is NOT decremented (still 13)'
+  11.00::numeric(10,2),
+  'in-stock line in the rejected multi-line append is NOT decremented (still 11)'
 );
 
 select is(
@@ -372,14 +419,14 @@ select is(
 );
 
 -- ============================================================
--- 23–24. Reconciliation recomputes across the whole order on append:
+-- 28–29. Reconciliation recomputes across the whole order on append:
 --        an oversold append (qty > 0 but insufficient) still goes
 --        through (DEC-012) and flips needs_reconciliation.
 -- ============================================================
 select lives_ok(
   $$ select * from public.place_order(
        'ee390000-0000-0000-0000-000000000001'::uuid,
-       '2026-06-01'::date,
+       '2026-06-08'::date,
        'delivery', '123 Additive St', '', '', '',
        jsonb_build_array(
          jsonb_build_object(
@@ -391,26 +438,52 @@ select lives_ok(
        ),
        'ee39aaaa-0000-0000-0000-000000000009'::uuid
      ) $$,
-  'oversold append (13 left, 20 ordered) is accepted (DEC-012)'
+  'oversold append (11 left, 20 ordered) is accepted (DEC-012)'
 );
 
 select is(
   (select needs_reconciliation from public.orders
    where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-     and week_of = '2026-06-01'),
+     and status = 'new'),
   true,
   'needs_reconciliation flipped true by the oversold append'
 );
 
 -- ============================================================
--- 25. Foreign-submission_id scoping: customer B replaying customer A's
+-- 30. Replay against a now-terminal order: the replay short-circuit
+--     returns the order the submission originally landed on, even
+--     though it has since been fulfilled — no new order, no writes.
+-- ============================================================
+select is(
+  (select t.order_id from public.place_order(
+     'ee390000-0000-0000-0000-000000000001'::uuid,
+     '2026-06-01'::date,
+     'delivery', '123 Additive St', '', '', 'first note',
+     jsonb_build_array(
+       jsonb_build_object(
+         'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
+         'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
+         'qty',             2,
+         'unit_price_cents', 500
+       )
+     ),
+     'ee39aaaa-0000-0000-0000-000000000001'::uuid
+   ) t),
+  (select oi.order_id from public.order_items oi
+   where oi.submission_id = 'ee39aaaa-0000-0000-0000-000000000001'::uuid
+   limit 1),
+  'replaying a submission whose order went terminal returns that order — no new order created'
+);
+
+-- ============================================================
+-- 31. Foreign-submission_id scoping: customer B replaying customer A's
 --     submission_id must NOT resolve to A's order — the replay check is
---     scoped to (customer, week), so B gets their own fresh order.
+--     scoped to the customer, so B gets their own fresh order.
 -- ============================================================
 select isnt(
   (select t.order_id from public.place_order(
      'ee390000-0000-0000-0000-000000000002'::uuid,
-     '2026-06-01'::date,
+     '2026-06-08'::date,
      'pickup', '', '', 'B pickup', '',
      jsonb_build_array(
        jsonb_build_object(
@@ -422,9 +495,9 @@ select isnt(
      ),
      'ee39aaaa-0000-0000-0000-000000000001'::uuid  -- A's submission_id
    ) t),
-  (select id from public.orders
-    where customer_id = 'ee390000-0000-0000-0000-000000000001'::uuid
-      and week_of = '2026-06-01'),
+  (select oi.order_id from public.order_items oi
+   where oi.submission_id = 'ee39aaaa-0000-0000-0000-000000000001'::uuid
+   limit 1),
   'replaying another customer''s submission_id returns B''s own order, not A''s'
 );
 

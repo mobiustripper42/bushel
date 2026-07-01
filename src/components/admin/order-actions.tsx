@@ -23,15 +23,15 @@ export function OrderActions({
   pending: boolean;
 }) {
   const isPickup = order.fulfillmentType === "pickup";
-  const terminalNext: OrderStatus = isPickup ? "picked-up" : "delivered";
+  const terminalNext: OrderStatus = isPickup ? "picked_up" : "delivered";
   const terminalLabel = isPickup ? "Mark picked up" : "Mark delivered";
 
   const readyDone =
     order.status === "ready" ||
-    order.status === "picked-up" ||
+    order.status === "picked_up" ||
     order.status === "delivered";
   const terminalDone =
-    order.status === "picked-up" || order.status === "delivered";
+    order.status === "picked_up" || order.status === "delivered";
 
   return (
     <div className="ord-actions">

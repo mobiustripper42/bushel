@@ -181,7 +181,7 @@ test.describe("admin orders list", () => {
     await expect(row.locator(".pill-ready")).toHaveText("Ready");
   });
 
-  test("pickup order: ready advances to picked-up (not delivered)", async ({ page }) => {
+  test("pickup order: ready advances to picked_up (not delivered)", async ({ page }) => {
     const ids = await customerIds();
     const orderId = await seedOrder({
       customerId: ids.farmStand,
@@ -199,7 +199,7 @@ test.describe("admin orders list", () => {
     // Pickup orders show the "Mark picked up" advance button, not "Delivered".
     await expect(row.getByRole("button", { name: /delivered/i })).toHaveCount(0);
     await row.getByRole("button", { name: /picked up/i }).click();
-    await expect(row).toHaveAttribute("data-status", "picked-up", { timeout: 5000 });
+    await expect(row).toHaveAttribute("data-status", "picked_up", { timeout: 5000 });
 
     // DB confirmation
     const sb = admin();
@@ -215,7 +215,7 @@ test.describe("admin orders list", () => {
         },
         { timeout: 5000 },
       )
-      .toBe("picked-up");
+      .toBe("picked_up");
   });
 
   test("action stack: collapsed shows only the chip; expanded Confirm+Send advances new → confirmed; reminder wording follows fulfillment (#192/#193)", async ({ page }, testInfo) => {

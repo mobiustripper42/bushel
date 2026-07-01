@@ -75,7 +75,7 @@ export type SeedOrderInput = {
   customerId: string;
   weekOf: string;
   fulfillmentType: "pickup" | "delivery";
-  status?: "new" | "confirmed" | "ready" | "picked-up" | "delivered";
+  status?: "new" | "confirmed" | "ready" | "picked_up" | "delivered";
   needsReconciliation?: boolean;
   // Opt-in for delivery orders. Defaults to null — matches admin-orders-export
   // and orders-flow specs' pre-refactor behavior. admin-orders.spec passes
@@ -115,16 +115,17 @@ export async function seedOrder(input: SeedOrderInput): Promise<string> {
   return order.id;
 }
 
-// Clears current-NY-week orders for the seeded test customers and restores
+// Clears the seeded test customers' current-NY-week orders AND any open
+// (non-terminal) order regardless of week, then restores
 // products.qty_available to the seed values. Used by customer-side spec
-// beforeEach hooks so spec ordering can't leak state — the redirect on
-// /c/[token] now hides the form whenever an order exists for the current
-// week, so any leftover order from a prior spec breaks form-interaction
-// tests that come after it.
+// beforeEach hooks so spec ordering can't leak state — /c/[token] renders
+// an open order as a pre-populated add-mode form (DEC-041), so any leftover
+// open order from a prior spec breaks fresh-form tests that come after it,
+// and the partial unique index makes a leaked open row block seedOrder.
 //
-// Scoped to the current week deliberately so the global-setup fixture
-// (a delivered 2026-04-27 prior order used to assert delivery_preference
-// prefill) is preserved.
+// Terminal orders outside the current week are preserved deliberately —
+// the global-setup fixture (a delivered 2026-04-27 prior order used to
+// assert delivery_preference prefill) must survive.
 export async function resetCustomerOrderState(): Promise<void> {
   const sb = admin();
   const currentWeek = weekOfMondayNY();
@@ -139,7 +140,7 @@ export async function resetCustomerOrderState(): Promise<void> {
         .from("orders")
         .delete()
         .eq("customer_id", data.id)
-        .eq("week_of", currentWeek);
+        .or(`week_of.eq.${currentWeek},status.in.(new,confirmed,ready)`);
     }
   }
   for (const p of Object.values(TEST_PRODUCTS)) {

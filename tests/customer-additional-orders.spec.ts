@@ -13,10 +13,11 @@ import {
   setOrderingOpen,
 } from "./helpers";
 
-// #211 / DEC-039 — additive orders. A customer with an order for the current
-// week can append items to it via the /confirmed hub's "Add to your order"
-// button (→ /c/[token]?add=1, the form's ADD MODE). One orders row per
-// (customer, week) throughout; appends grow order_items.
+// #211/DEC-039 + #227/DEC-041/DEC-042 — additive orders on the open-order
+// model. A customer's link renders their OPEN order editable (pre-populated
+// add mode; new items append). A terminal order (picked_up/delivered) drops
+// out of the identity: /confirmed shows it read-only with a "Place a new
+// order" path, and /c/[token] serves a fresh form.
 
 // Bumps the stepper on a named product to qty without relying on press-and-hold.
 async function stepUp(page: Page, productName: string, qty: number) {
@@ -35,7 +36,7 @@ test.describe("/c/[token] additional orders", () => {
     await resetCustomerOrderState();
   });
 
-  test("happy path: add via ?add=1 appends to the week's order — merged total, one orders row, inventory decremented", async ({
+  test("happy path: revisiting the link appends to the open order — merged total, one orders row, inventory decremented", async ({
     page,
   }) => {
     // Place the initial order through the real form (kale ×2, delivery).
@@ -45,11 +46,11 @@ test.describe("/c/[token] additional orders", () => {
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
     // The hub offers the add entry point (store open, products orderable,
-    // order not terminal).
+    // order not terminal) — it now points at the plain order link.
     const addLink = page.getByRole("link", { name: "Add to your order" });
     await expect(addLink).toBeVisible();
     await addLink.click();
-    await page.waitForURL(/\/c\/[^/]+\?add=1$/);
+    await page.waitForURL(/\/c\/[^/]+$/);
 
     // Add mode: fulfillment is read-only — no tabs, no editable preference.
     await expect(page.locator(".fulfill-tabs")).toHaveCount(0);
@@ -69,15 +70,15 @@ test.describe("/c/[token] additional orders", () => {
     await expect(page.locator(".confirm-list")).toContainText(TEST_PRODUCTS.eggs.name);
     await expect(page.locator(".confirm-total")).toContainText("12.00");
 
-    // DB: still exactly one orders row for (customer, week); two line items;
-    // inventory decremented for the appended line too.
+    // DB: still exactly one OPEN orders row for the customer; two line
+    // items; inventory decremented for the appended line too.
     const sb = admin();
     const ids = await customerIds();
     const { data: orders } = await sb
       .from("orders")
       .select("id, status")
       .eq("customer_id", ids.farmStand)
-      .eq("week_of", weekOfMondayNY());
+      .in("status", ["new", "confirmed", "ready"]);
     expect(orders).toHaveLength(1);
 
     const { data: items } = await sb
@@ -96,7 +97,7 @@ test.describe("/c/[token] additional orders", () => {
     expect(eggs?.qty_available).toBe(TEST_PRODUCTS.eggs.qty_available - 1);
   });
 
-  test("add mode shows the existing order's fulfillment read-only", async ({ page }) => {
+  test("open order renders the form in add mode with fulfillment read-only", async ({ page }) => {
     const ids = await customerIds();
     await seedOrder({
       customerId: ids.farmStand,
@@ -105,7 +106,7 @@ test.describe("/c/[token] additional orders", () => {
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
     });
 
-    await page.goto(`${customerOrderUrl(TEST_CUSTOMERS.farmStand.token)}?add=1`);
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
     await expect(page.getByRole("heading", { name: "Going with your order" })).toBeVisible();
     // seedOrder's delivery address, rendered as text — not an input.
     await expect(page.locator(".fulfill .addr-text")).toHaveText("123 Test St");
@@ -126,7 +127,7 @@ test.describe("/c/[token] additional orders", () => {
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
     });
 
-    await page.goto(`${customerOrderUrl(TEST_CUSTOMERS.farmStand.token)}?add=1`);
+    await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
 
     // Already-ordered kale ×1 ($3.00) renders read-only in the summary.
     const existing = page.locator(".rail-existing:visible");
@@ -179,26 +180,49 @@ test.describe("/c/[token] additional orders", () => {
     }
   });
 
-  test("hub gating: terminal order hides the add button; ?add=1 bounces back to /confirmed", async ({
+  // DEC-041: a fulfilled order drops out of the open-order identity — the
+  // receipt goes read-only with a "Place a new order" path, and the order
+  // link serves a fresh form whose submit CREATES a second orders row.
+  test("terminal order: read-only receipt offers a new order; the link serves a fresh form that creates one", async ({
     page,
   }) => {
     const ids = await customerIds();
-    await seedOrder({
+    const fulfilledId = await seedOrder({
       customerId: ids.farmStand,
       weekOf: weekOfMondayNY(),
       fulfillmentType: "pickup",
-      status: "picked-up",
+      status: "picked_up",
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
     });
 
+    // /confirmed: read-only receipt — no add affordance, packed copy, and
+    // the "Place a new order" path (store open, products orderable).
     await page.goto(`${customerOrderUrl(TEST_CUSTOMERS.farmStand.token)}/confirmed`);
     await expect(page.getByRole("heading", { name: /Order received/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Add to your order" })).toHaveCount(0);
     await expect(page.getByText(/been packed/)).toBeVisible();
 
-    // A stale ?add=1 link can't reach the form against a fulfilled order —
-    // the page bounces it to /confirmed (where the reason copy lives).
-    await page.goto(`${customerOrderUrl(TEST_CUSTOMERS.farmStand.token)}?add=1`);
+    // The order link serves a FRESH form (not the add-mode view).
+    await page.getByRole("link", { name: "Place a new order" }).click();
+    await page.waitForURL(/\/c\/[^/]+$/);
+    await expect(page.getByRole("heading", { name: /What.s available/i })).toBeVisible();
+    await expect(page.locator(".rail-existing")).toHaveCount(0);
+
+    // Submitting creates a SECOND order — the fulfilled one is untouched.
+    await stepUp(page, TEST_PRODUCTS.eggs.name, 1);
+    await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+
+    const sb = admin();
+    const { data: orders } = await sb
+      .from("orders")
+      .select("id, status")
+      .eq("customer_id", ids.farmStand)
+      .eq("week_of", weekOfMondayNY());
+    expect(orders).toHaveLength(2);
+    const fulfilled = orders!.find((o) => o.id === fulfilledId);
+    expect(fulfilled?.status).toBe("picked_up");
+    const fresh = orders!.find((o) => o.id !== fulfilledId);
+    expect(fresh?.status).toBe("new");
   });
 });

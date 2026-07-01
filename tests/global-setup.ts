@@ -163,8 +163,10 @@ export default async function globalSetup() {
     throw new Error(`customers upsert failed: ${customersError.message}`);
 
   // Seed a prior delivery order for Test Farm Stand so 3.4 delivery_preference
-  // prefill is testable. week_of is in the past so it doesn't collide with the
-  // current week's order in 3.5+ tests. unique (customer_id, week_of) → upsert.
+  // prefill is testable. week_of is in the past and status terminal so it
+  // neither collides with current-week tests nor occupies the open-order
+  // identity (DEC-041 dropped unique (customer_id, week_of), so this is a
+  // check-then-insert rather than an upsert).
   const { data: farmStandRow, error: lookupError } = await adminClient
     .from("customers")
     .select("id")
@@ -173,23 +175,28 @@ export default async function globalSetup() {
   if (lookupError || !farmStandRow)
     throw new Error(`farm stand lookup failed: ${lookupError?.message ?? "no row"}`);
 
-  const { error: priorOrderError } = await adminClient.from("orders").upsert(
-    [
-      {
-        customer_id: farmStandRow.id,
-        week_of: "2026-04-27",
-        fulfillment_type: "delivery",
-        delivery_address: "100 Farm Stand Way, Lakewood, OH 44107",
-        delivery_preference: "Back door, gate code 4321",
-        status: "delivered",
-        notes: null,
-        pickup_note: null,
-      },
-    ],
-    { onConflict: "customer_id,week_of" },
-  );
-  if (priorOrderError)
-    throw new Error(`prior order upsert failed: ${priorOrderError.message}`);
+  const { data: existingPrior, error: priorLookupError } = await adminClient
+    .from("orders")
+    .select("id")
+    .eq("customer_id", farmStandRow.id)
+    .eq("week_of", "2026-04-27")
+    .maybeSingle();
+  if (priorLookupError)
+    throw new Error(`prior order lookup failed: ${priorLookupError.message}`);
+  if (!existingPrior) {
+    const { error: priorOrderError } = await adminClient.from("orders").insert({
+      customer_id: farmStandRow.id,
+      week_of: "2026-04-27",
+      fulfillment_type: "delivery",
+      delivery_address: "100 Farm Stand Way, Lakewood, OH 44107",
+      delivery_preference: "Back door, gate code 4321",
+      status: "delivered",
+      notes: null,
+      pickup_note: null,
+    });
+    if (priorOrderError)
+      throw new Error(`prior order insert failed: ${priorOrderError.message}`);
+  }
 
   // Sign in to get a real, server-verified session
   const anonClient = createClient(supabaseUrl, anonKey, {

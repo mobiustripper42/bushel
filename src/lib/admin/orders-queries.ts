@@ -2,22 +2,29 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { weekOfMondayNY } from "@/lib/week";
 
-// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked-up | delivered).
+// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked_up | delivered).
 // Confirmed is optional. Ordering matches codes.sort_order.
+// DEC-044: snake_case picked_up is canonical — matches the codes table row.
 export type OrderStatus =
   | "new"
   | "confirmed"
   | "ready"
-  | "picked-up"
+  | "picked_up"
   | "delivered";
 
 export const ORDER_STATUSES: OrderStatus[] = [
   "new",
   "confirmed",
   "ready",
-  "picked-up",
+  "picked_up",
   "delivered",
 ];
+
+// DEC-041: the open-order identity set. A customer has at most one order in
+// these statuses (partial unique index orders_one_open_per_customer); a
+// terminal order (picked_up/delivered) drops out and frees a new one. Keep
+// this list identical to the index predicate in the DEC-041 migration.
+export const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "confirmed", "ready"];
 
 // The no-regress auto-advance rule for confirm-sends (DEC-035): sending the
 // confirmation text moves a new order to confirmed, but must never regress a
@@ -27,15 +34,15 @@ export function statusAfterConfirmSend(current: OrderStatus): OrderStatus {
   return current === "new" ? "confirmed" : current;
 }
 
-// DEC-039: terminal = the box has been handed over. Appending to the week's
-// order is refused at this point (place_order raises; the /confirmed hub and
-// the ?add=1 entry both gate on it). Takes raw text because orders.status is
-// app-enforced text in the DB (DEC-010) — customer-side reads arrive untyped.
+// DEC-041: terminal = the box has been handed over. A terminal order drops
+// out of the open-order identity — /confirmed renders it read-only and the
+// next submission creates a fresh order. Takes raw text because orders.status
+// is app-enforced text in the DB (DEC-010) — customer-side reads arrive untyped.
 export function isTerminalStatus(status: string): boolean {
-  return status === "picked-up" || status === "delivered";
+  return status === "picked_up" || status === "delivered";
 }
 
-// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked-up | delivered).
+// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked_up | delivered).
 // Confirmed is optional — new → ready stays valid (Annabel may pack before
 // texting). Fulfillment type pins which terminal state is valid. Pure +
 // exported so advance-order-status.ts (a "use server" module, which can only
@@ -48,7 +55,7 @@ export function isValidTransition(
   if (from === "new" && to === "confirmed") return true;
   if (from === "new" && to === "ready") return true;
   if (from === "confirmed" && to === "ready") return true;
-  if (from === "ready" && to === "picked-up") return fulfillmentType === "pickup";
+  if (from === "ready" && to === "picked_up") return fulfillmentType === "pickup";
   if (from === "ready" && to === "delivered") return fulfillmentType === "delivery";
   return false;
 }
@@ -116,33 +123,55 @@ export function currentWeekOf(): string {
 // Sorted at the DB by created_at desc; reconciliation pinning is applied
 // in the UI so it survives column-sort changes.
 export async function listOrders(weekOf: string): Promise<OrderRow[]> {
+  return queryOrders({ weekOf });
+}
+
+// DEC-041/DEC-042 (#227): every open (non-terminal) order regardless of week.
+// The fulfillment sheet reads this — an order that stays open across a week
+// boundary must keep printing until it's out the door. The admin orders list
+// moves onto this in 9.8 (DEC-045).
+export async function listActiveOrders(): Promise<OrderRow[]> {
+  return queryOrders({ activeOnly: true });
+}
+
+async function queryOrders(filter: {
+  weekOf?: string;
+  activeOnly?: boolean;
+}): Promise<OrderRow[]> {
   const supabase = createAdminClient();
 
-  // Orders + the week's customer_sends (for per-order Send state, #192) in
-  // parallel. customer_sends is keyed (customer_id, week_of, mode); since
-  // there's one order per customer per week, customer_id maps 1:1 to an order.
-  const [{ data, error }, sendsResult] = await Promise.all([
-    supabase
-      .from("orders")
-      .select(
-        `id, customer_id, created_at, week_of, fulfillment_type,
-         delivery_address, delivery_preference, pickup_note, notes,
-         status, needs_reconciliation,
-         customers(id, name, phone),
-         order_items(product_id, qty, unit_price_cents,
-           products(name, description, qty_available,
-             product_units(label, conversion_to_base)),
-           product_units(label, conversion_to_base))`,
-      )
-      .eq("week_of", weekOf)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("customer_sends")
-      .select("customer_id, mode, sent_at")
-      .eq("week_of", weekOf),
-  ]);
+  let ordersQuery = supabase
+    .from("orders")
+    .select(
+      `id, customer_id, created_at, week_of, fulfillment_type,
+       delivery_address, delivery_preference, pickup_note, notes,
+       status, needs_reconciliation,
+       customers(id, name, phone),
+       order_items(product_id, qty, unit_price_cents,
+         products(name, description, qty_available,
+           product_units(label, conversion_to_base)),
+         product_units(label, conversion_to_base))`,
+    )
+    .order("created_at", { ascending: false });
+  if (filter.weekOf) ordersQuery = ordersQuery.eq("week_of", filter.weekOf);
+  if (filter.activeOnly)
+    ordersQuery = ordersQuery.in("status", OPEN_ORDER_STATUSES);
 
+  const { data, error } = await ordersQuery;
   if (error) throw new Error(`listOrders: ${error.message}`);
+
+  // customer_sends stays week-keyed (DEC-042), so the Send state for each
+  // order is the send row of the order's OWN week_of stamp. Fetched after the
+  // orders because the active view can span weeks — the sends lookup needs
+  // the set of weeks actually present.
+  const weeks = [...new Set((data ?? []).map((o) => o.week_of))];
+  const sendsResult =
+    weeks.length === 0
+      ? { data: [], error: null }
+      : await supabase
+          .from("customer_sends")
+          .select("customer_id, week_of, mode, sent_at")
+          .in("week_of", weeks);
   if (sendsResult.error)
     throw new Error(`listOrders(sends): ${sendsResult.error.message}`);
 
@@ -154,9 +183,13 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
     pickupReminder: string | null;
     deliveryReminder: string | null;
   };
-  const sentByCustomer = new Map<string, SentEntry>();
+  // Keyed (customer_id, week_of): with the active view spanning weeks, one
+  // customer can appear with sends in more than one week — the old per-
+  // customer key silently merged them.
+  const sentByCustomerWeek = new Map<string, SentEntry>();
   for (const s of sendsResult.data ?? []) {
-    const entry = sentByCustomer.get(s.customer_id) ?? {
+    const key = `${s.customer_id}:${s.week_of}`;
+    const entry = sentByCustomerWeek.get(key) ?? {
       confirm: null,
       pickupReminder: null,
       deliveryReminder: null,
@@ -164,14 +197,14 @@ export async function listOrders(weekOf: string): Promise<OrderRow[]> {
     if (s.mode === "order_confirmation") entry.confirm = s.sent_at;
     else if (s.mode === "pickup_reminder") entry.pickupReminder = s.sent_at;
     else if (s.mode === "delivery_reminder") entry.deliveryReminder = s.sent_at;
-    sentByCustomer.set(s.customer_id, entry);
+    sentByCustomerWeek.set(key, entry);
   }
 
   return (data ?? [])
     .filter((o) => o.customers !== null)
     .map((o) => {
       const c = o.customers as { id: string; name: string; phone: string | null };
-      const sent = sentByCustomer.get(c.id) ?? {
+      const sent = sentByCustomerWeek.get(`${c.id}:${o.week_of}`) ?? {
         confirm: null,
         pickupReminder: null,
         deliveryReminder: null,
