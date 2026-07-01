@@ -14,11 +14,22 @@ type Customer = {
 // this existing (customer, week) order. Fulfillment is shown read-only
 // (inherited from the order; change = text Annabel, DEC-015) and the submit
 // payload sends only the new line items — never fulfillment fields.
+export type ExistingOrderItem = {
+  id: string;
+  name: string;
+  unitLabel: string;
+  qty: number;
+  unit_price_cents: number;
+};
+
 export type ExistingOrderFulfillment = {
   fulfillment_type: string;
   delivery_address: string | null;
   delivery_preference: string | null;
   pickup_note: string | null;
+  // 9.1/DEC-039 — the order's already-placed lines, rendered read-only above
+  // the editable additions so the summary shows the complete order.
+  items: ExistingOrderItem[];
 };
 
 type Props = {
@@ -33,6 +44,33 @@ type Mode = "delivery" | "pickup";
 
 function formatPrice(cents: number): string {
   return (cents / 100).toFixed(2);
+}
+
+// 9.1/DEC-039 — the already-placed lines, shown read-only above the editable
+// additions in each "your order" card (rendered in both the inline summary and
+// the desktop rail, hence a shared component rather than a duplicated .map).
+function ExistingItemsGroup({ items }: { items: ExistingOrderItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="rail-existing">
+      <div className="rail-existing-head">Already ordered</div>
+      <ul className="rail-list rail-list-existing">
+        {items.map((it) => (
+          <li key={it.id}>
+            <span className="rail-name">
+              <span className="rail-qty mono">{it.qty}×</span> {it.name}
+              {it.unitLabel ? (
+                <span className="rail-unit"> · {it.unitLabel}</span>
+              ) : null}
+            </span>
+            <span className="rail-amt mono">
+              ${formatPrice(it.qty * it.unit_price_cents)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 // A server action's redirect() throws NEXT_REDIRECT on the client, which lands
@@ -361,6 +399,16 @@ export function OrderForm({
     [itemsWithQty, qty],
   );
   const lineCount = itemsWithQty.length;
+
+  // 9.1/DEC-039 — in add mode the "your order" total is the *grand* total:
+  // already-ordered lines + new additions. Submit still appends only the
+  // additions (the RPC is unchanged); the total is informational (no charge
+  // at submit — Annabel invoices via Wave).
+  const existingSubtotalCents = (existingOrder?.items ?? []).reduce(
+    (sum, it) => sum + it.qty * it.unit_price_cents,
+    0,
+  );
+  const grandTotalCents = existingSubtotalCents + subtotalCents;
 
   const setItemQty = (id: string, n: number) => {
     // Belt-and-suspenders with the persist effect: editing the cart starts a
@@ -706,6 +754,12 @@ export function OrderForm({
             <section className="submit-block">
               <div className="submit-summary">
                 <div className="eyebrow">your order</div>
+                {addMode && existingOrder ? (
+                  <ExistingItemsGroup items={existingOrder.items} />
+                ) : null}
+                {addMode && existingOrder && existingOrder.items.length > 0 ? (
+                  <div className="rail-adding-head">Adding now</div>
+                ) : null}
                 {lineCount === 0 ? (
                   <div className="rail-empty">
                     Nothing selected yet. Tap <span className="mono">+</span> on
@@ -729,7 +783,9 @@ export function OrderForm({
                 <div className="rail-totals">
                   <div className="rail-row rail-row-total">
                     <span>Total</span>
-                    <span className="mono">${formatPrice(subtotalCents)}</span>
+                    <span className="mono">
+                      ${formatPrice(addMode ? grandTotalCents : subtotalCents)}
+                    </span>
                   </div>
                 </div>
                 <div className="summary-sub">
@@ -754,7 +810,7 @@ export function OrderForm({
                 {isPending ? (
                   <span className="btn-spinner" aria-hidden="true" />
                 ) : addMode ? (
-                  "Add to order"
+                  "Update order"
                 ) : (
                   "Submit order"
                 )}
@@ -774,6 +830,12 @@ export function OrderForm({
           <aside className="page-rail">
             <div className="rail-card">
               <div className="eyebrow">your order</div>
+              {addMode && existingOrder ? (
+                <ExistingItemsGroup items={existingOrder.items} />
+              ) : null}
+              {addMode && existingOrder && existingOrder.items.length > 0 ? (
+                <div className="rail-adding-head">Adding now</div>
+              ) : null}
               {lineCount === 0 ? (
                 <div className="rail-empty">
                   Nothing selected yet. Tap <span className="mono">+</span> on
@@ -797,7 +859,9 @@ export function OrderForm({
               <div className="rail-totals">
                 <div className="rail-row rail-row-total">
                   <span>Total</span>
-                  <span className="mono">${formatPrice(subtotalCents)}</span>
+                  <span className="mono">
+                    ${formatPrice(addMode ? grandTotalCents : subtotalCents)}
+                  </span>
                 </div>
               </div>
               <button
@@ -810,7 +874,7 @@ export function OrderForm({
                 {isPending ? (
                   <span className="btn-spinner" aria-hidden="true" />
                 ) : addMode ? (
-                  "Add to order"
+                  "Update order"
                 ) : (
                   "Submit order"
                 )}
@@ -830,8 +894,13 @@ export function OrderForm({
       <div className={"sticky-bar" + (lineCount > 0 ? " is-active" : "")}>
         <div className="sticky-summary">
           <div className="sticky-count">
+            {addMode ? "Adding " : ""}
             {itemCount} item{itemCount !== 1 ? "s" : ""}
           </div>
+          {/* 9.1 — the sticky bar is scoped to the additions (its count is the
+              additions count + its button is "Review", not submit), so it keeps
+              the additions subtotal. The "Adding" label distinguishes it from
+              the summary card's grand total. */}
           <div className="sticky-total mono">${formatPrice(subtotalCents)}</div>
         </div>
         <button

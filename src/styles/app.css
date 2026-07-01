@@ -1420,6 +1420,21 @@
 .rail-submit { width: 100%; margin-top: 6px; }
 .rail-fine { margin-top: 10px; font-size: 0.78rem; color: var(--ink-500); }
 
+/* 9.1/DEC-039 — add-mode "your order" card shows the complete order: the
+   already-placed lines read-only (muted) above the editable additions. */
+.rail-existing-head,
+.rail-adding-head {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-500);
+  margin: 6px 0 2px;
+}
+.rail-list-existing { margin: 4px 0 10px; opacity: 0.72; }
+.rail-list-existing .rail-qty { color: var(--ink-500); }
+.rail-adding-head { border-top: 1px dashed var(--ink-200); padding-top: 8px; }
+.rail-unit { color: var(--ink-500); font-size: 0.85em; }
+
 .page-foot {
   margin-top: 24px;
   padding-top: 14px;

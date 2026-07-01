@@ -59,7 +59,7 @@ test.describe("/c/[token] additional orders", () => {
     // Append eggs ×1 and submit.
     await stepUp(page, TEST_PRODUCTS.eggs.name, 1);
     const submit = page.locator(".submit-btn");
-    await expect(submit).toHaveText("Add to order");
+    await expect(submit).toHaveText("Update order");
     await submit.click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
@@ -112,7 +112,34 @@ test.describe("/c/[token] additional orders", () => {
     await expect(page.locator(".fulfill-tabs")).toHaveCount(0);
     await expect(page.locator("#delivery-pref")).toHaveCount(0);
     await expect(page.locator("#pickup-note")).toHaveCount(0);
-    await expect(page.locator(".submit-btn")).toHaveText("Add to order");
+    await expect(page.locator(".submit-btn")).toHaveText("Update order");
+  });
+
+  // 9.1/DEC-039 — the "your order" card shows the COMPLETE order: already-placed
+  // lines read-only above the editable additions, with a grand total.
+  test("add mode summary shows existing items read-only + grand total", async ({ page }) => {
+    const ids = await customerIds();
+    await seedOrder({
+      customerId: ids.farmStand,
+      weekOf: weekOfMondayNY(),
+      fulfillmentType: "delivery",
+      items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
+    });
+
+    await page.goto(`${customerOrderUrl(TEST_CUSTOMERS.farmStand.token)}?add=1`);
+
+    // Already-ordered kale ×1 ($3.00) renders read-only in the summary.
+    const existing = page.locator(".rail-existing:visible");
+    await expect(existing).toContainText("Already ordered");
+    await expect(existing).toContainText(TEST_PRODUCTS.kale.name);
+
+    // Append eggs ×1 ($6.00). The additions list is the non-existing rail-list.
+    await stepUp(page, TEST_PRODUCTS.eggs.name, 1);
+    const additions = page.locator(".rail-list:not(.rail-list-existing):visible");
+    await expect(additions).toContainText(TEST_PRODUCTS.eggs.name);
+
+    // Total is the GRAND total: existing $3.00 + new $6.00 = $9.00.
+    await expect(page.locator(".rail-row-total:visible")).toContainText("9.00");
   });
 
   test("hub gating: closed store hides the add button and explains why", async ({ page }) => {
