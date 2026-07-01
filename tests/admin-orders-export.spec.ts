@@ -25,6 +25,7 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
     id: "order-1",
     customerId: "cust-1",
     customerName: "Test Customer",
+    phone: null,
     placedAt: "2026-05-12T15:30:00Z",
     weekOf: "2026-05-11",
     fulfillmentType: "pickup",
@@ -40,12 +41,16 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
         name: "Kale",
         description: "KALE-BUNCH",
         unit: "bunch",
+        unitLabel: "bunch",
+        conversionToBase: 1,
         qty: 2,
         unitPriceCents: 300,
         qtyAvailable: 10,
       },
     ],
     totalCents: 600,
+    confirmSentAt: null,
+    reminderSentAt: null,
     ...over,
   };
 }
@@ -60,6 +65,8 @@ test("toCsv: no header row; line items only, RFC 4180 quoting", () => {
           name: "Heirloom\ntomatoes",
           description: "HEIRLOOM-LB",
           unit: "lb",
+          unitLabel: "lb",
+          conversionToBase: 1,
           qty: 3,
           unitPriceCents: 550,
           qtyAvailable: 10,
@@ -92,6 +99,8 @@ test("toCsv: empty Item Number when product description (slug) is null", () => {
           name: "Garlic scapes",
           description: null,
           unit: "bunch",
+          unitLabel: "bunch",
+          conversionToBase: 1,
           qty: 4,
           unitPriceCents: 400,
           qtyAvailable: 10,
@@ -110,14 +119,14 @@ test("toCsv: one row per line item; multi-item order keeps per-line slugs", () =
     mockOrder({
       customerName: "A",
       items: [
-        { productId: "p1", name: "Kale", description: "KALE-BU", unit: "bunch", qty: 1, unitPriceCents: 300, qtyAvailable: 5 },
-        { productId: "p2", name: "Eggs", description: "EGG-DZ", unit: "dozen", qty: 2, unitPriceCents: 600, qtyAvailable: 5 },
+        { productId: "p1", name: "Kale", description: "KALE-BU", unit: "bunch", unitLabel: "bunch", conversionToBase: 1, qty: 1, unitPriceCents: 300, qtyAvailable: 5 },
+        { productId: "p2", name: "Eggs", description: "EGG-DZ", unit: "dozen", unitLabel: "dozen", conversionToBase: 1, qty: 2, unitPriceCents: 600, qtyAvailable: 5 },
       ],
     }),
     mockOrder({
       customerName: "B",
       items: [
-        { productId: "p3", name: "Honey", description: "HON-JAR", unit: "jar", qty: 1, unitPriceCents: 1200, qtyAvailable: 5 },
+        { productId: "p3", name: "Honey", description: "HON-JAR", unit: "jar", unitLabel: "jar", conversionToBase: 1, qty: 1, unitPriceCents: 1200, qtyAvailable: 5 },
       ],
     }),
   ]);
@@ -142,6 +151,8 @@ test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
           name: "Has\nnewline",
           description: "SLUG-WITH\nNEWLINE",
           unit: "lb",
+          unitLabel: "lb",
+          conversionToBase: 1,
           qty: 1,
           unitPriceCents: 100,
           qtyAvailable: 5,
@@ -161,7 +172,7 @@ test("ordersToRows: itemNumber = product description (slug); description = produ
   const rows = ordersToRows([
     mockOrder({
       items: [
-        { productId: "p", name: "Honey", description: "HONEY-JAR", unit: "jar", qty: 7, unitPriceCents: 125, qtyAvailable: 10 },
+        { productId: "p", name: "Honey", description: "HONEY-JAR", unit: "jar", unitLabel: "jar", conversionToBase: 1, qty: 7, unitPriceCents: 125, qtyAvailable: 10 },
       ],
     }),
   ]);

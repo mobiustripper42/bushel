@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Hand-built HTML/JSX design mockups — reference artifacts, not app code
+    // (no React import, prose with raw apostrophes). Not part of the build; the
+    // authoritative UI spec, but not linted as source.
+    "design/**",
   ]),
 ]);
 
