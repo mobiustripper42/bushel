@@ -94,6 +94,16 @@ export default async function CustomerTokenPage({
               delivery_address: existingOrder.delivery_address,
               delivery_preference: existingOrder.delivery_preference,
               pickup_note: existingOrder.pickup_note,
+              // 9.1/DEC-039 — the query already joins order_items; thread them
+              // through so add mode shows the *complete* order (existing lines
+              // read-only) above the new additions, not just what's being added.
+              items: (existingOrder.order_items ?? []).map((it) => ({
+                id: it.id,
+                name: it.products?.name ?? "(item)",
+                unitLabel: it.product_units?.label ?? "",
+                qty: it.qty,
+                unit_price_cents: it.unit_price_cents,
+              })),
             }
           : null
       }
