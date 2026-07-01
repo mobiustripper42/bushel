@@ -45,7 +45,7 @@ function StatusChip({ status }: { status: OrderStatus }) {
   if (status === "confirmed")
     return <span className="pill pill-confirmed">Confirmed</span>;
   if (status === "ready") return <span className="pill pill-ready">Ready</span>;
-  if (status === "picked-up")
+  if (status === "picked_up")
     return <span className="pill pill-done">Picked up</span>;
   return <span className="pill pill-done">Delivered</span>;
 }

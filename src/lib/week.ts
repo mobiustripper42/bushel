@@ -9,8 +9,8 @@ export function weekOfLabel(now: Date = new Date()): string {
 
 // Returns the ISO date (YYYY-MM-DD) of Monday of the current week in
 // America/New_York, regardless of where the server is running. Used as
-// orders.week_of so all orders placed during the same NY-time week share
-// a single date for the (customer_id, week_of) unique constraint.
+// orders.week_of — since DEC-041 an informational stamp (feeds the
+// fulfillment sheet + Wave export), no longer order identity.
 //
 // Strategy: take "now in NY" by formatting via Intl, parse back to
 // y/m/d, then shift to Monday. Avoids pulling in a tz library.
@@ -34,10 +34,9 @@ export function weekOfMondayNY(now: Date = new Date()): string {
   // Bushel's order cadence opens Sun/Mon → fulfills Wed/Thu. Sunday is the
   // OPENING of the new order week, so it maps to *tomorrow's* Monday
   // (offset = -1, i.e. add a day). Mon–Sat roll back to this week's Monday.
-  // Don't change this without considering the unique (customer_id, week_of)
-  // constraint — a misaligned Sunday silently buckets an order into last
-  // week, and the second-submit guard in place_order() will redirect the
-  // customer to last week's /confirmed without ever inserting their new order.
+  // A misaligned Sunday silently stamps an order into last week — harmless
+  // to identity since DEC-041, but it mislabels the fulfillment sheet and
+  // keys customer_sends to the wrong week.
   const offset = dayIdx === 0 ? -1 : dayIdx - 1;
 
   const anchor = new Date(Date.UTC(y, m - 1, d));

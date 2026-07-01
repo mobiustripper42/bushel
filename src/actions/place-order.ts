@@ -92,15 +92,9 @@ export async function placeOrder(
           "Some items sold out while you were ordering. Reload to see what's still available.",
       };
     }
-    // #211 / DEC-039: appending to a picked-up/delivered order is refused —
-    // the box is already packed and gone. Stale add-mode tab is the only
-    // route here (the /confirmed hub hides the add button on terminal).
-    if (error.message.includes("already fulfilled")) {
-      return {
-        error:
-          "This order's already been packed — text Annabel to add more.",
-      };
-    }
+    // DEC-041: the old "already fulfilled" refusal is gone — a submission
+    // arriving after the open order went terminal simply creates a fresh
+    // open order (fulfilled orders drop out of the identity).
     return { error: error.message };
   }
   const appended = data?.appended ?? false;

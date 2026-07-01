@@ -16,7 +16,7 @@ test.describe("order status flow (DEC-035)", () => {
       "new",
       "confirmed",
       "ready",
-      "picked-up",
+      "picked_up",
       "delivered",
     ]);
   });
@@ -27,21 +27,21 @@ test.describe("order status flow (DEC-035)", () => {
     // confirmed is optional — new → ready stays valid
     expect(isValidTransition("new", "ready", "pickup")).toBe(true);
     expect(isValidTransition("confirmed", "ready", "delivery")).toBe(true);
-    expect(isValidTransition("ready", "picked-up", "pickup")).toBe(true);
+    expect(isValidTransition("ready", "picked_up", "pickup")).toBe(true);
     expect(isValidTransition("ready", "delivered", "delivery")).toBe(true);
   });
 
   test("terminal state is pinned to fulfillment type", () => {
-    expect(isValidTransition("ready", "picked-up", "delivery")).toBe(false);
+    expect(isValidTransition("ready", "picked_up", "delivery")).toBe(false);
     expect(isValidTransition("ready", "delivered", "pickup")).toBe(false);
   });
 
   test("skips, regressions, and nonsense transitions are rejected", () => {
-    expect(isValidTransition("new", "picked-up", "pickup")).toBe(false);
+    expect(isValidTransition("new", "picked_up", "pickup")).toBe(false);
     expect(isValidTransition("new", "delivered", "delivery")).toBe(false);
     expect(isValidTransition("confirmed", "new", "pickup")).toBe(false);
     expect(isValidTransition("ready", "confirmed", "pickup")).toBe(false);
-    expect(isValidTransition("picked-up", "ready", "pickup")).toBe(false);
+    expect(isValidTransition("picked_up", "ready", "pickup")).toBe(false);
     expect(isValidTransition("delivered", "ready", "delivery")).toBe(false);
   });
 
@@ -49,7 +49,7 @@ test.describe("order status flow (DEC-035)", () => {
     expect(statusAfterConfirmSend("new")).toBe("confirmed");
     expect(statusAfterConfirmSend("confirmed")).toBe("confirmed");
     expect(statusAfterConfirmSend("ready")).toBe("ready");
-    expect(statusAfterConfirmSend("picked-up")).toBe("picked-up");
+    expect(statusAfterConfirmSend("picked_up")).toBe("picked_up");
     expect(statusAfterConfirmSend("delivered")).toBe("delivered");
   });
 });

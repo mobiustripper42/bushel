@@ -88,7 +88,7 @@ test("invalid token 404s", async ({ page }) => {
   await expect(page.getByText("This link doesn’t work.")).toBeVisible();
 });
 
-test("excludes picked-up / delivered orders (#200)", async ({ page }) => {
+test("excludes picked_up / delivered orders (#200)", async ({ page }) => {
   const ids = await customerIds();
   const sb = admin();
   // The restaurant's (delivery) order is fulfilled — out the door.
@@ -120,5 +120,38 @@ test("excludes picked-up / delivered orders (#200)", async ({ page }) => {
       .update({ status: "new" })
       .eq("customer_id", ids.restaurant)
       .eq("week_of", WEEK);
+  }
+});
+
+// DEC-041/DEC-042 (#227): the sheet is status-keyed, not week-keyed — an open
+// order that crosses a week boundary keeps printing until it's out the door.
+test("shows open orders from past weeks", async ({ page }) => {
+  const ids = await customerIds();
+  const sb = admin();
+  const [y, m, d] = WEEK.split("-").map((n) => parseInt(n, 10));
+  const lastMonday = new Date(Date.UTC(y, m - 1, d - 7)).toISOString().slice(0, 10);
+  // Re-stamp the farm stand's open order into LAST week (update, not insert —
+  // the partial unique index allows only one open order per customer).
+  await sb
+    .from("orders")
+    .update({ week_of: lastMonday })
+    .eq("customer_id", ids.farmStand)
+    .eq("week_of", WEEK);
+
+  try {
+    await page.goto(`/f/${await fulfillmentToken()}`);
+    await expect(
+      page.locator(".fr-slip", { hasText: TEST_CUSTOMERS.farmStand.name }),
+    ).toHaveCount(1);
+    // Its items still roll into the harvest totals (Kale 3 + restaurant's 2).
+    await expect(
+      page.locator(".fr-hv-row", { hasText: "Kale" }).locator(".fr-hv-unit-qty"),
+    ).toHaveText("5");
+  } finally {
+    await sb
+      .from("orders")
+      .update({ week_of: WEEK })
+      .eq("customer_id", ids.farmStand)
+      .eq("week_of", lastMonday);
   }
 });

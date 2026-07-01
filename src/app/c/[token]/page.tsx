@@ -3,26 +3,22 @@ import { AllSoldOutShell } from "@/components/customer/AllSoldOutShell";
 import { ClosedShell } from "@/components/customer/ClosedShell";
 import { OrderForm } from "@/components/customer/OrderForm";
 import { PausedShell } from "@/components/customer/PausedShell";
-import { isTerminalStatus } from "@/lib/admin/orders-queries";
 import {
   anyOrderable,
   getAvailableProducts,
-  getCurrentWeekOrder,
   getLatestDeliveryPreference,
+  getOpenOrder,
   getOrderingScheduleStatus,
 } from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
-import { weekOfLabel, weekOfMondayNY } from "@/lib/week";
+import { weekOfLabel } from "@/lib/week";
 
 export default async function CustomerTokenPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ add?: string }>;
 }) {
   const { token } = await params;
-  const { add } = await searchParams;
   const customer = await lookupCustomerByToken(token);
   if (!customer) notFound();
 
@@ -39,23 +35,14 @@ export default async function CustomerTokenPage({
     return <PausedShell customerName={greetingName} reason="paused" />;
   }
 
-  // If this customer has already submitted an order for the current NY-time
-  // week, the link is "your weekly order" — bounce to the confirmation rather
-  // than re-showing the empty form. The server-side place_order RPC would
-  // catch a re-submit either way, but seeing the empty form again is
-  // confusing UX.
-  //
-  // #211 / DEC-039: ?add=1 (the /confirmed hub's "Add to your order" link)
-  // skips that bounce and renders the form in ADD MODE — new items append to
-  // the existing order. A terminal order (picked-up/delivered) can't take
-  // appends, so it bounces back to /confirmed, where the gated-off reason
-  // copy lives.
-  const existingOrder = await getCurrentWeekOrder(customer.id, weekOfMondayNY());
-  const addMode = add === "1" && existingOrder !== null;
-  if (existingOrder && !addMode) redirect(`/c/${token}/confirmed`);
-  if (addMode && existingOrder && isTerminalStatus(existingOrder.status)) {
-    redirect(`/c/${token}/confirmed`);
-  }
+  // DEC-041/DEC-042 (#227): the customer's link renders their OPEN order
+  // editable — the form comes up pre-populated in add mode (existing lines
+  // read-only, new items append). No open order (none yet, or the last one
+  // was fulfilled — picked_up/delivered drop out of the open-order identity)
+  // means a fresh form: a new order is allowed the moment the box goes out.
+  // The old bounce-to-/confirmed and its ?add=1 escape hatch are gone; stale
+  // ?add=1 links land here and get the same editable view.
+  const existingOrder = await getOpenOrder(customer.id);
 
   const [products, priorDeliveryPreference, schedule] = await Promise.all([
     getAvailableProducts(),
@@ -66,7 +53,12 @@ export default async function CustomerTokenPage({
   // DEC-031: four customer-side states keyed off ordering_schedule.is_open
   // and product inventory. Server-side `is_open` is a soft UI hint only;
   // submission enforcement remains DEC-012's job.
+  //
+  // With an open order, the closed/sold-out shells must not eat it — the
+  // link is "your order" (DEC-041), so when the form can't render, the
+  // receipt at /confirmed is the right view, not a dead-end shell.
   if (!schedule.is_open) {
+    if (existingOrder) redirect(`/c/${token}/confirmed`);
     return <ClosedShell customerName={greetingName} />;
   }
 
@@ -74,6 +66,7 @@ export default async function CustomerTokenPage({
   // inventory. A product with only a conv=4 unit and qty_available=2 is
   // effectively sold out even though qty_available > 0.
   if (!anyOrderable(products)) {
+    if (existingOrder) redirect(`/c/${token}/confirmed`);
     return <AllSoldOutShell customerName={greetingName} />;
   }
 
@@ -88,7 +81,7 @@ export default async function CustomerTokenPage({
       priorDeliveryPreference={priorDeliveryPreference}
       weekLabel={weekOfLabel()}
       existingOrder={
-        addMode && existingOrder
+        existingOrder
           ? {
               fulfillment_type: existingOrder.fulfillment_type,
               delivery_address: existingOrder.delivery_address,

@@ -6,7 +6,7 @@
 // so there's no new query or RLS surface. The base-unit fold (qty ×
 // conversion_to_base) is the same math place_order runs on decrement; we never
 // sum raw qty across mixed units (3 bunches + 2 lb ≠ 5).
-import { listOrders } from "@/lib/admin/orders-queries";
+import { listActiveOrders } from "@/lib/admin/orders-queries";
 
 export type HarvestUnit = { unit: string; qty: number };
 
@@ -45,12 +45,12 @@ function round2(n: number): number {
 export async function buildFulfillmentReport(
   weekOf: string,
 ): Promise<FulfillmentReport> {
-  // Fulfilled orders are already out the door — exclude picked-up/delivered so
-  // the sheet only shows what's still to harvest and pack. Negation keeps new,
-  // confirmed (DEC-035), and ready.
-  const orders = (await listOrders(weekOf)).filter(
-    (o) => o.status !== "picked-up" && o.status !== "delivered",
-  );
+  // DEC-041/DEC-042 (#227): the sheet shows every OPEN order regardless of
+  // week — an order that stays open across a week boundary keeps printing
+  // until it's out the door. Fulfilled orders (picked_up/delivered) are
+  // already excluded by the active-status query. weekOf survives only as the
+  // sheet's display stamp.
+  const orders = await listActiveOrders();
 
   // ── consolidated harvest list ──────────────────────────────────────────
   const byProduct = new Map<

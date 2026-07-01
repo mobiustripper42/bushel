@@ -14,6 +14,9 @@ type ScheduleRow = {
   weekly_close_time: string | null;
 };
 
+// DORMANT (DEC-040): the schedule this card edits is inert — the cron that
+// acted on it no longer fires (vercel.json crons entry removed). The manual
+// open/close toggle here is the only live control.
 export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
   const hasWeekly =
     schedule.weekly_open_day != null &&

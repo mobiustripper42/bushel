@@ -9,8 +9,8 @@ import {
 const COOKIE = "bbf_customer_token";
 
 test.describe("/c/[token] route", () => {
-  // /c/[token] now redirects to /confirmed if an order exists for the week;
-  // these tests assert the form rendered, so reset to keep them deterministic
+  // /c/[token] renders an open order as the add-mode form (DEC-041); these
+  // tests assert the fresh form rendered, so reset to keep them deterministic
   // regardless of spec ordering. #130 added a paused/closed shell that
   // short-circuits before the form, so we also normalise both account-state
   // flags here — otherwise a prior spec leaving send_weekly_link=false on a

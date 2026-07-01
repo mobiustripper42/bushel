@@ -34,11 +34,11 @@ test.describe("/c/[token] place order", () => {
   });
 
   // Without this, the last "happy path" test leaves a freshly-placed order
-  // for the seeded farmStand customer in the current week. The next spec to
-  // alphabetically follow (notifications-flow.spec.ts) opens /c/<token> and
-  // expects to see the "What's available" heading — but the /c page redirects
-  // to /confirmed whenever an order exists for the current week, so the
-  // assertion times out. resetCustomerOrderState clears it.
+  // for the seeded farmStand customer. The next spec to alphabetically
+  // follow (notifications-flow.spec.ts) opens /c/<token> and expects to see
+  // the "What's available" heading — but the /c page renders an open order
+  // as the pre-populated add-mode form (DEC-041), so the assertion times
+  // out. resetCustomerOrderState clears it.
   test.afterAll(async () => {
     await resetCustomerOrderState();
   });
@@ -172,7 +172,7 @@ test.describe("/c/[token] place order", () => {
     expect(eggs?.qty_available).toBe(-4);
   });
 
-  test("revisiting /c/[token] after submit redirects to /confirmed (no empty form)", async ({
+  test("revisiting /c/[token] after submit shows the open order pre-populated (no empty form)", async ({
     page,
   }) => {
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
@@ -180,32 +180,31 @@ test.describe("/c/[token] place order", () => {
     await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
-    // The link is "your weekly order" — revisiting after submit must NOT
-    // re-show the empty form (adding more goes through ?add=1, which is
-    // customer-additional-orders.spec.ts territory). DEC-039 note: a second
-    // submit with NEW items now APPENDS to the same order row rather than
-    // no-opping — the true no-op is a same-submission_id replay (covered in
-    // pgTAP place_order_additive.sql). Either way the row count below stays 1.
+    // DEC-041 (#227): the link renders the OPEN order editable — revisiting
+    // after submit shows the add-mode form pre-populated with what was
+    // ordered, never an empty form and never a bounce. A second submit with
+    // NEW items APPENDS to the same order row (the true no-op is a
+    // same-submission_id replay — pgTAP place_order_additive.sql).
     await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
-    await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
     await expect(
-      page.getByRole("heading", { name: /Order received/i }),
+      page.getByRole("heading", { name: "Going with your order" }),
     ).toBeVisible();
-    await expect(page.locator(".confirm-list")).toContainText(
+    await expect(page.locator(".rail-existing:visible")).toContainText(
       TEST_PRODUCTS.kale.name,
     );
+    await expect(page.locator(".submit-btn")).toHaveText("Update order");
 
-    // And exactly one orders row exists for the current week — DEC-039 keeps
-    // the unique (customer_id, week_of) constraint, so even appends never
-    // create a second row. (Filtered to this week so the global-setup
-    // prior-order fixture doesn't inflate the count.)
+    // And exactly one OPEN orders row exists — the partial unique index
+    // (orders_one_open_per_customer) makes a second one impossible.
+    // (Status-filtered so the global-setup delivered fixture doesn't
+    // inflate the count.)
     const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
     const sb = admin();
     const { data: orders } = await sb
       .from("orders")
       .select("id")
       .eq("customer_id", farmStandId)
-      .eq("week_of", weekOfMondayNY());
+      .in("status", ["new", "confirmed", "ready"]);
     expect(orders).toHaveLength(1);
   });
 });

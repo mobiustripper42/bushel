@@ -7,9 +7,9 @@ import {
 } from "./helpers";
 
 test.describe("/c/[token] order form", () => {
-  // /c/[token] now redirects to /confirmed whenever an order exists for the
-  // current week, so any prior spec that left an order behind would break
-  // every form test below. Clear the slate before each.
+  // /c/[token] renders an open order as the pre-populated add-mode form
+  // (DEC-041), so any prior spec that left an order behind would break
+  // every fresh-form test below. Clear the slate before each.
   test.beforeEach(async () => {
     await resetCustomerOrderState();
   });

@@ -4,6 +4,7 @@
 // queries bypass RLS by design. Don't "fix" these to the anon client —
 // the customer-side RLS policies key off `current_setting('app.customer_id')`
 // which we don't set, so anon reads return empty.
+import { OPEN_ORDER_STATUSES } from "@/lib/admin/orders-queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
@@ -88,38 +89,58 @@ export async function getLatestDeliveryPreference(
   return data?.delivery_preference ?? null;
 }
 
-// Pulls the customer's order for a specific week (typically the current NY-time
-// week), joined with its line items + product names + per-line unit labels
-// (product_units, DEC-037). Returns null if no order exists for that week.
-// Used by /confirmed (which also gates its "Add to your order" affordance on
-// `status`, DEC-039) and by /c/[token]'s ?add=1 add-mode entry.
-export async function getCurrentWeekOrder(customerId: string, weekOf: string) {
+// Shared join for the customer-facing order reads: line items + product
+// names + per-line unit labels (product_units, DEC-037).
+const CUSTOMER_ORDER_SELECT = `
+  id,
+  week_of,
+  fulfillment_type,
+  delivery_address,
+  delivery_preference,
+  pickup_note,
+  notes,
+  status,
+  created_at,
+  order_items (
+    id,
+    qty,
+    unit_price_cents,
+    products ( name ),
+    product_units ( label )
+  )
+` as const;
+
+// DEC-041 (#227): the customer's OPEN order — the one non-terminal order the
+// partial unique index guarantees (at most one of new/confirmed/ready).
+// Replaces the week-keyed getCurrentWeekOrder: identity is the open order,
+// week_of is just a stamp. /c/[token] renders this order editable
+// (pre-populated add mode); null means the customer is free to start fresh.
+export async function getOpenOrder(customerId: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("orders")
-    .select(
-      `
-      id,
-      week_of,
-      fulfillment_type,
-      delivery_address,
-      delivery_preference,
-      pickup_note,
-      notes,
-      status,
-      created_at,
-      order_items (
-        id,
-        qty,
-        unit_price_cents,
-        products ( name ),
-        product_units ( label )
-      )
-    `,
-    )
+    .select(CUSTOMER_ORDER_SELECT)
     .eq("customer_id", customerId)
-    .eq("week_of", weekOf)
+    .in("status", OPEN_ORDER_STATUSES)
     .maybeSingle();
-  if (error) throw new Error(`getCurrentWeekOrder: ${error.message}`);
+  if (error) throw new Error(`getOpenOrder: ${error.message}`);
+  return data ?? null;
+}
+
+// The customer's most recent order in ANY status. /confirmed renders this as
+// the receipt: an open order gets the add affordance, a terminal one renders
+// read-only with a "place a new order" path (DEC-042 — orders are only ever
+// created open and move forward, so the newest row is the open order
+// whenever one exists).
+export async function getLatestOrder(customerId: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(CUSTOMER_ORDER_SELECT)
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`getLatestOrder: ${error.message}`);
   return data ?? null;
 }
