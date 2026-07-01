@@ -157,6 +157,12 @@ test.describe("/c/[token] additional orders", () => {
       await expect(page.getByRole("heading", { name: /Order received/i })).toBeVisible();
       await expect(page.getByRole("link", { name: "Add to your order" })).toHaveCount(0);
       await expect(page.getByText("Ordering’s closed for this week.")).toBeVisible();
+
+      // The closed shell must not eat the open order: the customer's link
+      // redirects to the receipt instead of dead-ending at "closed".
+      await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
+      await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
+      await expect(page.getByRole("heading", { name: /Order received/i })).toBeVisible();
     } finally {
       await setOrderingOpen(true);
     }

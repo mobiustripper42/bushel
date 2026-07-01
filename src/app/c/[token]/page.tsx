@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AllSoldOutShell } from "@/components/customer/AllSoldOutShell";
 import { ClosedShell } from "@/components/customer/ClosedShell";
 import { OrderForm } from "@/components/customer/OrderForm";
@@ -53,7 +53,12 @@ export default async function CustomerTokenPage({
   // DEC-031: four customer-side states keyed off ordering_schedule.is_open
   // and product inventory. Server-side `is_open` is a soft UI hint only;
   // submission enforcement remains DEC-012's job.
+  //
+  // With an open order, the closed/sold-out shells must not eat it — the
+  // link is "your order" (DEC-041), so when the form can't render, the
+  // receipt at /confirmed is the right view, not a dead-end shell.
   if (!schedule.is_open) {
+    if (existingOrder) redirect(`/c/${token}/confirmed`);
     return <ClosedShell customerName={greetingName} />;
   }
 
@@ -61,6 +66,7 @@ export default async function CustomerTokenPage({
   // inventory. A product with only a conv=4 unit and qty_available=2 is
   // effectively sold out even though qty_available > 0.
   if (!anyOrderable(products)) {
+    if (existingOrder) redirect(`/c/${token}/confirmed`);
     return <AllSoldOutShell customerName={greetingName} />;
   }
 

@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(32);
 
 -- ============================================================
 -- #211 / DEC-039 + #226 / DEC-041 — additive orders on the
@@ -450,33 +450,44 @@ select is(
 );
 
 -- ============================================================
--- 30. Replay against a now-terminal order: the replay short-circuit
+-- 30–31. Replay against a now-terminal order: the replay short-circuit
 --     returns the order the submission originally landed on, even
---     though it has since been fulfilled — no new order, no writes.
+--     though it has since been fulfilled — no new order, no writes —
+--     and reports appended = true (the order carries items from other
+--     submissions).
 -- ============================================================
+create temp table s1_replay as
+select * from public.place_order(
+  'ee390000-0000-0000-0000-000000000001'::uuid,
+  '2026-06-01'::date,
+  'delivery', '123 Additive St', '', '', 'first note',
+  jsonb_build_array(
+    jsonb_build_object(
+      'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
+      'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
+      'qty',             2,
+      'unit_price_cents', 500
+    )
+  ),
+  'ee39aaaa-0000-0000-0000-000000000001'::uuid
+);
+
 select is(
-  (select t.order_id from public.place_order(
-     'ee390000-0000-0000-0000-000000000001'::uuid,
-     '2026-06-01'::date,
-     'delivery', '123 Additive St', '', '', 'first note',
-     jsonb_build_array(
-       jsonb_build_object(
-         'product_id',      'ee390000-0000-0000-0000-aaaa00000001'::text,
-         'product_unit_id', 'ee390000-0000-0000-0000-bbbb00000001'::text,
-         'qty',             2,
-         'unit_price_cents', 500
-       )
-     ),
-     'ee39aaaa-0000-0000-0000-000000000001'::uuid
-   ) t),
+  (select order_id from s1_replay),
   (select oi.order_id from public.order_items oi
    where oi.submission_id = 'ee39aaaa-0000-0000-0000-000000000001'::uuid
    limit 1),
   'replaying a submission whose order went terminal returns that order — no new order created'
 );
 
+select is(
+  (select appended from s1_replay),
+  true,
+  'terminal replay reports appended = true (order carries other submissions'' items)'
+);
+
 -- ============================================================
--- 31. Foreign-submission_id scoping: customer B replaying customer A's
+-- 32. Foreign-submission_id scoping: customer B replaying customer A's
 --     submission_id must NOT resolve to A's order — the replay check is
 --     scoped to the customer, so B gets their own fresh order.
 -- ============================================================

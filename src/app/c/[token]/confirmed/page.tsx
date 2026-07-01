@@ -116,7 +116,11 @@ export default async function ConfirmedPage({
       <div className="confirm-card">
         <div className="confirm-card-head">
           <div className="eyebrow">summary</div>
-          <span className="confirm-week">{weekOfLabel().toLowerCase()}</span>
+          {/* Stamped from the ORDER's week — under DEC-041 the latest order
+              can be last week's, and today's clock would mislabel it. */}
+          <span className="confirm-week">
+            {weekOfLabel(new Date(order.week_of)).toLowerCase()}
+          </span>
         </div>
         <ul className="confirm-list">
           {items.map((item) => {
