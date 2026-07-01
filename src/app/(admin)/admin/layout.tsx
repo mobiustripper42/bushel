@@ -1,4 +1,5 @@
 import { NavLink } from "@/components/admin/nav-link";
+import { VersionTag } from "@/components/VersionTag";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
 import { AdminMobileNavDrawer, type MobileNavItem } from "@/components/admin/admin-mobile-nav-drawer";
 import { signOut } from "@/actions/sign-out";
@@ -137,6 +138,8 @@ export default async function AdminShellLayout({
             </div>
           </div>
         </div>
+
+        <VersionTag className="admin-side-version" />
       </aside>
 
       <div className="admin-main">
