@@ -60,7 +60,10 @@ export function OrderDetail({
                 ? (baseRequested - availableBase) / i.conversionToBase
                 : 0;
               return (
-                <li key={i.productId} className={oversold ? "is-oversold" : ""}>
+                <li
+                  key={`${i.productId}-${i.unitLabel}-${i.unitPriceCents}`}
+                  className={oversold ? "is-oversold" : ""}
+                >
                   <span className="ord-li-qty mono">{i.qty}×</span>
                   <span className="ord-li-name">
                     {i.name}

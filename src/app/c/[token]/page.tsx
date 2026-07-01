@@ -11,6 +11,7 @@ import {
   getOrderingScheduleStatus,
 } from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
+import { consolidateItems, consolidationKey } from "@/lib/order-items";
 import { weekOfLabel } from "@/lib/week";
 
 export default async function CustomerTokenPage({
@@ -90,7 +91,15 @@ export default async function CustomerTokenPage({
               // 9.1/DEC-039 — the query already joins order_items; thread them
               // through so add mode shows the *complete* order (existing lines
               // read-only) above the new additions, not just what's being added.
-              items: (existingOrder.order_items ?? []).map((it) => ({
+              // #241: consolidated — same (product, unit, price) reads as one
+              // line no matter how many submissions built it.
+              items: consolidateItems(existingOrder.order_items ?? [], (it) =>
+                consolidationKey(
+                  it.product_id,
+                  it.product_units?.label ?? "",
+                  it.unit_price_cents,
+                ),
+              ).map((it) => ({
                 id: it.id,
                 name: it.products?.name ?? "(item)",
                 unitLabel: it.product_units?.label ?? "",
