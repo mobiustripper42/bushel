@@ -247,7 +247,7 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
         adminPage.waitForEvent("download"),
         adminPage.getByRole("button", { name: /download csv/i }).click(),
       ]);
-      expect(activeDl.suggestedFilename()).toBe(`bushel-orders-${thisWeek}.csv`);
+      expect(activeDl.suggestedFilename()).toBe(`bushel-orders-active-${thisWeek}.csv`);
       const activeText = await readDownloadText(activeDl);
       expect(activeText).toContain(TEST_CUSTOMERS.farmStand.name);
       expect(activeText).toContain(TEST_PRODUCTS.kale.name);

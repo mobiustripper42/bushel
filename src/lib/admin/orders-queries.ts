@@ -23,9 +23,14 @@ export const ORDER_STATUSES: OrderStatus[] = [
 
 // DEC-041: the open-order identity set. A customer has at most one order in
 // these statuses (partial unique index orders_one_open_per_customer); a
-// terminal order (picked_up/delivered) drops out and frees a new one. Keep
-// this list identical to the index predicate in the DEC-041 migration.
+// terminal order drops out and frees a new one. Keep this list identical to
+// the index predicate in the DEC-041 migration.
 export const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "confirmed", "ready"];
+
+// The complement — every status is in exactly one of these two sets, so an
+// order can never fall out of both admin views (DEC-045). isTerminalStatus
+// and the Fulfilled-view filter both derive from this single list.
+export const TERMINAL_ORDER_STATUSES: OrderStatus[] = ["picked_up", "delivered"];
 
 // The no-regress auto-advance rule for confirm-sends (DEC-035): sending the
 // confirmation text moves a new order to confirmed, but must never regress a
@@ -40,7 +45,7 @@ export function statusAfterConfirmSend(current: OrderStatus): OrderStatus {
 // next submission creates a fresh order. Takes raw text because orders.status
 // is app-enforced text in the DB (DEC-010) — customer-side reads arrive untyped.
 export function isTerminalStatus(status: string): boolean {
-  return status === "picked_up" || status === "delivered";
+  return (TERMINAL_ORDER_STATUSES as string[]).includes(status);
 }
 
 // DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked_up | delivered).
@@ -140,6 +145,22 @@ export async function listFulfilledOrders(): Promise<OrderRow[]> {
   return queryOrders({ terminalOnly: true });
 }
 
+// Bare row counts for the orders-page tab chips — the view NOT being
+// displayed only needs its number, not the full joined fetch (Fulfilled
+// grows without bound; its full fetch shouldn't ride along on every
+// Active-view load).
+export async function countOrdersByStatus(
+  statuses: OrderStatus[],
+): Promise<number> {
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .in("status", statuses);
+  if (error) throw new Error(`countOrdersByStatus: ${error.message}`);
+  return count ?? 0;
+}
+
 async function queryOrders(filter: {
   weekOf?: string;
   activeOnly?: boolean;
@@ -164,7 +185,7 @@ async function queryOrders(filter: {
   if (filter.activeOnly)
     ordersQuery = ordersQuery.in("status", OPEN_ORDER_STATUSES);
   if (filter.terminalOnly)
-    ordersQuery = ordersQuery.in("status", ["picked_up", "delivered"]);
+    ordersQuery = ordersQuery.in("status", TERMINAL_ORDER_STATUSES);
 
   const { data, error } = await ordersQuery;
   if (error) throw new Error(`queryOrders: ${error.message}`);

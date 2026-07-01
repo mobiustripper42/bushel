@@ -1,5 +1,8 @@
 import { OrdersPage } from "@/components/admin/orders-page";
 import {
+  OPEN_ORDER_STATUSES,
+  TERMINAL_ORDER_STATUSES,
+  countOrdersByStatus,
   currentWeekOf,
   listActiveOrders,
   listFulfilledOrders,
@@ -23,22 +26,24 @@ export default async function OrdersRoute({
   const params = await searchParams;
   const view = resolveView(params.view);
 
-  // Both lists fetched so the tab counts are always live. Fine at this
-  // scale (single-digit customers, weekly cadence); revisit with pagination
-  // if Fulfilled ever grows past a few hundred rows.
-  const [activeOrders, fulfilledOrders, harvestSheetToken] = await Promise.all([
-    listActiveOrders(),
-    listFulfilledOrders(),
+  // Full fetch for the displayed view only; the other tab just needs its
+  // count (Fulfilled grows without bound — its joined fetch shouldn't ride
+  // along on every Active-view load).
+  const [orders, otherCount, harvestSheetToken] = await Promise.all([
+    view === "active" ? listActiveOrders() : listFulfilledOrders(),
+    countOrdersByStatus(
+      view === "active" ? TERMINAL_ORDER_STATUSES : OPEN_ORDER_STATUSES,
+    ),
     getFulfillmentToken(),
   ]);
 
   return (
     <OrdersPage
-      orders={view === "active" ? activeOrders : fulfilledOrders}
+      orders={orders}
       view={view}
       weekOf={currentWeekOf()}
-      activeCount={activeOrders.length}
-      fulfilledCount={fulfilledOrders.length}
+      activeCount={view === "active" ? orders.length : otherCount}
+      fulfilledCount={view === "fulfilled" ? orders.length : otherCount}
       harvestSheetToken={harvestSheetToken}
     />
   );

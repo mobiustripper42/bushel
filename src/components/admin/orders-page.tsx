@@ -123,11 +123,13 @@ export function OrdersPage({ orders, view, weekOf, activeCount, fulfilledCount, 
             </svg>
             Harvest sheet
           </a>
-          {/* Export ships whatever view is on screen; a fulfilled export gets
-              a distinct filename so it can't be mistaken for the week's book. */}
+          {/* Export ships whatever view is on screen. Both filenames carry
+              the view name — under DEC-045 neither view is week-scoped, so a
+              bare week in the filename would claim a scope the data doesn't
+              have. weekOf just stamps when the export was cut. */}
           <ExportOrdersButton
             orders={sorted}
-            weekOf={view === "fulfilled" ? `fulfilled-${weekOf}` : weekOf}
+            filenameLabel={`${view}-${weekOf}`}
           />
         </div>
       </div>

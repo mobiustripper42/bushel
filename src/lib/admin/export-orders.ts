@@ -110,6 +110,6 @@ export function toTsv(orders: OrderRow[]): string {
     .join("\n");
 }
 
-export function csvFilename(weekOf: string): string {
-  return `bushel-orders-${weekOf}.csv`;
+export function csvFilename(label: string): string {
+  return `bushel-orders-${label}.csv`;
 }

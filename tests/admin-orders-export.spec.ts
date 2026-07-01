@@ -229,7 +229,7 @@ test.describe("admin orders export — UI", () => {
       page.waitForEvent("download"),
       page.getByRole("button", { name: /download csv/i }).click(),
     ]);
-    expect(download.suggestedFilename()).toBe(`bushel-orders-${thisWeek}.csv`);
+    expect(download.suggestedFilename()).toBe(`bushel-orders-active-${thisWeek}.csv`);
     const stream = await download.createReadStream();
     let text = "";
     for await (const chunk of stream) text += chunk.toString();
