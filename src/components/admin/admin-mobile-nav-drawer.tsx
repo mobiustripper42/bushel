@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { signOut } from "@/actions/sign-out";
+import { VersionTag } from "@/components/VersionTag";
 
 export type MobileNavItem = {
   href: string;
@@ -134,6 +135,7 @@ export function AdminMobileNavDrawer({
               {isOrderingOpen ? "Open for orders" : "Closed"}
             </div>
           </div>
+          <VersionTag className="admin-mobile-version" />
           <form action={signOut} className="admin-mobile-signout-form">
             <button type="submit" className="admin-mobile-signout">
               Sign out
