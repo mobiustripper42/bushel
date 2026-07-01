@@ -39,7 +39,8 @@ function itemsPreview(items: OrderRowData["items"]): string {
 }
 
 // Collapsed rows show only the chip (#192). The advance + send controls live
-// in OrderActions, rendered under the chip when the row is expanded.
+// in OrderActions, rendered in the detail grid's third column when the row
+// is expanded.
 function StatusChip({ status }: { status: OrderStatus }) {
   if (status === "new") return <span className="pill pill-new">New</span>;
   if (status === "confirmed")
@@ -114,16 +115,11 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
         <td className="col-o-total">
           <div className="ord-total mono">{formatMoney(view.totalCents)}</div>
         </td>
-        <td className="col-o-status" onClick={(e) => e.stopPropagation()}>
+        <td className="col-o-status">
           <div className="status-stack">
             <StatusChip status={view.status} />
-            {isOpen && (
-              <OrderActions
-                order={view}
-                onAdvance={handleAdvance}
-                pending={pending}
-              />
-            )}
+            {/* Advance errors surface here (not in the detail panel) so a
+                failed advance stays visible even after the row collapses. */}
             {error && (
               <div className="ord-row-error" role="alert">
                 {error}
@@ -133,9 +129,22 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
         </td>
       </tr>
       {isOpen && (
-        <tr className="ord-detail-row">
+        <tr className="ord-detail-row" data-order-id={order.id}>
           <td colSpan={7}>
-            <OrderDetail order={view} />
+            {/* Action stack renders as the detail grid's third column so its
+                top lines up with Line items / Fulfillment — parking it under
+                the chip stretched the whole row and left the detail floating
+                below a band of dead space. */}
+            <OrderDetail
+              order={view}
+              actions={
+                <OrderActions
+                  order={view}
+                  onAdvance={handleAdvance}
+                  pending={pending}
+                />
+              }
+            />
           </td>
         </tr>
       )}

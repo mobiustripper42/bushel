@@ -92,11 +92,12 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
 
     const row = adminPage.locator(`tr.ord-row[data-order-id="${orderId}"]`);
     await expect(row).toHaveAttribute("data-status", "new");
-    // #192: advance buttons live in the expanded row — open it first.
+    // #192: advance buttons live in the expanded detail row — open it first.
     await row.locator(".col-o-cust").click();
+    const detailRow = adminPage.locator(`tr.ord-detail-row[data-order-id="${orderId}"]`);
 
     // new → ready
-    await row.getByRole("button", { name: /mark ready/i }).click();
+    await detailRow.getByRole("button", { name: /mark ready/i }).click();
     await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
     await expect
       .poll(async () => {
@@ -106,7 +107,7 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
       .toBe("ready");
 
     // ready → delivered (farmStand defaults to delivery)
-    const deliveredBtn = row.getByRole("button", { name: /delivered/i });
+    const deliveredBtn = detailRow.getByRole("button", { name: /delivered/i });
     await expect(deliveredBtn).toBeEnabled();
     await deliveredBtn.click();
     await expect(row).toHaveAttribute("data-status", "delivered", { timeout: 5000 });

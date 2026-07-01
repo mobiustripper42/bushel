@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { OrderRow as OrderRowData } from "@/lib/admin/orders-queries";
 
 function formatMoney(cents: number): string {
@@ -13,7 +15,16 @@ function fmtQty(n: number): string {
   return n.toFixed(2).replace(/\.?0+$/, "");
 }
 
-export function OrderDetail({ order }: { order: OrderRowData }) {
+export function OrderDetail({
+  order,
+  actions,
+}: {
+  order: OrderRowData;
+  // The per-order action stack (#192), rendered as the grid's third column
+  // so its top aligns with Line items / Fulfillment. Owned by OrderRow —
+  // advance state and error handling live there.
+  actions?: ReactNode;
+}) {
   return (
     <div className="ord-detail">
       <div className="ord-detail-grid">
@@ -138,6 +149,10 @@ export function OrderDetail({ order }: { order: OrderRowData }) {
             </div>
           )}
         </div>
+
+        {actions && (
+          <div className="ord-detail-section ord-detail-actions">{actions}</div>
+        )}
       </div>
     </div>
   );

@@ -19,6 +19,12 @@ async function expandRow(row: Locator): Promise<void> {
   await row.locator(".col-o-cust").click();
 }
 
+// The action stack lives in the expanded detail row (third grid column),
+// not the ord-row's status cell — locate buttons through the detail row.
+function detailRowFor(row: Locator, orderId: string): Locator {
+  return row.page().locator(`tr.ord-detail-row[data-order-id="${orderId}"]`);
+}
+
 test.describe("admin orders list", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
@@ -122,7 +128,7 @@ test.describe("admin orders list", () => {
 
     const sb = admin();
 
-    await row.getByRole("button", { name: /mark ready/i }).click();
+    await detailRowFor(row, orderId).getByRole("button", { name: /mark ready/i }).click();
     await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
     // Wait for first transition to commit to DB before chaining the next click.
     // useTransition + revalidatePath can swallow a second click while the first
@@ -137,7 +143,7 @@ test.describe("admin orders list", () => {
       )
       .toBe("ready");
 
-    const deliveredBtn = row.getByRole("button", { name: /delivered/i });
+    const deliveredBtn = detailRowFor(row, orderId).getByRole("button", { name: /delivered/i });
     await expect(deliveredBtn).toBeEnabled();
     await deliveredBtn.click();
     await expect(row).toHaveAttribute("data-status", "delivered", { timeout: 5000 });
@@ -176,7 +182,7 @@ test.describe("admin orders list", () => {
     await expect(row.locator(".pill-confirmed")).toHaveText("Confirmed");
     await expandRow(row);
 
-    await row.getByRole("button", { name: /mark ready/i }).click();
+    await detailRowFor(row, orderId).getByRole("button", { name: /mark ready/i }).click();
     await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
     await expect(row.locator(".pill-ready")).toHaveText("Ready");
   });
@@ -197,8 +203,8 @@ test.describe("admin orders list", () => {
     await expandRow(row);
 
     // Pickup orders show the "Mark picked up" advance button, not "Delivered".
-    await expect(row.getByRole("button", { name: /delivered/i })).toHaveCount(0);
-    await row.getByRole("button", { name: /picked up/i }).click();
+    await expect(detailRowFor(row, orderId).getByRole("button", { name: /delivered/i })).toHaveCount(0);
+    await detailRowFor(row, orderId).getByRole("button", { name: /picked up/i }).click();
     await expect(row).toHaveAttribute("data-status", "picked_up", { timeout: 5000 });
 
     // DB confirmation
@@ -243,18 +249,20 @@ test.describe("admin orders list", () => {
     // Collapsed: chip only, no action stack.
     const pickupRow = page.locator(`tr.ord-row[data-order-id="${pickupId}"]`);
     await expect(pickupRow.locator(".pill-new")).toHaveText("New");
-    await expect(pickupRow.locator(".ord-actions")).toHaveCount(0);
+    // No detail row at all while collapsed, and no action stack anywhere.
+    await expect(detailRowFor(pickupRow, pickupId)).toHaveCount(0);
+    await expect(page.locator(".ord-actions")).toHaveCount(0);
 
     // Pickup order expanded → has a Pickup reminder send action.
     await expandRow(pickupRow);
-    const pickupActions = pickupRow.locator(".ord-actions");
+    const pickupActions = detailRowFor(pickupRow, pickupId).locator(".ord-actions");
     await expect(pickupActions).toBeVisible();
     await expect(pickupActions.getByText("Pickup reminder")).toBeVisible();
 
     // Delivery order expanded → Confirm + a Delivery reminder (#193), not Pickup.
     const deliveryRow = page.locator(`tr.ord-row[data-order-id="${deliveryId}"]`);
     await expandRow(deliveryRow);
-    const deliveryActions = deliveryRow.locator(".ord-actions");
+    const deliveryActions = detailRowFor(deliveryRow, deliveryId).locator(".ord-actions");
     await expect(deliveryActions.getByText("Confirm order")).toBeVisible();
     await expect(deliveryActions.getByText("Delivery reminder")).toBeVisible();
     await expect(deliveryActions.getByText("Pickup reminder")).toHaveCount(0);
@@ -310,7 +318,7 @@ test.describe("admin orders list", () => {
     await expect(detail.locator(".ord-li-name")).toContainText("Honey");
 
     // (d) The expanded action stack's advance button is ≥44px tall (WCAG 2.5.5).
-    const advanceBtn = firstRow.getByRole("button", { name: /mark ready/i });
+    const advanceBtn = detailRowFor(firstRow, reconId).getByRole("button", { name: /mark ready/i });
     const box = await advanceBtn.boundingBox();
     expect(box, "Status-advance button should be visible").not.toBeNull();
     expect(box!.height).toBeGreaterThanOrEqual(44);
