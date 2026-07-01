@@ -757,7 +757,9 @@ export function OrderForm({
                 {addMode && existingOrder ? (
                   <ExistingItemsGroup items={existingOrder.items} />
                 ) : null}
-                {addMode ? <div className="rail-adding-head">Adding now</div> : null}
+                {addMode && existingOrder && existingOrder.items.length > 0 ? (
+                  <div className="rail-adding-head">Adding now</div>
+                ) : null}
                 {lineCount === 0 ? (
                   <div className="rail-empty">
                     Nothing selected yet. Tap <span className="mono">+</span> on
@@ -831,7 +833,9 @@ export function OrderForm({
               {addMode && existingOrder ? (
                 <ExistingItemsGroup items={existingOrder.items} />
               ) : null}
-              {addMode ? <div className="rail-adding-head">Adding now</div> : null}
+              {addMode && existingOrder && existingOrder.items.length > 0 ? (
+                <div className="rail-adding-head">Adding now</div>
+              ) : null}
               {lineCount === 0 ? (
                 <div className="rail-empty">
                   Nothing selected yet. Tap <span className="mono">+</span> on
@@ -890,8 +894,13 @@ export function OrderForm({
       <div className={"sticky-bar" + (lineCount > 0 ? " is-active" : "")}>
         <div className="sticky-summary">
           <div className="sticky-count">
+            {addMode ? "Adding " : ""}
             {itemCount} item{itemCount !== 1 ? "s" : ""}
           </div>
+          {/* 9.1 — the sticky bar is scoped to the additions (its count is the
+              additions count + its button is "Review", not submit), so it keeps
+              the additions subtotal. The "Adding" label distinguishes it from
+              the summary card's grand total. */}
           <div className="sticky-total mono">${formatPrice(subtotalCents)}</div>
         </div>
         <button
