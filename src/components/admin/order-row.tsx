@@ -39,7 +39,8 @@ function itemsPreview(items: OrderRowData["items"]): string {
 }
 
 // Collapsed rows show only the chip (#192). The advance + send controls live
-// in OrderActions, rendered under the chip when the row is expanded.
+// in OrderActions, rendered in the detail grid's third column when the row
+// is expanded.
 function StatusChip({ status }: { status: OrderStatus }) {
   if (status === "new") return <span className="pill pill-new">New</span>;
   if (status === "confirmed")
@@ -114,9 +115,16 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
         <td className="col-o-total">
           <div className="ord-total mono">{formatMoney(view.totalCents)}</div>
         </td>
-        <td className="col-o-status" onClick={(e) => e.stopPropagation()}>
+        <td className="col-o-status">
           <div className="status-stack">
             <StatusChip status={view.status} />
+            {/* Advance errors surface here (not in the detail panel) so a
+                failed advance stays visible even after the row collapses. */}
+            {error && (
+              <div className="ord-row-error" role="alert">
+                {error}
+              </div>
+            )}
           </div>
         </td>
       </tr>
@@ -130,18 +138,11 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
             <OrderDetail
               order={view}
               actions={
-                <>
-                  <OrderActions
-                    order={view}
-                    onAdvance={handleAdvance}
-                    pending={pending}
-                  />
-                  {error && (
-                    <div className="ord-row-error" role="alert">
-                      {error}
-                    </div>
-                  )}
-                </>
+                <OrderActions
+                  order={view}
+                  onAdvance={handleAdvance}
+                  pending={pending}
+                />
               }
             />
           </td>

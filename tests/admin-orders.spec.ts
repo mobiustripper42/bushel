@@ -249,7 +249,9 @@ test.describe("admin orders list", () => {
     // Collapsed: chip only, no action stack.
     const pickupRow = page.locator(`tr.ord-row[data-order-id="${pickupId}"]`);
     await expect(pickupRow.locator(".pill-new")).toHaveText("New");
-    await expect(detailRowFor(pickupRow, pickupId).locator(".ord-actions")).toHaveCount(0);
+    // No detail row at all while collapsed, and no action stack anywhere.
+    await expect(detailRowFor(pickupRow, pickupId)).toHaveCount(0);
+    await expect(page.locator(".ord-actions")).toHaveCount(0);
 
     // Pickup order expanded → has a Pickup reminder send action.
     await expandRow(pickupRow);
