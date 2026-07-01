@@ -9,7 +9,7 @@ import {
   getOrderingScheduleStatus,
 } from "@/lib/customer/queries";
 import { lookupCustomerByToken } from "@/lib/customer/session";
-import { consolidateItems } from "@/lib/order-items";
+import { consolidateItems, consolidationKey } from "@/lib/order-items";
 import { weekOfLabel } from "@/lib/week";
 
 function formatPrice(cents: number): string {
@@ -78,9 +78,8 @@ export default async function ConfirmedPage({
 
   // #241: appends land as separate order_items rows per submission — fold
   // same (product, unit, price) into one receipt line.
-  const items = consolidateItems(
-    order.order_items ?? [],
-    (i) => `${i.product_id}|${i.product_units?.label ?? ""}|${i.unit_price_cents}`,
+  const items = consolidateItems(order.order_items ?? [], (i) =>
+    consolidationKey(i.product_id, i.product_units?.label ?? "", i.unit_price_cents),
   );
   const total = items.reduce(
     (sum, item) => sum + item.qty * item.unit_price_cents,

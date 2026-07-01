@@ -1,5 +1,5 @@
 // Admin order-list reads (Phase 5.1). Service-role client — admin only.
-import { consolidateItems } from "@/lib/order-items";
+import { consolidateItems, consolidationKey } from "@/lib/order-items";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { weekOfMondayNY } from "@/lib/week";
 
@@ -258,9 +258,8 @@ async function queryOrders(filter: {
       // (product, unit, price) into one line here so every consumer of
       // OrderRow (detail panel, items preview, packing slips, Wave export)
       // renders the consolidated order.
-      const consolidated = consolidateItems(
-        items,
-        (i) => `${i.productId}|${i.unitLabel}|${i.unitPriceCents}`,
+      const consolidated = consolidateItems(items, (i) =>
+        consolidationKey(i.productId, i.unitLabel, i.unitPriceCents),
       );
       const totalCents = consolidated.reduce(
         (s, i) => s + i.qty * i.unitPriceCents,
