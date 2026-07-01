@@ -2605,9 +2605,14 @@
   border-top: 1px dashed var(--leaf-100);
 }
 .ord-detail-grid {
-  display: grid; grid-template-columns: 1.2fr 1fr;
+  /* Third column is the per-order action stack (#192) — living here (not in
+     the row's status cell) keeps the collapsed-row height and lines the
+     stack's top up with Line items / Fulfillment. Width echoes .col-o-status
+     (200px) minus the cell padding so the buttons sit under the chip. */
+  display: grid; grid-template-columns: 1.2fr 1fr 186px;
   gap: 32px;
 }
+.ord-detail-actions { display: flex; flex-direction: column; gap: 8px; }
 .ord-detail-label {
   font-size: 0.7rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.08em;
@@ -2862,6 +2867,9 @@
     grid-template-columns: 1fr;
     gap: 20px;
   }
+  /* Card layout: keep the tap targets in thumb reach — actions render first
+     in the detail panel, directly under the card, items/fulfillment below. */
+  .ord-detail-actions { order: -1; }
   .ord-detail-list li {
     grid-template-columns: 28px 1fr auto;
     gap: 8px;

@@ -117,25 +117,33 @@ export function OrderRow({ order, isOpen, onToggle }: Props) {
         <td className="col-o-status" onClick={(e) => e.stopPropagation()}>
           <div className="status-stack">
             <StatusChip status={view.status} />
-            {isOpen && (
-              <OrderActions
-                order={view}
-                onAdvance={handleAdvance}
-                pending={pending}
-              />
-            )}
-            {error && (
-              <div className="ord-row-error" role="alert">
-                {error}
-              </div>
-            )}
           </div>
         </td>
       </tr>
       {isOpen && (
-        <tr className="ord-detail-row">
+        <tr className="ord-detail-row" data-order-id={order.id}>
           <td colSpan={7}>
-            <OrderDetail order={view} />
+            {/* Action stack renders as the detail grid's third column so its
+                top lines up with Line items / Fulfillment — parking it under
+                the chip stretched the whole row and left the detail floating
+                below a band of dead space. */}
+            <OrderDetail
+              order={view}
+              actions={
+                <>
+                  <OrderActions
+                    order={view}
+                    onAdvance={handleAdvance}
+                    pending={pending}
+                  />
+                  {error && (
+                    <div className="ord-row-error" role="alert">
+                      {error}
+                    </div>
+                  )}
+                </>
+              }
+            />
           </td>
         </tr>
       )}
