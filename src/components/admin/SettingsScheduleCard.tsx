@@ -135,7 +135,7 @@ export function SettingsScheduleCard({ schedule }: { schedule: ScheduleRow }) {
           <div className="set-row">
             <div className="set-row-key">
               Default close
-              <small>When the order form locks. Customers see a "closed" state after this.</small>
+              <small>When the order form locks. Customers see a &ldquo;closed&rdquo; state after this.</small>
             </div>
             <div className="set-row-val">
               <select

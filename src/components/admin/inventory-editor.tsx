@@ -110,6 +110,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   // pulls in the other tab's changes. Accepted tradeoff for single-
   // admin V1.
   const dirtyRef = useRef(dirty);
+  // eslint-disable-next-line react-hooks/refs -- intentional: mirror latest `dirty` into a ref read only inside the effect below (guards a mid-edit resync); not used during render.
   dirtyRef.current = dirty;
   // Only adopt fresh server data when it actually differs from our current
   // baseline. This guards two cases that would otherwise clobber an edit:
@@ -123,6 +124,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   // A genuine change (router.refresh() after save / prepopulate, or a
   // concurrent-tab write) differs in content and resyncs as before.
   const baselineRef = useRef(baseline);
+  // eslint-disable-next-line react-hooks/refs -- intentional: mirror latest `baseline` into a ref read only inside the effect below (content-diff guard); not used during render.
   baselineRef.current = baseline;
   useEffect(() => {
     if (dirtyRef.current) return;

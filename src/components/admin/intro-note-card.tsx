@@ -25,8 +25,10 @@ export function IntroNoteCard({ initialValue }: IntroNoteCardProps) {
   // edits when the user hasn't typed anything new — `saved` is captured in
   // a ref so the effect can be tied to `initialValue` alone.
   const savedRef = useRef(saved);
+  // eslint-disable-next-line react-hooks/refs -- intentional: mirror latest `saved` into a ref so the effect can key on `initialValue` alone; not read during render.
   savedRef.current = saved;
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: prop-driven resync of server state, not a cascading render loop.
     setSaved(initialValue);
     setValue((v) => (v === savedRef.current ? initialValue : v));
   }, [initialValue]);

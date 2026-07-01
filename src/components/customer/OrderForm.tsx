@@ -124,6 +124,7 @@ function Stepper({
 
   useEffect(() => {
     valueRef.current = value;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: mirror the numeric `value` prop into the editable draft string when it changes upstream.
     setDraft(value.toString());
   }, [value]);
 
@@ -331,6 +332,7 @@ export function OrderForm({
   // is harmless: itemsWithQty filters against the live product list and unitFor
   // falls back to the first active unit.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- intentional: one-time mount hydration of draft state from sessionStorage (client-only, SSR-safe); each field is an independent restore, not a cascading render. */
     try {
       const raw = sessionStorage.getItem(draftKey);
       if (raw) {
@@ -346,6 +348,7 @@ export function OrderForm({
       // Corrupt/unreadable draft — start fresh.
     }
     setHydrated(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
     // Mount-only; draftKey is stable for the component's life (customer.id).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
