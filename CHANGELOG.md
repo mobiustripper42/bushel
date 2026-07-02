@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.20] - 2026-06-11
+- PR #214: #132 reject orders against sold-out (qty=0) products (DEC-036)
+
 ## [0.9.19] - 2026-06-11
 - PR #213: #207 Hide/Show inventory items: soft-delete for products
 
