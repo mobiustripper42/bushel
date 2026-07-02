@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.15] - 2026-06-06
+- PR #205: auto-sync downstream — 2026-06-06
+
 ## [0.9.14] - 2026-06-05
 - PR #204: Add delivery reminder send mode + template (#193, amends DEC-014)
 
