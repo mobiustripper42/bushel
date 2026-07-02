@@ -1,5 +1,64 @@
 # Retrospectives
 
+## Phase 9 — 2026-07-02 — Open-Order Pivot
+
+**Points:** 25 / 21 planned (119% — +2 tasks/+4 pts discovered in preview testing)
+**Span:** 9.2 days (2026-06-22 → 2026-07-02)
+**Throughput:** 19.1 pts/calendar-week ← headline (every close landed in ONE ISO week; Session 41 alone: 22 pts / 7 PRs in ~6.5h)
+**Estimate calibration:** 0 tasks re-estimated, net drift 0 pts
+**Sessions:** 3   **PRs merged:** 13
+**Issues:** 10 created (8 at phase start, 2 mid-phase), 10 closed, 0 moved
+
+### Phase throughput line
+| Phase | Date | Points | Span(d) | Throughput | Re-est'd | Net drift | Sessions | PRs |
+|-------|------|--------|---------|------------|----------|-----------|----------|-----|
+| 9 | 2026-07-02 | 25 | 9.2 | 19.1 pts/wk | 0 | 0 | 3 | 13 |
+
+### What worked
+- "fable was abke to bundle tasks."
+
+### What didn't
+- "harvest sheet design is tough for me to articulate what i want"
+
+### Changes for next phase
+- "i dunno"
+
+### Scope changes
+- Added mid-phase (both discovered by Eric testing the preview): #235 harvest sheet print readability (2, became 9.7), #241 consolidate duplicate order lines (2).
+- Filed to backlog rather than absorbed: #245 export subset of fulfilled, #246 delete/archive fulfilled, #248 remove prepopulate + dead code.
+- Still pending at close: **production cutover** (prod `db push` truncates live orders per DEC-041 — Eric's quiet-minute call, DB before code, then `/promote-production`).
+
+### PM read
+Twenty-five points in 9.2 calendar days is 19.1 pts/week, but the shape matters more than the rate: Session 39 was zero-point housekeeping (infra gate, the dangling #218), then a week of nothing, then all ten closes landed in roughly 48 hours across Sessions 40 and 41. Under DEC-S026 we quote throughput, not h/pt, so no blending with the Phase 3–7 numbers — but for texture, Session 41 alone shipped 22 points and 7 PRs in one ~6.5-hour window, which is Phase 6's S27 record shape with 50% more mass. Some of that is Fable 5 showing up mid-phase; some is that DEC-040–045 were written before any code was, so the burst had a complete spec to burn through. A footnote this retro can't dodge: it's also closing Phase 8 by autopsy — 31 points, no user notes captured, 40 unbumped PRs since v0.9.0. That phase ended by fiat when Phase 9 planning started, which is exactly the "no natural boundary" failure the Phase 6 read predicted. The bump ledger gets squared this retro; the missing notes don't.
+
+Scope was the cleanest ledger since Phase 4: zero re-estimates, zero net drift, and the two mid-phase adds (+4 pts — #235 harvest print, #241 line consolidation) both came from Eric clicking the preview, not from ideation. That's the right kind of scope growth — discovered by use, filed as issues, pointed, shipped. Equally telling is what didn't get absorbed: #245, #246, #248 went to the backlog instead of riding the momentum, and the review-deferred items (per-product oversold summing, test-reset helper) got named and parked rather than gold-plated. The one open scope item is the big one: the DEC-041 cutover has hit dev and preview but not prod. Until that push, Phase 9's headline feature is shipped everywhere except where the customers are.
+
+On "fable was abke to bundle tasks" — agreed, and it's the load-bearing fact of the phase. Bundle A (#239) was the order-identity re-key shipped as one 11-point, 4-issue PR: migration, place_order rewrite, pgTAP rewrite, customer UX, one review pass — no stitching seams. That's the CLAUDE.md splitting doctrine ("don't split a coherent 8") validated at 11. But give the decision records their cut: bundling worked because six DECs existed before the first branch was cut. Bundle-sized work on an underspecified task would have been a bundle-sized mess. On the harvest sheet — "tough for me to articulate what i want" is real, but the fix that actually worked wasn't better articulation: it was three rounds of rendered screenshots plus the @ui-reviewer pass you asked for. Print is the hardest surface for show-don't-tell (nobody previews a laser print on a phone), so budget for the already-predicted polish round after Annabel has used it for real. "i dunno" for changes is honest; the change candidates are already sitting in the session file regardless.
+
+Pattern worth naming from the trenches: things not gated by CI rot silently — tsc was at 8 errors and lint at 42 purely because neither ran in CI, and the same phase that found the debt also closed the hole (#238 cleanup, #249 gates). That's the second instance of the genre after the merge-through-red episode in Phase 5; the general rule is now well-earned. Also: @code-review caught a real behavioral bug on nearly every PR this phase (closed-shell hiding the open order, the sticky-bar total mismatch, the advance-error vanishing on collapse) — at this PR velocity it's the only reviewer keeping pace, which is an argument for keeping it wired in, not evidence it can be skipped.
+
+For next phase: the prod cutover is the single risk that matters — `db push` truncates live orders by design, so it's DB-then-code in a quiet minute, and it is not reversible. Do it before starting new work that assumes the new model everywhere. Second, reconcile DEC-S029 — CLAUDE.md still says Fable is disabled while Fable just shipped your best session; the doc should match the tool that's actually running. And don't let the Phase 8 pattern repeat: if the next phase runs long, a mid-phase checkpoint is cheaper than another retro-by-archaeology.
+
+## Phase 8 — 2026-06-12 — Post-go-live feature backlog (continued) *(retro run late, 2026-07-02)*
+
+**Points:** 31 labeled (opening backlog 8 pts; rolling phase, scope grew by use) — #195/#200 (harvest sheet pair) carried no `points:` label and are uncounted
+**Span:** 25.5 days (2026-05-18 → 2026-06-12)
+**Throughput:** 8.5 pts/calendar-week (bursty — all closes in 2 ISO weeks ≈ 15.5 pts/active-week)
+**Estimate calibration:** 0 re-estimates recorded, net drift 0 (rolling phase — pointed at creation)
+**Sessions:** 4 (post-Phase-7-close window)   **PRs merged:** 23
+**Issues:** 14 closed, 0 moved
+
+### Phase throughput line
+| Phase | Date | Points | Span(d) | Throughput | Re-est'd | Net drift | Sessions | PRs |
+|-------|------|--------|---------|------------|----------|-----------|----------|-----|
+| 8 | 2026-06-12 | 31 | 25.5 | 8.5 pts/wk | 0 | 0 | 4 | 23 |
+
+### What worked / didn't / changes
+Not captured — the phase ended without ceremony when Phase 9 planning started (2026-06-22), and this retro ran three weeks later alongside Phase 9's. Eric: "nothing for 8." The version-bump ledger (23 PRs) was squared at the same retro.
+
+### Shipped
+Send-Texts rework + Confirmed status + per-order action stack (#188–#193), Harvest & Pack Sheet (#195/#200), hide/show inventory (#207), DEC-036 sold-out reject (#132), cart persistence (#149), product_units strictly authoritative (#212), changeable base unit (#208), PWA admin install (#170), prepopulate UAT (#134).
+
 ## Phase 7 — 2026-05-28 — Post-go-live feature backlog
 
 **Sessions:** 7 (S28–S34)

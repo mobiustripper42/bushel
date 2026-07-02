@@ -37,6 +37,15 @@ Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 
 ¹ Phase 4 + Phase 5 dev_time/dev-velocity numbers are artifacts of DEC-013's single-PR formula. Multiple PRs in one session attribute most coding to "review_time"; the honest forecast number is the active-time velocity (0.27–0.35 h/pt). Issue worth resolving at seeds-template level — multi-PR session math is unsolved.
 
+**From Phase 8 on (DEC-S026):** velocity = throughput (points per calendar week) + estimate calibration, straight from GitHub issue dates + `points:` labels. The h/pt rows above are a retired metric on a different denominator — don't blend.
+
+| Phase | Points | Span (d) | Throughput | Re-est'd | Net drift | Sessions |
+|-------|--------|----------|------------|----------|-----------|----------|
+| 8     | 31²    | 25.5     | 8.5 pts/wk (2 active wks ≈ 15.5) | 0 | 0 | 4 |
+| 9     | 25     | 9.2      | 19.1 pts/wk (1 active wk) | 0 | 0 (+2 tasks/+4 pts added mid-phase) | 3 |
+
+² #195/#200 (harvest sheet pair) carried no `points:` label — not counted.
+
 ---
 
 ## v1 Total
@@ -216,6 +225,8 @@ Rolling phase, continuation of the Phase 7 model: no fixed scope, no end date. T
 
 Forecast at 0.80 active h/pt (Phase 7 headline) → ~6.4h active for the opening backlog. New work lands as `phase:8` issues; promote from [`docs/OPEN_ITEMS.md`](OPEN_ITEMS.md) when triggers fire.
 
+**Closed 2026-06-12 (retro run late, 2026-07-02, alongside Phase 9's — the phase ended without ceremony when Phase 9 planning started).** 14 issues closed, 31 labeled pts (+#195/#200 unlabeled — harvest sheet, pointed nowhere): Send-Texts rework + Confirmed status + per-order action stack (#188–#193), Harvest & Pack Sheet (#195/#200), hide/show inventory #207, DEC-036 sold-out reject #132, cart persistence #149, product_units authoritative #212, changeable base unit #208, PWA install #170, prepopulate UAT #134. Throughput 8.5 pts/calendar-wk over 25.5d (bursty: everything closed in 2 ISO weeks ≈ 15.5 pts/active-wk). 23 PRs merged. Full retro in [`RETROSPECTIVES.md`](RETROSPECTIVES.md).
+
 ---
 
 ## Phase 9 — Open-Order Pivot (21 pts → ~17 h active @ 0.80 h/pt)
@@ -230,14 +241,18 @@ Re-keys order identity from the week to the open order, kills the scheduled-clos
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 9.1 | Merge #211/#218 additive orders + whole-order summary + "Update order" copy | 2 | [#224](https://github.com/mobiustripper42/bushel/issues/224) |
-| 9.2 | Disable scheduled-close cron — always-open (DEC-040) | 1 | [#225](https://github.com/mobiustripper42/bushel/issues/225) |
-| 9.3a | Open-order identity — partial unique index + `place_order` re-key (DEC-041) | 5 | [#226](https://github.com/mobiustripper42/bushel/issues/226) |
-| 9.3b | Customer open-order UX — editable open order, terminal read-only (DEC-042) | 3 | [#227](https://github.com/mobiustripper42/bushel/issues/227) |
-| 9.4 | Per-unit editable SKU; remove `description` from Wave export (DEC-043) | 3 | [#228](https://github.com/mobiustripper42/bushel/issues/228) |
-| 9.5 | BUG: canonicalize `order_status` to `picked_up` (DEC-044) | 2 | [#229](https://github.com/mobiustripper42/bushel/issues/229) |
-| 9.6 | Inventory hidden-state visual — "Hidden" pill + accent bar | 2 | [#230](https://github.com/mobiustripper42/bushel/issues/230) |
-| 9.8 | Admin orders list — drop week filter, active + past-orders view (DEC-045) | 3 | [#231](https://github.com/mobiustripper42/bushel/issues/231) |
+| 9.1 | Merge #211/#218 additive orders + whole-order summary + "Update order" copy | 2 | [x] [#224](https://github.com/mobiustripper42/bushel/issues/224) |
+| 9.2 | Disable scheduled-close cron — always-open (DEC-040) | 1 | [x] [#225](https://github.com/mobiustripper42/bushel/issues/225) |
+| 9.3a | Open-order identity — partial unique index + `place_order` re-key (DEC-041) | 5 | [x] [#226](https://github.com/mobiustripper42/bushel/issues/226) |
+| 9.3b | Customer open-order UX — editable open order, terminal read-only (DEC-042) | 3 | [x] [#227](https://github.com/mobiustripper42/bushel/issues/227) |
+| 9.4 | Per-unit editable SKU; remove `description` from Wave export (DEC-043) | 3 | [x] [#228](https://github.com/mobiustripper42/bushel/issues/228) |
+| 9.5 | BUG: canonicalize `order_status` to `picked_up` (DEC-044) | 2 | [x] [#229](https://github.com/mobiustripper42/bushel/issues/229) |
+| 9.6 | Inventory hidden-state visual — "Hidden" pill + accent bar | 2 | [x] [#230](https://github.com/mobiustripper42/bushel/issues/230) |
+| 9.7 | Harvest & Pack Sheet — print readability (added during P9, pre-retro) | 2 | [x] [#235](https://github.com/mobiustripper42/bushel/issues/235) |
+| 9.8 | Admin orders list — drop week filter, active + past-orders view (DEC-045) | 3 | [x] [#231](https://github.com/mobiustripper42/bushel/issues/231) |
+| — | Consolidate duplicate order lines across all views (DEC-039 appends) — *Added during P9 retro* | 2 | [x] [#241](https://github.com/mobiustripper42/bushel/issues/241) |
+
+**Closed 2026-07-02 (retro):** 25 pts, 10 issues, span 9.2d — throughput 19.1 pts/calendar-wk (single active ISO week). 13 PRs merged in-window. Hard cutover applied to dev/preview; **production cutover pending** (Eric's quiet-minute call: prod `db push` → `/promote-production`, DB before code).
 
 DEC-039 (#218's additive-orders decision) lands in `DECISIONS.md` when 9.1 merges; DEC-040–045 are already written. Customer-facing order history (#136) stays in the backlog.
 
