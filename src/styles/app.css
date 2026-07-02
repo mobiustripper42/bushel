@@ -344,14 +344,9 @@
   padding: 0 12px 8px !important;
   border-top: 0 !important;
 }
-.field-desc-input {
-  background: var(--leaf-50);
-  border-color: var(--leaf-100);
-  font-style: italic;
-  font-size: 0.9rem;
-  color: var(--ink-700);
-}
-.field-desc-input:focus { background: var(--paper); border-color: var(--leaf-600); }
+/* Deliberately no overrides — the open description editor reads exactly
+   like the name field above it (Eric: the green/italic treatment made it
+   look like a different kind of field; it isn't). */
 
 /* ── Switch ─────────────────────────────────────────────── */
 .switch {
@@ -633,13 +628,28 @@
 .units-list-head,
 .units-row {
   display: grid;
-  /* label · conversion · price · SKU (DEC-043) · active · trash */
-  grid-template-columns: minmax(0, 1.4fr) 80px 95px minmax(0, 0.9fr) 52px 32px;
+  grid-template-columns: minmax(0, 1.4fr) 90px 100px 56px 36px;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
 }
-.units-col-sku .field-input { width: 100%; min-width: 0; }
+/* SKU (DEC-043) rides a full-width second line — Wave item numbers run
+   long, and squeezing them into a sixth column crushed the label field.
+   `order` places it after active/trash in auto-placement. */
+.units-col-sku {
+  grid-column: 1 / -1;
+  order: 9;
+  display: flex; align-items: center; gap: 8px;
+}
+.units-col-sku .field-input { flex: 1; min-width: 0; }
+.units-sku-tag {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  flex-shrink: 0;
+}
 .units-list-head {
   background: var(--cream);
   border-bottom: 1px solid var(--ink-200);
@@ -701,15 +711,6 @@
    under the input instead of crushing it. */
 @media (max-width: 480px) {
   .units-col-label { flex-wrap: wrap; }
-  /* Six columns don't fit a 375px drawer — SKU wraps to its own full-width
-     second line (order pushes it after active/trash in auto-placement);
-     the placeholder labels the field since the header cell is hidden. */
-  .units-list-head,
-  .units-row {
-    grid-template-columns: minmax(0, 1.4fr) 80px 95px 52px 32px;
-  }
-  .units-col-sku { grid-column: 1 / -1; order: 7; }
-  .units-list-head .units-col-sku { display: none; }
 }
 
 .units-col-conv .field-input:disabled,

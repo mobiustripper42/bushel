@@ -285,9 +285,6 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
                 Conversion
               </span>
               <span className="units-col-price">Price</span>
-              <span className="units-col-sku" title="Wave Item Number for this unit's invoice lines. Blank uses the generated slug.">
-                SKU
-              </span>
               <span className="units-col-active">Active</span>
               <span className="units-col-trash" />
             </div>
@@ -457,6 +454,12 @@ function UnitRow({
         </div>
       </div>
       <div className="units-col-sku">
+        <span
+          className="units-sku-tag"
+          title="Wave Item Number for this unit's invoice lines. Blank uses the generated slug."
+        >
+          SKU
+        </span>
         <input
           type="text"
           className="field-input"
