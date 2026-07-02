@@ -435,13 +435,6 @@ export type Database = {
           order_id: string
         }[]
       }
-      prepopulate_inventory_from_last_week: {
-        Args: never
-        Returns: {
-          added_qty: number
-          product_id: string
-        }[]
-      }
       set_base_unit: {
         Args: { p_new_base_unit_id: string; p_product_id: string }
         Returns: undefined

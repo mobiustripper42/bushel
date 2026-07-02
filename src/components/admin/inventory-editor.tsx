@@ -8,7 +8,6 @@ import { MetaPill, MetaRow } from "@/components/ui/meta-pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { SaveBar } from "@/components/ui/save-bar";
 import { InventoryRow, type InventoryRowState } from "@/components/admin/inventory-row";
-import { PrepopulateButton } from "@/components/admin/prepopulate-button";
 import { UnitsDrawer, type ProductUnitState } from "@/components/admin/units-drawer";
 import { saveInventory } from "@/actions/save-inventory";
 import { useUnsavedChangesGuard } from "@/lib/hooks/use-unsaved-changes-guard";
@@ -121,7 +120,7 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   //      old reference-only guard would fire setRows(initialRows) and drop a
   //      qty edit typed in the same tick — the local field draft survives, so
   //      the input shows the new value while the dirty count silently stays 0.
-  // A genuine change (router.refresh() after save / prepopulate, or a
+  // A genuine change (router.refresh() after save, or a
   // concurrent-tab write) differs in content and resyncs as before.
   const baselineRef = useRef(baseline);
   // eslint-disable-next-line react-hooks/refs -- intentional: mirror latest `baseline` into a ref read only inside the effect below (content-diff guard); not used during render.
@@ -273,7 +272,6 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
             {showHidden ? `Hide hidden (${hiddenCount})` : `Show hidden (${hiddenCount})`}
           </Button>
         )}
-        <PrepopulateButton />
         <Button
           variant="primary"
           dirty={dirty}

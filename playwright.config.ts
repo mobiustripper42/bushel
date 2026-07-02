@@ -42,7 +42,6 @@ export default defineConfig({
         "**/admin-alert-template.spec.ts",
         "**/admin-auth.spec.ts",
         "**/admin-orders-export.spec.ts",
-        "**/admin-prepopulate.spec.ts",
         "**/admin-settings.spec.ts",
         "**/admin-shell.spec.ts",
       ],

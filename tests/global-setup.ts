@@ -150,7 +150,7 @@ export default async function globalSetup() {
   if (unitsError)
     throw new Error(`product_units upsert failed: ${unitsError.message}`);
 
-  // Upsert test customers so customer-CRUD + prepopulate tests are self-contained.
+  // Upsert test customers so customer-CRUD tests are self-contained.
   // is_active defaults true; tests that deactivate must reset to true.
   const { error: customersError } = await adminClient.from("customers").upsert(
     [
