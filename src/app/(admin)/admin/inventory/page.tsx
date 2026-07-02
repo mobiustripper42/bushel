@@ -15,7 +15,7 @@ export default async function InventoryPage() {
       .order("name"),
     supabase
       .from("product_units")
-      .select("id, product_id, label, conversion_to_base, unit_price_cents, is_active, sort_order")
+      .select("id, product_id, label, conversion_to_base, unit_price_cents, is_active, sort_order, sku")
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("id"),
     supabase
@@ -89,6 +89,7 @@ export default async function InventoryPage() {
       unit_price_cents: u.unit_price_cents,
       is_active: u.is_active,
       sort_order: u.sort_order,
+      sku: u.sku,
     });
   }
 

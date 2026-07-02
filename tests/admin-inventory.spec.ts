@@ -229,6 +229,8 @@ test.describe("admin inventory", () => {
       const hidden = rowByName(page, "Test Carrots");
       await expect(hidden).toBeVisible();
       await expect(hidden).toHaveClass(/is-hidden/);
+      // #230: explicit Hidden pill, not texture alone.
+      await expect(hidden.locator(".pill-hidden")).toHaveText("Hidden");
 
       await hidden.getByRole("button", { name: /^Restore Test Carrots/ }).click();
       await expect(saveButton(page, 1)).toBeEnabled();

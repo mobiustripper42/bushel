@@ -314,6 +314,7 @@ export type Database = {
           is_active: boolean
           label: string
           product_id: string
+          sku: string | null
           slug: string
           sort_order: number | null
           unit_price_cents: number
@@ -326,6 +327,7 @@ export type Database = {
           is_active?: boolean
           label: string
           product_id: string
+          sku?: string | null
           slug: string
           sort_order?: number | null
           unit_price_cents: number
@@ -338,6 +340,7 @@ export type Database = {
           is_active?: boolean
           label?: string
           product_id?: string
+          sku?: string | null
           slug?: string
           sort_order?: number | null
           unit_price_cents?: number
