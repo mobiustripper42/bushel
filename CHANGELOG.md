@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.16] - 2026-07-02
+- PR #249: CI: typecheck + lint gates (#238 follow-up)
+
 ## [0.10.15] - 2026-07-02
 - PR #244: Bundle B: per-unit SKU + Wave export repoint (#228); inventory hidden-state visual (#230)
 
