@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.10] - 2026-07-01
+- PR #238: Clear tsc + eslint debt (restore zero-error typecheck/lint)
+
 ## [0.10.9] - 2026-07-01
 - PR #237: Show build VersionTag at the bottom of the admin sidebar
 
