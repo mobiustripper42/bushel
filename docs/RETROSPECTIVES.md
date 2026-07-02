@@ -100,7 +100,7 @@ Send-Texts rework + Confirmed status + per-order action stack (#188–#193), Har
 
 ### Scope changes
 - **4 issues moved to Phase 8:** #170 PWA admin install/push, #149 cart-cleared-on-rotation (non-repro), #134 prepopulate UAT, #132 oversell-at-qty=0 bug.
-- **7 parking-lot issues closed-not-built** (trigger-gated wishlist, per OPEN_ITEMS.md triage): #53 realtime inventory, #136 order history, #137 per-customer pricing, #138 min-delivery, #139 10DLC, #146 self-serve edits/cancellations, #174 product_units-authoritative refactor.
+- **7 parking-lot issues closed-not-built** (trigger-gated wishlist, per FUTURE_IDEAS.md triage): #53 realtime inventory, #136 order history, #137 per-customer pricing, #138 min-delivery, #139 10DLC, #146 self-serve edits/cancellations, #174 product_units-authoritative refactor.
 - **Multi-unit products epic shipped** (#135, #151–156 / 6.5a–f): migration, units sub-sheet, customer picker, fractional decrement, prefill, cross-cutting tests.
 
 ### PM read

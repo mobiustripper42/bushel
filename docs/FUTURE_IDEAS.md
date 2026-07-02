@@ -1,4 +1,4 @@
-# Open Items
+# Future Ideas
 
 Long-tail wishlist. **Not GitHub issues** — these are ideas with no committed work attached.
 
