@@ -3231,8 +3231,8 @@
   /* The DATE is the loudest thing on paper — every printout says "Harvest
      & Pack Sheet"; only the week + printed-at stamp tell this one from
      last week's copy on the same bench. */
-  .fr-week { font-size: 16pt; font-weight: 600; }
-  .fr-title { font-size: 13pt; }
+  .fr-week { font-size: 15pt; font-weight: 600; }
+  .fr-title { font-size: 12pt; }
   .fr-head { border-bottom-color: var(--ink-900); }
 
   /* Pick list: bigger near-black type (grays wash out on a laser printer),
@@ -3241,7 +3241,7 @@
   .fr-hv-list { grid-template-columns: max-content max-content max-content minmax(0, 1fr); }
   .fr-hv-line {
     padding: 5px 0 6px;
-    font-size: 12pt;
+    font-size: 11pt;
     border-bottom-color: var(--ink-300);
     padding-right: 24%;
   }
@@ -3253,9 +3253,9 @@
     align-self: center;
     margin-right: 4px;
   }
-  .fr-hv-qty { font-size: 13pt; }
-  .fr-hv-base { color: var(--ink-700); font-size: 11pt; }
-  .fr-hv-breakdown { color: var(--ink-700); font-size: 10pt; }
+  .fr-hv-qty { font-size: 12pt; }
+  .fr-hv-base { color: var(--ink-700); font-size: 10pt; }
+  .fr-hv-breakdown { color: var(--ink-700); font-size: 9pt; }
 
   /* Slips: same ink discipline as the pick list — ink-200 borders and
      ink-500 labels are near-invisible on a mono laser — plus a tick per
