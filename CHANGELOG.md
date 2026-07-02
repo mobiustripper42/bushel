@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.11] - 2026-06-04
+- PR #201: Harvest sheet: exclude picked-up / delivered orders (#200)
+
 ## [0.9.10] - 2026-06-04
 - PR #199: Add Confirmed order status + flow (#190, DEC-035)
 
