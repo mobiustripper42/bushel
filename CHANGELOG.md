@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.4] - 2026-06-02
+- PR #186: Migrate to seeds v4 — production-branch model (Phase 1: skill set + version)
+
 ## [0.9.3] - 2026-05-31
 - PR #185: auto-sync downstream 2026-05-31
 
