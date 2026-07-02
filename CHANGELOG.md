@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.11.0] - 2026-07-02 — Phase 9
+- 25 pts shipped across 3 sessions (throughput 19.1 pts/calendar-wk)
+- Open-order pivot (DEC-040–045); see `docs/RETROSPECTIVES.md`
+
 ## [0.10.17] - 2026-07-02
 - PR #247: #235 Harvest sheet: pick list reads like a receipt in print
 
