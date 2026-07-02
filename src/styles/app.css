@@ -3100,15 +3100,27 @@
 .fr-note { font-size: 0.86rem; color: var(--ink-500); margin-top: 2px; }
 .fr-empty { font-size: 0.95rem; color: var(--ink-500); margin-top: 10px; }
 
-/* harvest list */
-.fr-hv-grid { margin-top: 14px; columns: 2; column-gap: 40px; }
+/* harvest list — a real grid, not CSS masonry (#235): masonry's balanced
+   columns snake the reading order and let block heights drift, which is
+   exactly what made the printed pick list hard to scan. Row-major order +
+   a consistent right-hand qty column read like a receipt. */
+.fr-hv-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 40px;
+}
 .fr-hv-row {
   break-inside: avoid;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, auto);
+  column-gap: 16px;
+  align-items: start;
   padding: 10px 0 12px;
   border-bottom: 1px solid var(--ink-200);
-  margin-bottom: 2px;
 }
-.fr-hv-name { font-weight: 600; font-size: 1.02rem; margin-bottom: 4px; }
+.fr-hv-tick { display: none; }
+.fr-hv-name { font-weight: 600; font-size: 1.02rem; }
 .fr-hv-lines { display: flex; flex-direction: column; gap: 1px; }
 .fr-hv-unit {
   display: flex;
@@ -3180,7 +3192,7 @@
   .fr-meta { text-align: left; }
   .fr-title { font-size: 1.45rem; }
   .fr-section { margin-top: 26px; }
-  .fr-hv-grid { columns: 1; }
+  .fr-hv-grid { grid-template-columns: 1fr; }
   .fr-hv-row { padding: 12px 0 14px; }
   .fr-hv-name { font-size: 1.08rem; }
   .fr-hv-unit { font-size: 1rem; padding: 3px 0; }
@@ -3191,11 +3203,42 @@
   .fr-slip-line { font-size: 1rem; }
 }
 
-/* print (secondary — Annabel may print; less paper, continuous flow) */
+/* print (#235 — the pick list is read at arm's length while packing) */
+@page {
+  margin: 14mm;
+}
 @media print {
   .fr-no-print { display: none !important; }
-  .fr-report { max-width: none; margin: 0; border: 0; box-shadow: none; padding: 0; }
+  .fr-report { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+  .fr-section { margin-top: 18px; }
+
+  /* Pick list: bigger type, near-black ink (the grays and leaf greens wash
+     out on a laser printer), and a pencil tick box per product. */
+  .fr-hv-grid { column-gap: 32px; }
+  .fr-hv-row {
+    padding: 7px 0 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(110px, auto);
+    border-bottom-color: var(--ink-300);
+  }
+  .fr-hv-tick {
+    display: inline-block;
+    width: 11px; height: 11px;
+    border: 1.2px solid var(--ink-700);
+    border-radius: 2px;
+    margin-right: 8px;
+    vertical-align: -1px;
+  }
+  .fr-hv-name { font-size: 12pt; color: var(--ink-900); }
+  .fr-hv-unit { font-size: 11pt; padding: 1px 0; }
+  .fr-hv-unit-label { color: var(--ink-700); }
+  .fr-hv-unit-qty { color: var(--ink-900); font-weight: 700; }
+  .fr-hv-total { border-top-color: var(--ink-500); }
+  .fr-hv-total .fr-hv-unit-label,
+  .fr-hv-total .fr-hv-unit-qty { color: var(--ink-900); }
+  .fr-section-title { color: var(--ink-900); }
+  .fr-head { border-bottom-color: var(--ink-900); }
+
+  /* Slips: incidental cleanup — never split one across a page break. */
   .fr-slip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .fr-section { margin-top: 20px; }
-  .fr-hv-row { padding: 6px 0 8px; }
+  .fr-slip { break-inside: avoid; }
 }

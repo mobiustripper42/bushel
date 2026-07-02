@@ -44,7 +44,11 @@ export function FulfillmentReportView({
             <div className="fr-hv-grid">
               {report.harvest.map((row) => (
                 <div className="fr-hv-row" key={row.productId}>
-                  <div className="fr-hv-name">{row.name}</div>
+                  <div className="fr-hv-name">
+                    {/* Print-only pencil tick box (#235) — hidden on screen. */}
+                    <span className="fr-hv-tick" aria-hidden="true" />
+                    {row.name}
+                  </div>
                   <div className="fr-hv-lines">
                     {row.units.map((u) => (
                       <div className="fr-hv-unit" key={u.unit}>
