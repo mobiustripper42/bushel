@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.23] - 2026-06-12
+- PR #217: #208 changeable base unit — atomic invariant-preserving rebase (DEC-038)
+
 ## [0.9.22] - 2026-06-12
 - PR #216: #212 product_units strictly authoritative — drop mirror columns (DEC-037)
 
