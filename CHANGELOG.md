@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.14] - 2026-06-05
+- PR #204: Add delivery reminder send mode + template (#193, amends DEC-014)
+
 ## [0.9.13] - 2026-06-04
 - PR #203: Orders page: per-order action stack in expanded detail (#192)
 
