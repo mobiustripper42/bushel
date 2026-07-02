@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.8] - 2026-07-01
+- PR #236: 9.1 (#224): whole-order summary in add mode + Update order copy
+
 ## [0.10.7] - 2026-06-27
 - PR #234: auto-sync downstream — 2026-06-27
 
