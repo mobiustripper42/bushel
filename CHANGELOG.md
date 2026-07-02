@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.19] - 2026-06-11
+- PR #213: #207 Hide/Show inventory items: soft-delete for products
+
 ## [0.9.18] - 2026-06-10
 - PR #210: DEC-S019 extraction: CLAUDE.md → shell + .claude/CLAUDE-context.md
 
