@@ -93,8 +93,8 @@ export function InventoryEditor({ initialRows, initialUnits, soldByProductId, we
   // the in-flight window is brief and shouldn't prompt.
   useUnsavedChangesGuard(dirty && !saving);
 
-  // After router.refresh() (called by save handlers + the Pre-populate
-  // button), the parent server component re-renders with fresh
+  // After router.refresh() (called by save handlers), the parent
+  // server component re-renders with fresh
   // initialRows but useState locks in the first value. Re-sync local
   // state when the prop changes — but only when the editor is clean,
   // so an in-flight edit isn't clobbered by a concurrent refresh.
