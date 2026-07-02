@@ -62,22 +62,20 @@ export function FulfillmentReportView({
               <li className="fr-hv-line" key={row.productId}>
                 {/* Print-only pencil tick box — hidden on screen. */}
                 <span className="fr-hv-tick" aria-hidden="true" />
-                {/* qty – unit is ONE nowrap block: unit labels like
-                    "6 oz bag" must never wrap in a column or read as
-                    "1 6 oz bag" (Eric). The dash is the separator. */}
-                <span className="fr-hv-amount">
-                  <span className="fr-hv-qty">{fmt(row.baseTotal)}</span>
-                  <span className="fr-hv-dash" aria-hidden="true">
-                    –
-                  </span>
-                  <span className="fr-hv-base">{row.base}</span>
-                </span>
+                {/* qty and unit are separate ALIGNED columns (subgrid via
+                    .fr-hv-list) — no dash; the column gap is the separator
+                    (Eric). Columns size to the widest row, so "6 oz bag"
+                    can't wrap or shove the name. */}
+                <span className="fr-hv-qty">{fmt(row.baseTotal)}</span>
+                <span className="fr-hv-base">{row.base}</span>
                 <span className="fr-hv-item">
                   <span className="fr-hv-product">{row.name}</span>
                   {row.showTotal && (
                     <span className="fr-hv-breakdown">
+                      {/* Flowing text DOES need the dash: "1 6 oz bag" is
+                          unreadable without it (Eric). */}
                       {row.units
-                        .map((u) => `${fmt(u.qty)} ${u.unit}`)
+                        .map((u) => `${fmt(u.qty)} – ${u.unit}`)
                         .join(" + ")}
                     </span>
                   )}
@@ -105,13 +103,8 @@ export function FulfillmentReportView({
                     <div className="fr-slip-line" key={i}>
                       {/* Packing is a check-off job too — same print-only tick. */}
                       <span className="fr-hv-tick" aria-hidden="true" />
-                      <span className="fr-slip-amount">
-                        <span className="fr-slip-qty">{fmt(l.qty)}</span>
-                        <span className="fr-hv-dash" aria-hidden="true">
-                          –
-                        </span>
-                        <span className="fr-slip-unit">{l.unit}</span>
-                      </span>
+                      <span className="fr-slip-qty">{fmt(l.qty)}</span>
+                      <span className="fr-slip-unit">{l.unit}</span>
                       <span className="fr-slip-product">{l.product}</span>
                     </div>
                   ))}

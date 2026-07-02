@@ -3098,36 +3098,38 @@
    the same grid language as .fr-slip-line, sized up for arm's length.
    Single column always; two columns made pinning the amount to the item
    harder than it should ever be on a pick list. */
+/* The LIST owns the columns (qty · unit · item; print prepends a tick):
+   rows are subgrids, so the unit column sizes once to the widest label
+   across the whole list — real table alignment, and a "6 oz bag" can
+   never wrap (Eric: unit is its own column, no dash on the big line). */
 .fr-hv-list {
   margin-top: 14px;
   list-style: none;
   padding: 0;
   margin-bottom: 0;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 14px;
 }
 .fr-hv-line {
   break-inside: avoid;
+  grid-column: 1 / -1;
   display: grid;
-  /* amount · item — the print block prepends a tick column. The amount
-     ("7 – bunch") is one nowrap block so a unit like "6 oz bag" can never
-     wrap or shove the product name (Eric); min 8em keeps names aligned
-     down the list, max-content lets a long unit push its own row only. */
-  grid-template-columns: minmax(8em, max-content) minmax(0, 1fr);
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--ink-200);
   font-size: 1.02rem;
 }
 .fr-hv-tick { display: none; }
-.fr-hv-amount { white-space: nowrap; }
 .fr-hv-qty {
   font-weight: 600;
   font-size: 1.08rem;
+  text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--ink-900);
 }
-.fr-hv-dash { color: var(--ink-300); margin: 0 6px; }
-.fr-hv-base { color: var(--ink-500); font-size: 0.9rem; }
+.fr-hv-base { color: var(--ink-500); font-size: 0.9rem; white-space: nowrap; }
 .fr-hv-item { min-width: 0; }
 .fr-hv-product { font-weight: 600; color: var(--ink-900); }
 /* Same placement on every surface (Eric): inline after the name, muted;
@@ -3169,19 +3171,22 @@
 .fr-slip-tag-delivery { background: var(--leaf-100); color: var(--leaf-700); }
 .fr-slip-tag-pickup { background: var(--amber-50); color: var(--amber-700); }
 .fr-slip-where { font-size: 0.82rem; color: var(--ink-500); margin: 2px 0 10px; }
-.fr-slip-lines { display: flex; flex-direction: column; gap: 4px; }
-.fr-slip-line {
+/* Same shared-column treatment as the pick list, per slip. */
+.fr-slip-lines {
   display: grid;
-  /* amount · product (print prepends the tick column) — same nowrap-amount
-     treatment as the pick list so "6 oz bag" never wraps. */
-  grid-template-columns: minmax(6.5em, max-content) minmax(0, 1fr);
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 4px;
+}
+.fr-slip-line {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: 8px;
   font-size: 0.92rem;
 }
-.fr-slip-amount { white-space: nowrap; }
 .fr-slip-qty { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.fr-slip-unit { color: var(--ink-500); font-size: 0.85rem; }
+.fr-slip-unit { color: var(--ink-500); font-size: 0.85rem; white-space: nowrap; }
 .fr-slip-product { color: var(--ink-900); }
 
 /* not-found */
@@ -3233,11 +3238,11 @@
   /* Pick list: bigger near-black type (grays wash out on a laser printer),
      a glove-sized pencil tick box, and the right quarter of every line
      left blank — paper's killer feature is that you can write on it. */
+  .fr-hv-list { grid-template-columns: max-content max-content max-content minmax(0, 1fr); }
   .fr-hv-line {
     padding: 5px 0 6px;
     font-size: 12pt;
     border-bottom-color: var(--ink-300);
-    grid-template-columns: auto minmax(8em, max-content) minmax(0, 1fr);
     padding-right: 24%;
   }
   .fr-hv-tick {
@@ -3249,7 +3254,6 @@
     margin-right: 4px;
   }
   .fr-hv-qty { font-size: 13pt; }
-  .fr-hv-dash { color: var(--ink-500); }
   .fr-hv-base { color: var(--ink-700); font-size: 11pt; }
   .fr-hv-breakdown { color: var(--ink-700); font-size: 10pt; }
 
@@ -3261,7 +3265,7 @@
   .fr-slip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .fr-slip { break-inside: avoid; border-color: var(--ink-700); }
   .fr-slip-unit, .fr-slip-where { color: var(--ink-700); }
-  .fr-slip-line { grid-template-columns: auto minmax(6.5em, max-content) minmax(0, 1fr); }
+  .fr-slip-lines { grid-template-columns: max-content max-content max-content minmax(0, 1fr); }
   .fr-slip-line .fr-hv-tick { width: 14px; height: 14px; }
   .fr-slip-tag {
     background: none;
