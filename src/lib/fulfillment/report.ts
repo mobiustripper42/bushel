@@ -2,7 +2,7 @@
 //
 // Read-only derivation over the week's orders, regenerated on every view so a
 // Tuesday-night oversell fix moves the totals and slips with it. Reuses
-// listOrders() — which already joins order_items → products → product_units —
+// listActiveOrders() — which already joins order_items → products → product_units —
 // so there's no new query or RLS surface. The base-unit fold (qty ×
 // conversion_to_base) is the same math place_order runs on decrement; we never
 // sum raw qty across mixed units (3 bunches + 2 lb ≠ 5).

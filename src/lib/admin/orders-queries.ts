@@ -23,9 +23,14 @@ export const ORDER_STATUSES: OrderStatus[] = [
 
 // DEC-041: the open-order identity set. A customer has at most one order in
 // these statuses (partial unique index orders_one_open_per_customer); a
-// terminal order (picked_up/delivered) drops out and frees a new one. Keep
-// this list identical to the index predicate in the DEC-041 migration.
+// terminal order drops out and frees a new one. Keep this list identical to
+// the index predicate in the DEC-041 migration.
 export const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "confirmed", "ready"];
+
+// The complement — every status is in exactly one of these two sets, so an
+// order can never fall out of both admin views (DEC-045). isTerminalStatus
+// and the Fulfilled-view filter both derive from this single list.
+export const TERMINAL_ORDER_STATUSES: OrderStatus[] = ["picked_up", "delivered"];
 
 // The no-regress auto-advance rule for confirm-sends (DEC-035): sending the
 // confirmation text moves a new order to confirmed, but must never regress a
@@ -40,7 +45,7 @@ export function statusAfterConfirmSend(current: OrderStatus): OrderStatus {
 // next submission creates a fresh order. Takes raw text because orders.status
 // is app-enforced text in the DB (DEC-010) — customer-side reads arrive untyped.
 export function isTerminalStatus(status: string): boolean {
-  return status === "picked_up" || status === "delivered";
+  return (TERMINAL_ORDER_STATUSES as string[]).includes(status);
 }
 
 // DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked_up | delivered).
@@ -120,24 +125,46 @@ export function currentWeekOf(): string {
   return weekOfMondayNY();
 }
 
-// Lists orders for a given week, joined with customer + items + products.
-// Sorted at the DB by created_at desc; reconciliation pinning is applied
-// in the UI so it survives column-sort changes.
-export async function listOrders(weekOf: string): Promise<OrderRow[]> {
-  return queryOrders({ weekOf });
-}
-
+// Orders joined with customer + items + products, sorted at the DB by
+// created_at desc; reconciliation pinning is applied in the UI so it
+// survives column-sort changes. DEC-045 dropped the week-keyed listOrders —
+// the two status-keyed views below are the only entry points.
+//
 // DEC-041/DEC-042 (#227): every open (non-terminal) order regardless of week.
-// The fulfillment sheet reads this — an order that stays open across a week
-// boundary must keep printing until it's out the door. The admin orders list
-// moves onto this in 9.8 (DEC-045).
+// The fulfillment sheet and the admin orders list's default view (DEC-045)
+// read this — an order that stays open across a week boundary must stay
+// visible until it's out the door.
 export async function listActiveOrders(): Promise<OrderRow[]> {
   return queryOrders({ activeOnly: true });
+}
+
+// DEC-045 (#231): the browsable past — terminal orders persist as rows under
+// the open-order model (nothing deletes them), newest first via the shared
+// created_at sort.
+export async function listFulfilledOrders(): Promise<OrderRow[]> {
+  return queryOrders({ terminalOnly: true });
+}
+
+// Bare row counts for the orders-page tab chips — the view NOT being
+// displayed only needs its number, not the full joined fetch (Fulfilled
+// grows without bound; its full fetch shouldn't ride along on every
+// Active-view load).
+export async function countOrdersByStatus(
+  statuses: OrderStatus[],
+): Promise<number> {
+  const supabase = createAdminClient();
+  const { count, error } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .in("status", statuses);
+  if (error) throw new Error(`countOrdersByStatus: ${error.message}`);
+  return count ?? 0;
 }
 
 async function queryOrders(filter: {
   weekOf?: string;
   activeOnly?: boolean;
+  terminalOnly?: boolean;
 }): Promise<OrderRow[]> {
   const supabase = createAdminClient();
 
@@ -157,9 +184,11 @@ async function queryOrders(filter: {
   if (filter.weekOf) ordersQuery = ordersQuery.eq("week_of", filter.weekOf);
   if (filter.activeOnly)
     ordersQuery = ordersQuery.in("status", OPEN_ORDER_STATUSES);
+  if (filter.terminalOnly)
+    ordersQuery = ordersQuery.in("status", TERMINAL_ORDER_STATUSES);
 
   const { data, error } = await ordersQuery;
-  if (error) throw new Error(`listOrders: ${error.message}`);
+  if (error) throw new Error(`queryOrders: ${error.message}`);
 
   // customer_sends stays week-keyed (DEC-042), so the Send state for each
   // order is the send row of the order's OWN week_of stamp. Fetched after the
@@ -174,7 +203,7 @@ async function queryOrders(filter: {
           .select("customer_id, week_of, mode, sent_at")
           .in("week_of", weeks);
   if (sendsResult.error)
-    throw new Error(`listOrders(sends): ${sendsResult.error.message}`);
+    throw new Error(`queryOrders(sends): ${sendsResult.error.message}`);
 
   // Reminder mode is per-fulfillment (#193): pickup orders use pickup_reminder,
   // delivery orders use delivery_reminder — tracked separately, resolved per

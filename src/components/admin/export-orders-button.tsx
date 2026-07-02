@@ -7,10 +7,13 @@ import type { OrderRow } from "@/lib/admin/orders-queries";
 
 type Props = {
   orders: OrderRow[];
-  weekOf: string;
+  // Goes into the download filename verbatim (e.g. "active-2026-06-29") —
+  // a label, not a date. DEC-045's views span weeks, so no single week_of
+  // describes an export's contents.
+  filenameLabel: string;
 };
 
-export function ExportOrdersButton({ orders, weekOf }: Props) {
+export function ExportOrdersButton({ orders, filenameLabel }: Props) {
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -36,7 +39,7 @@ export function ExportOrdersButton({ orders, weekOf }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = csvFilename(weekOf);
+    a.download = csvFilename(filenameLabel);
     document.body.appendChild(a);
     a.click();
     a.remove();

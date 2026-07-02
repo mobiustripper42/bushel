@@ -167,6 +167,11 @@ export default async function globalSetup() {
   // neither collides with current-week tests nor occupies the open-order
   // identity (DEC-041 dropped unique (customer_id, week_of), so this is a
   // check-then-insert rather than an upsert).
+  //
+  // Deliberately ITEMLESS: it appears in the admin Fulfilled view (DEC-045),
+  // and orders-flow's "export respects the active view" test relies on it
+  // emitting zero CSV rows (export is per line item). Adding items here
+  // breaks that spec's not-toContain assertions.
   const { data: farmStandRow, error: lookupError } = await adminClient
     .from("customers")
     .select("id")

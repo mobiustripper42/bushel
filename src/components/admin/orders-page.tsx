@@ -12,10 +12,12 @@ type SortDir = "asc" | "desc";
 
 type Props = {
   orders: OrderRowData[];
-  weekFilter: "this" | "last";
+  // DEC-045: status-keyed views — Active (non-terminal, any week) is the
+  // working list; Fulfilled is the browsable past.
+  view: "active" | "fulfilled";
   weekOf: string;
-  thisWeekCount: number;
-  lastWeekCount: number;
+  activeCount: number;
+  fulfilledCount: number;
   harvestSheetToken: string;
 };
 
@@ -57,7 +59,7 @@ function SortHeader({
   );
 }
 
-export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeekCount, harvestSheetToken }: Props) {
+export function OrdersPage({ orders, view, weekOf, activeCount, fulfilledCount, harvestSheetToken }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -87,10 +89,10 @@ export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeek
     });
   }
 
-  function setWeek(next: "this" | "last") {
+  function setView(next: "active" | "fulfilled") {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "this") params.delete("week");
-    else params.set("week", "last");
+    if (next === "active") params.delete("view");
+    else params.set("view", "fulfilled");
     const qs = params.toString();
     router.push(`/admin/orders${qs ? `?${qs}` : ""}`);
   }
@@ -121,37 +123,40 @@ export function OrdersPage({ orders, weekFilter, weekOf, thisWeekCount, lastWeek
             </svg>
             Harvest sheet
           </a>
-          <ExportOrdersButton orders={sorted} weekOf={weekOf} />
+          {/* Export ships whatever view is on screen. Both filenames carry
+              the view name — under DEC-045 neither view is week-scoped, so a
+              bare week in the filename would claim a scope the data doesn't
+              have. weekOf just stamps when the export was cut. */}
+          <ExportOrdersButton
+            orders={sorted}
+            filenameLabel={`${view}-${weekOf}`}
+          />
         </div>
       </div>
 
       <div className="ord-filters">
         <button
           type="button"
-          className={"chip-tab" + (weekFilter === "this" ? " is-on" : "")}
-          onClick={() => setWeek("this")}
+          className={"chip-tab" + (view === "active" ? " is-on" : "")}
+          onClick={() => setView("active")}
         >
-          This week <span className="chip-count">{thisWeekCount}</span>
+          Active <span className="chip-count">{activeCount}</span>
         </button>
         <button
           type="button"
-          className={"chip-tab" + (weekFilter === "last" ? " is-on" : "")}
-          onClick={() => setWeek("last")}
+          className={"chip-tab" + (view === "fulfilled" ? " is-on" : "")}
+          onClick={() => setView("fulfilled")}
         >
-          Last week <span className="chip-count">{lastWeekCount}</span>
-        </button>
-        <button
-          type="button"
-          className="chip-tab"
-          disabled
-          title="Coming in Phase 6"
-        >
-          Custom range
+          Fulfilled <span className="chip-count">{fulfilledCount}</span>
         </button>
       </div>
 
       {orders.length === 0 ? (
-        <div className="ord-empty">No orders for this week yet.</div>
+        <div className="ord-empty">
+          {view === "active"
+            ? "No active orders — everything's fulfilled."
+            : "No fulfilled orders yet."}
+        </div>
       ) : (
         <div className="ord-tableCard">
           <table className="ord-table" aria-label="Orders">
