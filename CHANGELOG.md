@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.17] - 2026-06-10
+- PR #209: auto-sync downstream — 2026-06-10
+
 ## [0.9.16] - 2026-06-07
 - PR #206: DEC-S namespace sweep (seeds#101)
 
