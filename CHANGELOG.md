@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.0] - 2026-06-12 — Phase 8
+- 31 pts shipped across 4 sessions (throughput 8.5 pts/calendar-wk)
+- Retro run late (2026-07-02); see `docs/RETROSPECTIVES.md`
+
 ## [0.9.23] - 2026-06-12
 - PR #217: #208 changeable base unit — atomic invariant-preserving rebase (DEC-038)
 
