@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.13] - 2026-06-04
+- PR #203: Orders page: per-order action stack in expanded detail (#192)
+
 ## [0.9.12] - 2026-06-04
 - PR #202: Extract shared SendAction component from send-row (#191)
 
