@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.14] - 2026-07-02
+- PR #243: #231 Admin orders: Active/Fulfilled views replace the week filter (DEC-045)
+
 ## [0.10.13] - 2026-07-01
 - PR #242: #241 Consolidate duplicate order lines across all order views
 
