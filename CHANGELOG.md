@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.4] - 2026-06-22
+- PR #223: Drop @architect Fable pin → Opus (seeds DEC-S029)
+
 ## [0.10.3] - 2026-06-15
 - PR #222: Keep @architect on Fable 5 in Model Selection prose
 
