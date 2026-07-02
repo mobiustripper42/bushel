@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.7] - 2026-06-04
+- PR #196: Harvest & Pack Sheet — public tokenized fulfillment report (#195)
+
 ## [0.9.6] - 2026-06-04
 - PR #194: Tiller idea: the Harvest & Pack Sheet (order-close fulfillment view)
 
