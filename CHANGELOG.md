@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.1] - 2026-06-13
+- PR #219: auto-sync downstream — 2026-06-13
+
 ## [0.10.0] - 2026-06-12 — Phase 8
 - 31 pts shipped across 4 sessions (throughput 8.5 pts/calendar-wk)
 - Retro run late (2026-07-02); see `docs/RETROSPECTIVES.md`
