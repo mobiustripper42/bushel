@@ -2954,6 +2954,11 @@
   }
   /* Hide drag handle on mobile — no useful interaction there yet. */
   .data-table tbody tr.data-row > td:nth-child(1) { display: none; }
+  /* #230: the desktop accent bar lives on that hidden first td — re-pin it
+     to the card edge so hidden ≠ unavailable reads on mobile too. */
+  .data-table tbody tr.data-row.is-hidden {
+    box-shadow: inset 3px 0 0 var(--rose-600);
+  }
   /* Switch + trash side-by-side at the bottom of the card. */
   .data-table tbody tr.data-row > td:nth-child(7) {
     display: inline-flex !important;

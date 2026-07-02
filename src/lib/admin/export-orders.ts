@@ -59,7 +59,9 @@ export function ordersToRows(orders: OrderRow[]): ExportRow[] {
     for (const i of o.items) {
       rows.push({
         customerName: o.customerName,
-        itemNumber: i.sku ?? i.slug ?? "",
+        // `||` not `??`: the save action normalizes sku to trimmed-or-null,
+        // but no DB CHECK does — a stray "" must still fall back to the slug.
+        itemNumber: i.sku || i.slug || "",
         quantity: String(i.qty),
         unitPrice: money(i.unitPriceCents),
         description: i.name,
