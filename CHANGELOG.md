@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.3] - 2026-05-31
+- PR #185: auto-sync downstream 2026-05-31
+
 ## [0.9.2] - 2026-05-31
 - PR #184: Order page UX fixes: greeting, fulfillment copy, stepper corners
 
