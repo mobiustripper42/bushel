@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.17] - 2026-07-02
+- PR #247: #235 Harvest sheet: pick list reads like a receipt in print
+
 ## [0.10.16] - 2026-07-02
 - PR #249: CI: typecheck + lint gates (#238 follow-up)
 
