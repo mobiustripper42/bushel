@@ -3204,6 +3204,10 @@
 }
 
 /* print (#235 — the pick list is read at arm's length while packing) */
+/* App-wide print margin, deliberately: @page can't be class-scoped without
+   named pages, and 14mm is a sane default for anything else Ctrl+P'd
+   (~1mm off Chrome's default). The harvest sheet is the only surface
+   designed for paper. */
 @page {
   margin: 14mm;
 }
