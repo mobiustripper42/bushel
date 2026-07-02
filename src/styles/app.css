@@ -3091,6 +3091,7 @@
 
 .fr-section { margin-top: 30px; }
 /* (section titles + helper notes removed per Eric — the sheet explains itself) */
+.fr-print-only { display: none; }
 .fr-empty { font-size: 0.95rem; color: var(--ink-500); margin-top: 10px; }
 
 /* pick list (#235, Eric's rework): one flat line per product, qty leading —
@@ -3116,7 +3117,7 @@
 }
 .fr-hv-tick { display: none; }
 .fr-hv-qty {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.08rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -3148,7 +3149,7 @@
 .fr-slip-customer { font-weight: 600; font-size: 1rem; }
 .fr-slip-tag {
   font-size: 0.66rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -3156,7 +3157,7 @@
   white-space: nowrap;
 }
 .fr-slip-tag-delivery { background: var(--leaf-100); color: var(--leaf-700); }
-.fr-slip-tag-pickup { background: var(--amber-50); color: #8b5e0a; }
+.fr-slip-tag-pickup { background: var(--amber-50); color: var(--amber-700); }
 .fr-slip-where { font-size: 0.82rem; color: var(--ink-500); margin: 2px 0 10px; }
 .fr-slip-lines { display: flex; flex-direction: column; gap: 4px; }
 .fr-slip-line {
@@ -3166,7 +3167,7 @@
   gap: 6px;
   font-size: 0.92rem;
 }
-.fr-slip-qty { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.fr-slip-qty { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .fr-slip-unit { color: var(--ink-500); font-size: 0.85rem; }
 .fr-slip-product { color: var(--ink-900); }
 
@@ -3208,29 +3209,62 @@
 }
 @media print {
   .fr-no-print { display: none !important; }
+  .fr-print-only { display: inline; }
   .fr-report { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
   .fr-section { margin-top: 18px; }
 
-  /* Pick list: bigger near-black type (grays wash out on a laser printer)
-     and a pencil tick box leading each line. */
+  /* The DATE is the loudest thing on paper — every printout says "Harvest
+     & Pack Sheet"; only the week + printed-at stamp tell this one from
+     last week's copy on the same bench. */
+  .fr-week { font-size: 16pt; font-weight: 600; }
+  .fr-title { font-size: 13pt; }
+  .fr-head { border-bottom-color: var(--ink-900); }
+
+  /* Pick list: bigger near-black type (grays wash out on a laser printer),
+     a glove-sized pencil tick box, and the right quarter of every line
+     left blank — paper's killer feature is that you can write on it. */
   .fr-hv-line {
     padding: 5px 0 6px;
     font-size: 12pt;
     border-bottom-color: var(--ink-300);
+    grid-template-columns: auto 3em 5.5em minmax(0, 1fr);
+    padding-right: 24%;
   }
+  /* Every 3rd rule darker — row-tracking at arm's length (Eric: judge on a
+     real print; bump to 5n if it's too busy). */
+  .fr-hv-line:nth-child(3n) { border-bottom-color: var(--ink-500); }
   .fr-hv-tick {
     display: inline-block;
-    width: 12px; height: 12px;
-    border: 1.2px solid var(--ink-700);
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--ink-900);
     border-radius: 2px;
     align-self: center;
+    margin-right: 4px;
   }
   .fr-hv-qty { font-size: 13pt; }
   .fr-hv-base { color: var(--ink-700); font-size: 11pt; }
-  .fr-hv-breakdown { color: var(--ink-700); font-size: 10pt; }
-  .fr-head { border-bottom-color: var(--ink-900); }
+  /* Breakdown tucks under the product name (mobile's pattern) so it can't
+     collide with the pencil margin. */
+  .fr-hv-breakdown {
+    grid-column: 2 / -1;
+    text-align: left;
+    color: var(--ink-700);
+    font-size: 10pt;
+  }
 
-  /* Slips: incidental cleanup — never split one across a page break. */
+  /* Slips: same ink discipline as the pick list — ink-200 borders and
+     ink-500 labels are near-invisible on a mono laser — plus a tick per
+     line (packing is a check-off job too) and B&W-honest tags (browsers
+     strip background colors when printing). One page, no forced breaks:
+     Eric wants a single sheet. */
   .fr-slip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .fr-slip { break-inside: avoid; }
+  .fr-slip { break-inside: avoid; border-color: var(--ink-700); }
+  .fr-slip-unit, .fr-slip-where { color: var(--ink-700); }
+  .fr-slip-line { grid-template-columns: auto 2.4em 4.5em 1fr; }
+  .fr-slip-line .fr-hv-tick { width: 14px; height: 14px; }
+  .fr-slip-tag {
+    background: none;
+    border: 1px solid currentColor;
+    color: var(--ink-900);
+  }
 }

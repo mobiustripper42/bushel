@@ -9,6 +9,19 @@ function fmt(n: number): string {
   return Number(n.toFixed(2)).toString();
 }
 
+// Print stamp (NY time): the paper copy is a snapshot, not "regenerated
+// live" — render time ≈ print time, which is version enough for the bench.
+function printedStamp(): string {
+  return new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function FulfillmentReportView({
   report,
   weekLabel,
@@ -26,8 +39,9 @@ export function FulfillmentReportView({
         <div className="fr-meta">
           <div className="fr-week">{weekLabel}</div>
           <div className="fr-sub">
-            {report.orderCount} {report.orderCount === 1 ? "order" : "orders"} ·
-            regenerated live
+            {report.orderCount} {report.orderCount === 1 ? "order" : "orders"} ·{" "}
+            <span className="fr-no-print">regenerated live</span>
+            <span className="fr-print-only">printed {printedStamp()}</span>
           </div>
         </div>
       </header>
@@ -79,6 +93,8 @@ export function FulfillmentReportView({
                 <div className="fr-slip-lines">
                   {slip.lines.map((l, i) => (
                     <div className="fr-slip-line" key={i}>
+                      {/* Packing is a check-off job too — same print-only tick. */}
+                      <span className="fr-hv-tick" aria-hidden="true" />
                       <span className="fr-slip-qty">{fmt(l.qty)}</span>
                       <span className="fr-slip-unit">{l.unit}</span>
                       <span className="fr-slip-product">{l.product}</span>
