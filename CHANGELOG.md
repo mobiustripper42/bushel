@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.3] - 2026-06-15
+- PR #222: Keep @architect on Fable 5 in Model Selection prose
+
 ## [0.10.2] - 2026-06-15
 - PR #221: auto-sync downstream — 2026-06-15
 
