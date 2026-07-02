@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.6] - 2026-06-04
+- PR #194: Tiller idea: the Harvest & Pack Sheet (order-close fulfillment view)
+
 ## [0.9.5] - 2026-06-02
 - PR #187: Design: Orders status section redesign (mockup)
 
