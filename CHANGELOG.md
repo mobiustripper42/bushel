@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.11] - 2026-07-01
+- PR #239: Open-order pivot core: 9.2 + 9.5 + 9.3a + 9.3b (DEC-040/041/042/044)
+
 ## [0.10.10] - 2026-07-01
 - PR #238: Clear tsc + eslint debt (restore zero-error typecheck/lint)
 
