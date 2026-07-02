@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.6] - 2026-06-25
+- PR #218: #211 Additive orders — append to the week's order (DEC-039)
+
 ## [0.10.5] - 2026-06-23
 - PR #232: Phase 9 setup: open-order pivot — DEC-040–045 + plan + issues
 
