@@ -9,6 +9,19 @@ function fmt(n: number): string {
   return Number(n.toFixed(2)).toString();
 }
 
+// Print stamp (NY time): the paper copy is a snapshot, not "regenerated
+// live" — render time ≈ print time, which is version enough for the bench.
+function printedStamp(): string {
+  return new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function FulfillmentReportView({
   report,
   weekLabel,
@@ -26,56 +39,55 @@ export function FulfillmentReportView({
         <div className="fr-meta">
           <div className="fr-week">{weekLabel}</div>
           <div className="fr-sub">
-            {report.orderCount} {report.orderCount === 1 ? "order" : "orders"} ·
-            regenerated live
+            {report.orderCount} {report.orderCount === 1 ? "order" : "orders"} ·{" "}
+            <span className="fr-no-print">regenerated live</span>
+            <span className="fr-print-only">printed {printedStamp()}</span>
           </div>
         </div>
       </header>
 
+      {/* Pick list (#235, reworked on Eric's print review): one flat line
+          per product — qty leads, name follows — in the same visual language
+          as the slip lines. The harvest decision is the BASE total; the
+          per-unit breakdown (what packing needs) rides muted at the end of
+          the line. Single column always: two columns made pinning the amount
+          to the item harder, and speed-of-scan is the whole point. Section
+          titles + helper notes removed — the sheet explains itself. */}
       <section className="fr-section">
-        <h2 className="fr-section-title">Harvest list</h2>
         {report.harvest.length === 0 ? (
-          <p className="fr-empty">No orders yet this week.</p>
+          <p className="fr-empty">Nothing to harvest — no open orders.</p>
         ) : (
-          <>
-            <p className="fr-note fr-no-print">
-              Everything to pick this week, summed across all orders.
-            </p>
-            <div className="fr-hv-grid">
-              {report.harvest.map((row) => (
-                <div className="fr-hv-row" key={row.productId}>
-                  <div className="fr-hv-name">{row.name}</div>
-                  <div className="fr-hv-lines">
-                    {row.units.map((u) => (
-                      <div className="fr-hv-unit" key={u.unit}>
-                        <span className="fr-hv-unit-label">{u.unit}</span>
-                        <span className="fr-hv-unit-qty">{fmt(u.qty)}</span>
-                      </div>
-                    ))}
-                    {row.showTotal && (
-                      <div className="fr-hv-unit fr-hv-total">
-                        <span className="fr-hv-unit-label">
-                          total {row.base}
-                        </span>
-                        <span className="fr-hv-unit-qty">
-                          {fmt(row.baseTotal)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+          <ul className="fr-hv-list">
+            {report.harvest.map((row) => (
+              <li className="fr-hv-line" key={row.productId}>
+                {/* Print-only pencil tick box — hidden on screen. */}
+                <span className="fr-hv-tick" aria-hidden="true" />
+                {/* qty and unit are separate ALIGNED columns (subgrid via
+                    .fr-hv-list) — no dash; the column gap is the separator
+                    (Eric). Columns size to the widest row, so "6 oz bag"
+                    can't wrap or shove the name. */}
+                <span className="fr-hv-qty">{fmt(row.baseTotal)}</span>
+                <span className="fr-hv-base">{row.base}</span>
+                <span className="fr-hv-item">
+                  <span className="fr-hv-product">{row.name}</span>
+                  {row.showTotal && (
+                    <span className="fr-hv-breakdown">
+                      {/* Flowing text DOES need the dash: "1 6 oz bag" is
+                          unreadable without it (Eric). */}
+                      {row.units
+                        .map((u) => `${fmt(u.qty)} – ${u.unit}`)
+                        .join(" + ")}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
       {report.slips.length > 0 && (
         <section className="fr-section">
-          <h2 className="fr-section-title">Packing slips</h2>
-          <p className="fr-note fr-no-print">
-            One per order — check against the box.
-          </p>
           <div className="fr-slip-grid">
             {report.slips.map((slip) => (
               <div className="fr-slip" key={slip.orderId}>
@@ -89,6 +101,8 @@ export function FulfillmentReportView({
                 <div className="fr-slip-lines">
                   {slip.lines.map((l, i) => (
                     <div className="fr-slip-line" key={i}>
+                      {/* Packing is a check-off job too — same print-only tick. */}
+                      <span className="fr-hv-tick" aria-hidden="true" />
                       <span className="fr-slip-qty">{fmt(l.qty)}</span>
                       <span className="fr-slip-unit">{l.unit}</span>
                       <span className="fr-slip-product">{l.product}</span>

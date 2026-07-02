@@ -3090,39 +3090,59 @@
 .fr-sub { font-size: 0.82rem; color: var(--ink-500); margin-top: 2px; }
 
 .fr-section { margin-top: 30px; }
-.fr-section-title {
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--leaf-700);
-  font-weight: 700;
-}
-.fr-note { font-size: 0.86rem; color: var(--ink-500); margin-top: 2px; }
+/* (section titles + helper notes removed per Eric — the sheet explains itself) */
+.fr-print-only { display: none; }
 .fr-empty { font-size: 0.95rem; color: var(--ink-500); margin-top: 10px; }
 
-/* harvest list */
-.fr-hv-grid { margin-top: 14px; columns: 2; column-gap: 40px; }
-.fr-hv-row {
+/* pick list (#235, Eric's rework): one flat line per product, qty leading —
+   the same grid language as .fr-slip-line, sized up for arm's length.
+   Single column always; two columns made pinning the amount to the item
+   harder than it should ever be on a pick list. */
+/* The LIST owns the columns (qty · unit · item; print prepends a tick):
+   rows are subgrids, so the unit column sizes once to the widest label
+   across the whole list — real table alignment, and a "6 oz bag" can
+   never wrap (Eric: unit is its own column, no dash on the big line). */
+.fr-hv-list {
+  margin-top: 14px;
+  list-style: none;
+  padding: 0;
+  margin-bottom: 0;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 14px;
+}
+.fr-hv-line {
   break-inside: avoid;
-  padding: 10px 0 12px;
-  border-bottom: 1px solid var(--ink-200);
-  margin-bottom: 2px;
-}
-.fr-hv-name { font-weight: 600; font-size: 1.02rem; margin-bottom: 4px; }
-.fr-hv-lines { display: flex; flex-direction: column; gap: 1px; }
-.fr-hv-unit {
-  display: flex;
-  justify-content: space-between;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  font-size: 0.95rem;
-  color: var(--ink-700);
-  padding: 2px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ink-200);
+  font-size: 1.02rem;
 }
-.fr-hv-unit-label { color: var(--ink-500); }
-.fr-hv-unit-qty { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-900); }
-.fr-hv-total { margin-top: 3px; padding-top: 4px; border-top: 1px dotted var(--ink-300); }
-.fr-hv-total .fr-hv-unit-label { color: var(--leaf-700); font-weight: 600; text-transform: none; }
-.fr-hv-total .fr-hv-unit-qty { color: var(--leaf-700); font-size: 1.05rem; }
+.fr-hv-tick { display: none; }
+.fr-hv-qty {
+  font-weight: 600;
+  font-size: 1.08rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-900);
+}
+.fr-hv-base { color: var(--ink-500); font-size: 0.9rem; white-space: nowrap; }
+.fr-hv-item { min-width: 0; }
+.fr-hv-product { font-weight: 600; color: var(--ink-900); }
+/* Same placement on every surface (Eric): inline after the name, muted;
+   nowrap inline-block so it drops to its own line as a whole when tight
+   instead of scattering. */
+.fr-hv-breakdown {
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--ink-500);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  margin-left: 10px;
+}
 
 /* packing slips */
 .fr-slip-grid {
@@ -3141,7 +3161,7 @@
 .fr-slip-customer { font-weight: 600; font-size: 1rem; }
 .fr-slip-tag {
   font-size: 0.66rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -3149,18 +3169,24 @@
   white-space: nowrap;
 }
 .fr-slip-tag-delivery { background: var(--leaf-100); color: var(--leaf-700); }
-.fr-slip-tag-pickup { background: var(--amber-50); color: #8b5e0a; }
+.fr-slip-tag-pickup { background: var(--amber-50); color: var(--amber-700); }
 .fr-slip-where { font-size: 0.82rem; color: var(--ink-500); margin: 2px 0 10px; }
-.fr-slip-lines { display: flex; flex-direction: column; gap: 4px; }
-.fr-slip-line {
+/* Same shared-column treatment as the pick list, per slip. */
+.fr-slip-lines {
   display: grid;
-  grid-template-columns: 2.4em 4.5em 1fr;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 4px;
+}
+.fr-slip-line {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
   align-items: baseline;
-  gap: 6px;
   font-size: 0.92rem;
 }
-.fr-slip-qty { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-.fr-slip-unit { color: var(--ink-500); font-size: 0.85rem; }
+.fr-slip-qty { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.fr-slip-unit { color: var(--ink-500); font-size: 0.85rem; white-space: nowrap; }
 .fr-slip-product { color: var(--ink-900); }
 
 /* not-found */
@@ -3180,22 +3206,70 @@
   .fr-meta { text-align: left; }
   .fr-title { font-size: 1.45rem; }
   .fr-section { margin-top: 26px; }
-  .fr-hv-grid { columns: 1; }
-  .fr-hv-row { padding: 12px 0 14px; }
-  .fr-hv-name { font-size: 1.08rem; }
-  .fr-hv-unit { font-size: 1rem; padding: 3px 0; }
-  .fr-hv-total .fr-hv-unit-qty { font-size: 1.1rem; }
+  .fr-hv-line { padding: 10px 0; font-size: 1.05rem; }
+  .fr-hv-qty { font-size: 1.15rem; }
   .fr-slip-grid { grid-template-columns: 1fr; gap: 14px; }
   .fr-slip { padding: 16px; }
   .fr-slip-customer { font-size: 1.05rem; }
   .fr-slip-line { font-size: 1rem; }
 }
 
-/* print (secondary — Annabel may print; less paper, continuous flow) */
+/* print (#235 — the pick list is read at arm's length while packing) */
+/* App-wide print margin, deliberately: @page can't be class-scoped without
+   named pages, and 14mm is a sane default for anything else Ctrl+P'd
+   (~1mm off Chrome's default). The harvest sheet is the only surface
+   designed for paper. */
+@page {
+  margin: 14mm;
+}
 @media print {
   .fr-no-print { display: none !important; }
-  .fr-report { max-width: none; margin: 0; border: 0; box-shadow: none; padding: 0; }
+  .fr-print-only { display: inline; }
+  .fr-report { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+  .fr-section { margin-top: 18px; }
+
+  /* The DATE is the loudest thing on paper — every printout says "Harvest
+     & Pack Sheet"; only the week + printed-at stamp tell this one from
+     last week's copy on the same bench. */
+  .fr-week { font-size: 15pt; font-weight: 600; }
+  .fr-title { font-size: 12pt; }
+  .fr-head { border-bottom-color: var(--ink-900); }
+
+  /* Pick list: bigger near-black type (grays wash out on a laser printer),
+     a glove-sized pencil tick box, and the right quarter of every line
+     left blank — paper's killer feature is that you can write on it. */
+  .fr-hv-list { grid-template-columns: max-content max-content max-content minmax(0, 1fr); }
+  .fr-hv-line {
+    padding: 5px 0 6px;
+    font-size: 11pt;
+    border-bottom-color: var(--ink-300);
+    padding-right: 24%;
+  }
+  .fr-hv-tick {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--ink-900);
+    border-radius: 2px;
+    align-self: center;
+    margin-right: 4px;
+  }
+  .fr-hv-qty { font-size: 12pt; }
+  .fr-hv-base { color: var(--ink-700); font-size: 10pt; }
+  .fr-hv-breakdown { color: var(--ink-700); font-size: 9pt; }
+
+  /* Slips: same ink discipline as the pick list — ink-200 borders and
+     ink-500 labels are near-invisible on a mono laser — plus a tick per
+     line (packing is a check-off job too) and B&W-honest tags (browsers
+     strip background colors when printing). One page, no forced breaks:
+     Eric wants a single sheet. */
   .fr-slip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .fr-section { margin-top: 20px; }
-  .fr-hv-row { padding: 6px 0 8px; }
+  .fr-slip { break-inside: avoid; border-color: var(--ink-700); }
+  .fr-slip-unit, .fr-slip-where { color: var(--ink-700); }
+  .fr-slip-lines { grid-template-columns: max-content max-content max-content minmax(0, 1fr); }
+  .fr-slip-line .fr-hv-tick { width: 14px; height: 14px; }
+  .fr-slip-tag {
+    background: none;
+    border: 1px solid currentColor;
+    color: var(--ink-900);
+  }
 }

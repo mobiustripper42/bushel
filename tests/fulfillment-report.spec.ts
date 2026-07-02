@@ -61,12 +61,12 @@ test("harvest list consolidates quantities across orders", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Harvest & Pack Sheet" })).toBeVisible();
 
   // Kale ordered by both customers (3 + 2) → summed to 5.
-  const kaleRow = page.locator(".fr-hv-row", { hasText: "Kale" });
-  await expect(kaleRow.locator(".fr-hv-unit-qty")).toHaveText("5");
+  const kaleRow = page.locator(".fr-hv-line", { hasText: "Kale" });
+  await expect(kaleRow.locator(".fr-hv-qty")).toHaveText("5");
 
   // Honey ordered once.
-  const honeyRow = page.locator(".fr-hv-row", { hasText: "Honey" });
-  await expect(honeyRow.locator(".fr-hv-unit-qty")).toHaveText("1");
+  const honeyRow = page.locator(".fr-hv-line", { hasText: "Honey" });
+  await expect(honeyRow.locator(".fr-hv-qty")).toHaveText("1");
 });
 
 test("packing slips list each order with its fulfillment type", async ({ page }) => {
@@ -111,9 +111,9 @@ test("excludes picked_up / delivered orders (#200)", async ({ page }) => {
 
     // Kale drops 5 → 3 (restaurant's 2 excluded); Honey (restaurant-only) gone.
     await expect(
-      page.locator(".fr-hv-row", { hasText: "Kale" }).locator(".fr-hv-unit-qty"),
+      page.locator(".fr-hv-line", { hasText: "Kale" }).locator(".fr-hv-qty"),
     ).toHaveText("3");
-    await expect(page.locator(".fr-hv-row", { hasText: "Honey" })).toHaveCount(0);
+    await expect(page.locator(".fr-hv-line", { hasText: "Honey" })).toHaveCount(0);
   } finally {
     await sb
       .from("orders")
@@ -145,7 +145,7 @@ test("shows open orders from past weeks", async ({ page }) => {
     ).toHaveCount(1);
     // Its items still roll into the harvest totals (Kale 3 + restaurant's 2).
     await expect(
-      page.locator(".fr-hv-row", { hasText: "Kale" }).locator(".fr-hv-unit-qty"),
+      page.locator(".fr-hv-line", { hasText: "Kale" }).locator(".fr-hv-qty"),
     ).toHaveText("5");
   } finally {
     await sb
