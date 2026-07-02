@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.21] - 2026-06-12
+- PR #215: #149 persist cart draft to sessionStorage (survive reload / phone rotation)
+
 ## [0.9.20] - 2026-06-11
 - PR #214: #132 reject orders against sold-out (qty=0) products (DEC-036)
 
