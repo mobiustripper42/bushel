@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.9] - 2026-06-04
+- PR #198: Send Texts page: rename, drop mode tabs, reword (#189)
+
 ## [0.9.8] - 2026-06-04
 - PR #197: Rename Send Update → Send Texts nav item, reorder (#188)
 
