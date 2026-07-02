@@ -207,7 +207,7 @@ V1 shipped 2026-05-18. Phase 7 = one rolling phase of features, no fixed scope, 
 - ~~Wave API direct integration~~ — eric is switching off Wave in October; CSV export workflow is sufficient until then, and the replacement accounting system's API will dictate the new shape.
 - ~~Public signup for individuals~~ — wholesale-only is the product, not a V1 limitation.
 
-**Open-ended ideas** — see [`docs/OPEN_ITEMS.md`](OPEN_ITEMS.md). Wishlist that hasn't earned an issue yet; promote when the trigger fires.
+**Open-ended ideas** — see [`docs/FUTURE_IDEAS.md`](FUTURE_IDEAS.md). Wishlist that hasn't earned an issue yet; promote when the trigger fires.
 
 **Closed 2026-05-28 (retro):** 45 pts shipped across 7 sessions (S28–S34), 0.80 active h/pt. Multi-unit products epic (6.5a–f, #151–156, #135) landed; UAT punch-list cleared (#129–134 except #132/#134); admin polish (#143 drag-reorder, #61 deactivated toggle, #129 unsaved-guard); Messages-for-Web extension (#120). Seven parking-lot issues closed-not-built (trigger-gated wishlist: #53, #136, #137, #138, #139, #146, #174). **4 issues moved to Phase 8:** #170 PWA admin install/push, #149 cart-cleared-on-rotation (non-repro), #134 prepopulate UAT, #132 oversell-at-qty=0 bug. Full retro in [`RETROSPECTIVES.md`](RETROSPECTIVES.md).
 
@@ -223,7 +223,7 @@ Rolling phase, continuation of the Phase 7 model: no fixed scope, no end date. T
 - [#134](https://github.com/mobiustripper42/bushel/issues/134) Proper UAT of 'Pre-populate from last week' inventory action (1)
 - [#132](https://github.com/mobiustripper42/bushel/issues/132) Bug: order placed for qty=4 against qty=0 inventory (2) — *watch: correctness bug*
 
-Forecast at 0.80 active h/pt (Phase 7 headline) → ~6.4h active for the opening backlog. New work lands as `phase:8` issues; promote from [`docs/OPEN_ITEMS.md`](OPEN_ITEMS.md) when triggers fire.
+Forecast at 0.80 active h/pt (Phase 7 headline) → ~6.4h active for the opening backlog. New work lands as `phase:8` issues; promote from [`docs/FUTURE_IDEAS.md`](FUTURE_IDEAS.md) when triggers fire.
 
 **Closed 2026-06-12 (retro run late, 2026-07-02, alongside Phase 9's — the phase ended without ceremony when Phase 9 planning started).** 14 issues closed, 31 labeled pts (+#195/#200 unlabeled — harvest sheet, pointed nowhere): Send-Texts rework + Confirmed status + per-order action stack (#188–#193), Harvest & Pack Sheet (#195/#200), hide/show inventory #207, DEC-036 sold-out reject #132, cart persistence #149, product_units authoritative #212, changeable base unit #208, PWA install #170, prepopulate UAT #134. Throughput 8.5 pts/calendar-wk over 25.5d (bursty: everything closed in 2 ISO weeks ≈ 15.5 pts/active-wk). 23 PRs merged. Full retro in [`RETROSPECTIVES.md`](RETROSPECTIVES.md).
 
