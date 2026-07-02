@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.22] - 2026-06-12
+- PR #216: #212 product_units strictly authoritative — drop mirror columns (DEC-037)
+
 ## [0.9.21] - 2026-06-12
 - PR #215: #149 persist cart draft to sessionStorage (survive reload / phone rotation)
 
