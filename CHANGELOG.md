@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.8] - 2026-06-04
+- PR #197: Rename Send Update → Send Texts nav item, reorder (#188)
+
 ## [0.9.7] - 2026-06-04
 - PR #196: Harvest & Pack Sheet — public tokenized fulfillment report (#195)
 
