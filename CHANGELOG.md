@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.5] - 2026-06-02
+- PR #187: Design: Orders status section redesign (mockup)
+
 ## [0.9.4] - 2026-06-02
 - PR #186: Migrate to seeds v4 — production-branch model (Phase 1: skill set + version)
 
