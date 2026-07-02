@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.13] - 2026-07-01
+- PR #242: #241 Consolidate duplicate order lines across all order views
+
 ## [0.10.12] - 2026-07-01
 - PR #240: Admin orders: action stack into the detail grid (row-height fix)
 
