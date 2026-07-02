@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.12] - 2026-06-04
+- PR #202: Extract shared SendAction component from send-row (#191)
+
 ## [0.9.11] - 2026-06-04
 - PR #201: Harvest sheet: exclude picked-up / delivered orders (#200)
 
