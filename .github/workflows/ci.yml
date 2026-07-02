@@ -30,6 +30,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Typecheck + lint gate (#238 follow-up): neither was a CI gate, so both
+      # silently drifted to 50 accumulated errors before anyone noticed. They
+      # run in seconds — fail fast, before the build/Playwright spend.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
       - name: Set Supabase env vars
         run: |
           eval $(supabase status --output env)
