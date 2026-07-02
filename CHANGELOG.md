@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.9] - 2026-07-01
+- PR #237: Show build VersionTag at the bottom of the admin sidebar
+
 ## [0.10.8] - 2026-07-01
 - PR #236: 9.1 (#224): whole-order summary in add mode + Update order copy
 
