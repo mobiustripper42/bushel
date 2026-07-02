@@ -3090,51 +3090,46 @@
 .fr-sub { font-size: 0.82rem; color: var(--ink-500); margin-top: 2px; }
 
 .fr-section { margin-top: 30px; }
-.fr-section-title {
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--leaf-700);
-  font-weight: 700;
-}
-.fr-note { font-size: 0.86rem; color: var(--ink-500); margin-top: 2px; }
+/* (section titles + helper notes removed per Eric — the sheet explains itself) */
 .fr-empty { font-size: 0.95rem; color: var(--ink-500); margin-top: 10px; }
 
-/* harvest list — a real grid, not CSS masonry (#235): masonry's balanced
-   columns snake the reading order and let block heights drift, which is
-   exactly what made the printed pick list hard to scan. Row-major order +
-   a consistent right-hand qty column read like a receipt. */
-.fr-hv-grid {
+/* pick list (#235, Eric's rework): one flat line per product, qty leading —
+   the same grid language as .fr-slip-line, sized up for arm's length.
+   Single column always; two columns made pinning the amount to the item
+   harder than it should ever be on a pick list. */
+.fr-hv-list {
   margin-top: 14px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 40px;
+  list-style: none;
+  padding: 0;
+  margin-bottom: 0;
 }
-.fr-hv-row {
+.fr-hv-line {
   break-inside: avoid;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(130px, auto);
-  column-gap: 16px;
-  align-items: start;
-  padding: 10px 0 12px;
+  /* tick (print) · qty · base unit · product · unit breakdown */
+  grid-template-columns: auto 3em 5.5em minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--ink-200);
+  font-size: 1.02rem;
 }
 .fr-hv-tick { display: none; }
-.fr-hv-name { font-weight: 600; font-size: 1.02rem; }
-.fr-hv-lines { display: flex; flex-direction: column; gap: 1px; }
-.fr-hv-unit {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 0.95rem;
-  color: var(--ink-700);
-  padding: 2px 0;
+.fr-hv-qty {
+  font-weight: 700;
+  font-size: 1.08rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-900);
 }
-.fr-hv-unit-label { color: var(--ink-500); }
-.fr-hv-unit-qty { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-900); }
-.fr-hv-total { margin-top: 3px; padding-top: 4px; border-top: 1px dotted var(--ink-300); }
-.fr-hv-total .fr-hv-unit-label { color: var(--leaf-700); font-weight: 600; text-transform: none; }
-.fr-hv-total .fr-hv-unit-qty { color: var(--leaf-700); font-size: 1.05rem; }
+.fr-hv-base { color: var(--ink-500); font-size: 0.9rem; }
+.fr-hv-product { font-weight: 600; color: var(--ink-900); }
+.fr-hv-breakdown {
+  color: var(--ink-500);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
 
 /* packing slips */
 .fr-slip-grid {
@@ -3192,11 +3187,11 @@
   .fr-meta { text-align: left; }
   .fr-title { font-size: 1.45rem; }
   .fr-section { margin-top: 26px; }
-  .fr-hv-grid { grid-template-columns: 1fr; }
-  .fr-hv-row { padding: 12px 0 14px; }
-  .fr-hv-name { font-size: 1.08rem; }
-  .fr-hv-unit { font-size: 1rem; padding: 3px 0; }
-  .fr-hv-total .fr-hv-unit-qty { font-size: 1.1rem; }
+  .fr-hv-line { padding: 10px 0; font-size: 1.05rem; }
+  .fr-hv-qty { font-size: 1.15rem; }
+  /* Breakdown drops to its own indented line on narrow phones. */
+  .fr-hv-line { grid-template-columns: auto 3em 5.5em minmax(0, 1fr); }
+  .fr-hv-breakdown { grid-column: 2 / -1; text-align: left; margin-top: -2px; }
   .fr-slip-grid { grid-template-columns: 1fr; gap: 14px; }
   .fr-slip { padding: 16px; }
   .fr-slip-customer { font-size: 1.05rem; }
@@ -3216,30 +3211,23 @@
   .fr-report { max-width: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
   .fr-section { margin-top: 18px; }
 
-  /* Pick list: bigger type, near-black ink (the grays and leaf greens wash
-     out on a laser printer), and a pencil tick box per product. */
-  .fr-hv-grid { column-gap: 32px; }
-  .fr-hv-row {
-    padding: 7px 0 8px;
-    grid-template-columns: minmax(0, 1fr) minmax(110px, auto);
+  /* Pick list: bigger near-black type (grays wash out on a laser printer)
+     and a pencil tick box leading each line. */
+  .fr-hv-line {
+    padding: 5px 0 6px;
+    font-size: 12pt;
     border-bottom-color: var(--ink-300);
   }
   .fr-hv-tick {
     display: inline-block;
-    width: 11px; height: 11px;
+    width: 12px; height: 12px;
     border: 1.2px solid var(--ink-700);
     border-radius: 2px;
-    margin-right: 8px;
-    vertical-align: -1px;
+    align-self: center;
   }
-  .fr-hv-name { font-size: 12pt; color: var(--ink-900); }
-  .fr-hv-unit { font-size: 11pt; padding: 1px 0; }
-  .fr-hv-unit-label { color: var(--ink-700); }
-  .fr-hv-unit-qty { color: var(--ink-900); font-weight: 700; }
-  .fr-hv-total { border-top-color: var(--ink-500); }
-  .fr-hv-total .fr-hv-unit-label,
-  .fr-hv-total .fr-hv-unit-qty { color: var(--ink-900); }
-  .fr-section-title { color: var(--ink-900); }
+  .fr-hv-qty { font-size: 13pt; }
+  .fr-hv-base { color: var(--ink-700); font-size: 11pt; }
+  .fr-hv-breakdown { color: var(--ink-700); font-size: 10pt; }
   .fr-head { border-bottom-color: var(--ink-900); }
 
   /* Slips: incidental cleanup — never split one across a page break. */
