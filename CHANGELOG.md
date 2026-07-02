@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.18] - 2026-06-10
+- PR #210: DEC-S019 extraction: CLAUDE.md → shell + .claude/CLAUDE-context.md
+
 ## [0.9.17] - 2026-06-10
 - PR #209: auto-sync downstream — 2026-06-10
 
