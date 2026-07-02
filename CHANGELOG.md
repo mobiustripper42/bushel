@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.15] - 2026-07-02
+- PR #244: Bundle B: per-unit SKU + Wave export repoint (#228); inventory hidden-state visual (#230)
+
 ## [0.10.14] - 2026-07-02
 - PR #243: #231 Admin orders: Active/Fulfilled views replace the week filter (DEC-045)
 
