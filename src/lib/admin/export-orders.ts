@@ -14,11 +14,12 @@
 // "Customer Name." EXPORT_COLUMNS stays exported for documentation +
 // test assertions.
 //
-// One row per LINE ITEM. Per-product mapping:
-//   Wave "Item Number" ← products.description (used as a slug, e.g.
-//     "KALE-BUNCH" — Annabel populates this in the inventory editor).
-//     Empty cell when the slug isn't set; she fills it in Wave before
-//     posting.
+// One row per LINE ITEM. Per-line mapping (DEC-043):
+//   Wave "Item Number" ← the line's product_units.sku (Annabel-edited to
+//     match her Wave catalog, units drawer), falling back to the generated
+//     product_units.slug, then blank — she fills it in Wave before posting.
+//     products.description is OUT of the export entirely; it's the
+//     customer-facing long description and nothing else.
 //   Wave "Description" ← products.name (the human-readable product name).
 //   products.unit is no longer in the export; it lives in the customer-
 //     facing UI and the admin row detail, not the invoice.
@@ -58,7 +59,7 @@ export function ordersToRows(orders: OrderRow[]): ExportRow[] {
     for (const i of o.items) {
       rows.push({
         customerName: o.customerName,
-        itemNumber: i.description ?? "",
+        itemNumber: i.sku ?? i.slug ?? "",
         quantity: String(i.qty),
         unitPrice: money(i.unitPriceCents),
         description: i.name,

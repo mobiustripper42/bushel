@@ -141,8 +141,9 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
         l.includes(TEST_PRODUCTS.kale.name),
     );
     expect(kaleLine).toBeTruthy();
-    // Seed product has description = null, so Item Number cell is empty.
-    expect(kaleLine).toBe(`${TEST_CUSTOMERS.farmStand.name},,2,3.00,${TEST_PRODUCTS.kale.name},,`);
+    // DEC-043: Item Number = unit sku → slug fallback. Seed units carry no
+    // sku, so the generated slug fills the cell.
+    expect(kaleLine).toBe(`${TEST_CUSTOMERS.farmStand.name},kale-cccccccc,2,3.00,${TEST_PRODUCTS.kale.name},,`);
 
     // Reference orderId so the unused-var lint stays happy + documents the
     // intent that this CSV line corresponds to the order we just created.

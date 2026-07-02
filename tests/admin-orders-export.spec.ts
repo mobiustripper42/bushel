@@ -39,7 +39,8 @@ function mockOrder(over: Partial<OrderRow> = {}): OrderRow {
       {
         productId: "p1",
         name: "Kale",
-        description: "KALE-BUNCH",
+        sku: "KALE-BUNCH",
+        slug: "kale-cccccccc",
         unit: "bunch",
         unitLabel: "bunch",
         conversionToBase: 1,
@@ -63,7 +64,8 @@ test("toCsv: no header row; line items only, RFC 4180 quoting", () => {
         {
           productId: "p1",
           name: "Heirloom\ntomatoes",
-          description: "HEIRLOOM-LB",
+          sku: "HEIRLOOM-LB",
+          slug: "heirloom-cccccccc",
           unit: "lb",
           unitLabel: "lb",
           conversionToBase: 1,
@@ -89,7 +91,7 @@ test("toCsv: no header row; line items only, RFC 4180 quoting", () => {
   expect(lines[0]).toContain(",HEIRLOOM-LB,3,5.50,");
 });
 
-test("toCsv: empty Item Number when product description (slug) is null", () => {
+test("toCsv: empty Item Number when both unit sku and slug are null", () => {
   const csv = toCsv([
     mockOrder({
       customerName: "Plum Café",
@@ -97,7 +99,8 @@ test("toCsv: empty Item Number when product description (slug) is null", () => {
         {
           productId: "p1",
           name: "Garlic scapes",
-          description: null,
+          sku: null,
+          slug: null,
           unit: "bunch",
           unitLabel: "bunch",
           conversionToBase: 1,
@@ -119,14 +122,14 @@ test("toCsv: one row per line item; multi-item order keeps per-line slugs", () =
     mockOrder({
       customerName: "A",
       items: [
-        { productId: "p1", name: "Kale", description: "KALE-BU", unit: "bunch", unitLabel: "bunch", conversionToBase: 1, qty: 1, unitPriceCents: 300, qtyAvailable: 5 },
-        { productId: "p2", name: "Eggs", description: "EGG-DZ", unit: "dozen", unitLabel: "dozen", conversionToBase: 1, qty: 2, unitPriceCents: 600, qtyAvailable: 5 },
+        { productId: "p1", name: "Kale", sku: "KALE-BU", slug: null, unit: "bunch", unitLabel: "bunch", conversionToBase: 1, qty: 1, unitPriceCents: 300, qtyAvailable: 5 },
+        { productId: "p2", name: "Eggs", sku: "EGG-DZ", slug: null, unit: "dozen", unitLabel: "dozen", conversionToBase: 1, qty: 2, unitPriceCents: 600, qtyAvailable: 5 },
       ],
     }),
     mockOrder({
       customerName: "B",
       items: [
-        { productId: "p3", name: "Honey", description: "HON-JAR", unit: "jar", unitLabel: "jar", conversionToBase: 1, qty: 1, unitPriceCents: 1200, qtyAvailable: 5 },
+        { productId: "p3", name: "Honey", sku: "HON-JAR", slug: null, unit: "jar", unitLabel: "jar", conversionToBase: 1, qty: 1, unitPriceCents: 1200, qtyAvailable: 5 },
       ],
     }),
   ]);
@@ -149,7 +152,8 @@ test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
         {
           productId: "p1",
           name: "Has\nnewline",
-          description: "SLUG-WITH\nNEWLINE",
+          sku: "SLUG-WITH\nNEWLINE",
+          slug: null,
           unit: "lb",
           unitLabel: "lb",
           conversionToBase: 1,
@@ -168,11 +172,11 @@ test("toTsv: tab-separated, strips embedded tabs/newlines from fields", () => {
   expect(lines[0]).toContain("SLUG-WITH NEWLINE");
 });
 
-test("ordersToRows: itemNumber = product description (slug); description = product name", () => {
+test("ordersToRows: itemNumber = unit sku → slug fallback; description = product name (DEC-043)", () => {
   const rows = ordersToRows([
     mockOrder({
       items: [
-        { productId: "p", name: "Honey", description: "HONEY-JAR", unit: "jar", unitLabel: "jar", conversionToBase: 1, qty: 7, unitPriceCents: 125, qtyAvailable: 10 },
+        { productId: "p", name: "Honey", sku: "HONEY-JAR", slug: "honey-jar-slug", unit: "jar", unitLabel: "jar", conversionToBase: 1, qty: 7, unitPriceCents: 125, qtyAvailable: 10 },
       ],
     }),
   ]);
@@ -199,21 +203,21 @@ test.describe("admin orders export — UI", () => {
     await clearOrdersForWeek(thisWeek);
   });
 
-  // Set a product slug for the download test so we exercise the non-empty
-  // Item Number path. Restored in afterEach.
-  async function setProductSlug(productId: string, slug: string | null): Promise<void> {
-    await admin().from("products").update({ description: slug }).eq("id", productId);
+  // DEC-043: Item Number comes from the line's unit sku (→ slug fallback).
+  // Set a sku for the download test's non-fallback path; restored in afterEach.
+  async function setUnitSku(productId: string, sku: string | null): Promise<void> {
+    await admin().from("product_units").update({ sku }).eq("product_id", productId);
   }
 
   test.afterEach(async () => {
-    // Restore seed shape — description is null for all TEST_PRODUCTS in seed.
-    await setProductSlug(TEST_PRODUCTS.kale.id, null);
-    await setProductSlug(TEST_PRODUCTS.honey.id, null);
+    // Restore seed shape — sku is null for all TEST_PRODUCTS units.
+    await setUnitSku(TEST_PRODUCTS.kale.id, null);
+    await setUnitSku(TEST_PRODUCTS.honey.id, null);
   });
 
   test("Download CSV produces a file with the expected header + body", async ({ page }) => {
     const ids = await customerIds();
-    await setProductSlug(TEST_PRODUCTS.kale.id, "KALE-BU");
+    await setUnitSku(TEST_PRODUCTS.kale.id, "KALE-BU");
     await seedOrder({
       customerId: ids.farmStand,
       weekOf: thisWeek,
@@ -239,10 +243,10 @@ test.describe("admin orders export — UI", () => {
     expect(line).toBe(`${TEST_CUSTOMERS.farmStand.name},KALE-BU,2,3.00,Kale,,`);
   });
 
-  test("Copy as TSV writes to clipboard; empty Item Number when slug is null", async ({ page, context }) => {
+  test("Copy as TSV writes to clipboard; Item Number falls back to the unit slug when sku is null", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const ids = await customerIds();
-    // Honey has no slug (seed default) — assert the Item Number cell is empty.
+    // Honey has no sku (seed default) — the generated unit slug fills in.
     await seedOrder({
       customerId: ids.restaurant,
       weekOf: thisWeek,
@@ -260,8 +264,8 @@ test.describe("admin orders export — UI", () => {
     const clip: string = await page.evaluate(() => navigator.clipboard.readText());
     const lines = clip.split("\n");
     const line = lines.find((l) => l.includes(TEST_CUSTOMERS.restaurant.name));
-    // Tab-separated: Customer, '', 1, 12.00, Honey, '', ''
-    expect(line).toBe(`${TEST_CUSTOMERS.restaurant.name}\t\t1\t12.00\tHoney\t\t`);
+    // Tab-separated: Customer, honey-cccccccc (slug fallback), 1, 12.00, Honey, '', ''
+    expect(line).toBe(`${TEST_CUSTOMERS.restaurant.name}\thoney-cccccccc\t1\t12.00\tHoney\t\t`);
   });
 
   test("Export button disabled when no orders for the week", async ({ page }) => {

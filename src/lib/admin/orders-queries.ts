@@ -69,10 +69,13 @@ export function isValidTransition(
 export type OrderItem = {
   productId: string;
   name: string;
-  // products.description doubles as the Wave-export "Item Number" slug per the
-  // 5.2 mapping (e.g. "KALE-BUNCH"). Null when unset — Wave just gets a blank
-  // Item Number cell, which Annabel fills before posting the invoice.
-  description: string | null;
+  // DEC-043: Wave "Item Number" inputs for this line's unit. sku is
+  // Annabel-edited (matches her Wave catalog); slug is the generated
+  // fallback. The export resolves sku → slug → blank. products.description
+  // left this shape entirely — it's the customer-facing long description,
+  // nothing more.
+  sku: string | null;
+  slug: string | null;
   // Product-level base unit label (the product_units row with
   // conversion_to_base = 1.0, per DEC-037). Used where a per-product unit is
   // needed (fulfillment report "total N <base>"); display surfaces should use
@@ -176,9 +179,9 @@ async function queryOrders(filter: {
        status, needs_reconciliation,
        customers(id, name, phone),
        order_items(product_id, qty, unit_price_cents,
-         products(name, description, qty_available,
+         products(name, qty_available,
            product_units(label, conversion_to_base)),
-         product_units(label, conversion_to_base))`,
+         product_units(label, conversion_to_base, sku, slug))`,
     )
     .order("created_at", { ascending: false });
   if (filter.weekOf) ordersQuery = ordersQuery.eq("week_of", filter.weekOf);
@@ -246,7 +249,6 @@ async function queryOrders(filter: {
         unit_price_cents: number;
         products: {
           name: string;
-          description: string | null;
           qty_available: number;
           // The product's full unit set (reverse join). Only the base row
           // (conversion_to_base = 1.0) is read here, for OrderItem.unit.
@@ -258,6 +260,8 @@ async function queryOrders(filter: {
         product_units: {
           label: string;
           conversion_to_base: number;
+          sku: string | null;
+          slug: string | null;
         } | null;
       }>)
         .filter((i) => i.products !== null)
@@ -274,7 +278,8 @@ async function queryOrders(filter: {
           return {
             productId: i.product_id,
             name: i.products!.name,
-            description: i.products!.description,
+            sku: i.product_units?.sku ?? null,
+            slug: i.product_units?.slug ?? null,
             unit: baseLabel ?? unitLabel,
             unitLabel,
             conversionToBase: Number(i.product_units?.conversion_to_base ?? 1),

@@ -142,6 +142,9 @@ export function InventoryRow({
           </span>
         </td>
         <td>
+          {/* #230: explicit text, not texture alone — the hatch was nearly
+              indistinguishable from the plain-grey unavailable state. */}
+          {!row.is_active && <span className="pill pill-hidden">Hidden</span>}
           <input
             type="text"
             className="field-input"

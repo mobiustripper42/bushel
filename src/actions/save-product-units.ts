@@ -11,6 +11,9 @@ export type UnitInput = {
   unit_price_cents: number;
   is_active: boolean;
   sort_order: number | null;
+  // DEC-043: Wave Item Number for this unit's export lines; null → the
+  // generated slug covers the export.
+  sku: string | null;
 };
 
 export type SaveProductUnitsInput = {
@@ -49,7 +52,11 @@ export async function saveProductUnits(
     return { error: "A product must have at least one unit." };
   }
 
-  const trimmed = input.units.map((u) => ({ ...u, label: u.label.trim() }));
+  const trimmed = input.units.map((u) => ({
+    ...u,
+    label: u.label.trim(),
+    sku: u.sku?.trim() || null,
+  }));
 
   for (const u of trimmed) {
     if (!u.label) return { error: "Every unit needs a label." };
@@ -137,6 +144,7 @@ export async function saveProductUnits(
         unit_price_cents: u.unit_price_cents,
         is_active: u.is_active,
         sort_order: u.sort_order,
+        sku: u.sku,
         slug,
       });
       if (error) return { error: error.message };
@@ -149,6 +157,7 @@ export async function saveProductUnits(
           unit_price_cents: u.unit_price_cents,
           is_active: u.is_active,
           sort_order: u.sort_order,
+          sku: u.sku,
         })
         .eq("id", u.id);
       if (error) return { error: error.message };

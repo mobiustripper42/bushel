@@ -16,6 +16,10 @@ export type ProductUnitState = {
   unit_price_cents: number;
   is_active: boolean;
   sort_order: number | null;
+  // DEC-043: Wave "Item Number" for this unit's export lines. Null → the
+  // generated slug covers the export; editable so Annabel can match her
+  // existing Wave catalog.
+  sku: string | null;
 };
 
 type Props = {
@@ -85,7 +89,8 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
         orig.label !== u.label ||
         orig.conversion_to_base !== u.conversion_to_base ||
         orig.unit_price_cents !== u.unit_price_cents ||
-        orig.is_active !== u.is_active
+        orig.is_active !== u.is_active ||
+        (orig.sku ?? "") !== (u.sku ?? "")
       ) {
         return true;
       }
@@ -150,6 +155,7 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
         unit_price_cents: 0,
         is_active: true,
         sort_order: maxOrder + 10,
+        sku: null,
       },
     ]);
     setError(null);
@@ -190,6 +196,7 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
       unit_price_cents: u.unit_price_cents,
       is_active: u.is_active,
       sort_order: u.sort_order,
+      sku: u.sku?.trim() || null,
     }));
 
     setError(null);
@@ -278,6 +285,9 @@ export function UnitsDrawer({ productId, productName, initialUnits, onClose, onS
                 Conversion
               </span>
               <span className="units-col-price">Price</span>
+              <span className="units-col-sku" title="Wave Item Number for this unit's invoice lines. Blank uses the generated slug.">
+                SKU
+              </span>
               <span className="units-col-active">Active</span>
               <span className="units-col-trash" />
             </div>
@@ -445,6 +455,16 @@ function UnitRow({
             aria-label="Unit price"
           />
         </div>
+      </div>
+      <div className="units-col-sku">
+        <input
+          type="text"
+          className="field-input"
+          value={unit.sku ?? ""}
+          onChange={(e) => onUpdate({ sku: e.target.value })}
+          placeholder="Wave item #"
+          aria-label={`SKU: ${unit.label || "unit"}`}
+        />
       </div>
       <div className="units-col-active">
         <Switch

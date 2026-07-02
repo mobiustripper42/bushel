@@ -62,6 +62,8 @@ test.describe("admin inventory · units drawer", () => {
     await newRow.getByRole("textbox", { name: "Unit label" }).fill("per lb");
     await newRow.getByRole("textbox", { name: "Conversion to base" }).fill("0.5");
     await newRow.getByRole("textbox", { name: "Unit price" }).fill("8.00");
+    // DEC-043: per-unit Wave Item Number, editable in the drawer.
+    await newRow.getByRole("textbox", { name: /^SKU/ }).fill("KALE-LB-WAVE");
 
     await drawerSave(page).click();
     await expect(drawer(page)).toBeHidden();
@@ -72,12 +74,13 @@ test.describe("admin inventory · units drawer", () => {
 
     // verify persisted via DB
     const sb = admin();
-    const { data } = await sb.from("product_units").select("label, unit_price_cents, conversion_to_base, is_active").eq("product_id", KALE.id);
+    const { data } = await sb.from("product_units").select("label, unit_price_cents, conversion_to_base, is_active, sku").eq("product_id", KALE.id);
     const extra = data?.find((u) => u.label === "per lb");
     expect(extra).toBeTruthy();
     expect(extra?.unit_price_cents).toBe(800);
     expect(Number(extra?.conversion_to_base)).toBe(0.5);
     expect(extra?.is_active).toBe(true);
+    expect(extra?.sku).toBe("KALE-LB-WAVE");
   });
 
   test("inactive unit is reflected in chip subtext", async ({ page }) => {
