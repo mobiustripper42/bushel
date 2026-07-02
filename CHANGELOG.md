@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.5] - 2026-06-23
+- PR #232: Phase 9 setup: open-order pivot — DEC-040–045 + plan + issues
+
 ## [0.10.4] - 2026-06-22
 - PR #223: Drop @architect Fable pin → Opus (seeds DEC-S029)
 
