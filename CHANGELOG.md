@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.7] - 2026-06-27
+- PR #234: auto-sync downstream — 2026-06-27
+
 ## [0.10.6] - 2026-06-25
 - PR #218: #211 Additive orders — append to the week's order (DEC-039)
 
