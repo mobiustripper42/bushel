@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.10] - 2026-06-04
+- PR #199: Add Confirmed order status + flow (#190, DEC-035)
+
 ## [0.9.9] - 2026-06-04
 - PR #198: Send Texts page: rename, drop mode tabs, reword (#189)
 
