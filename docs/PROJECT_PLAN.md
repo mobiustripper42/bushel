@@ -254,6 +254,41 @@ Re-keys order identity from the week to the open order, kills the scheduled-clos
 
 **Closed 2026-07-02 (retro):** 25 pts, 10 issues, span 9.2d — throughput 19.1 pts/calendar-wk (single active ISO week). 13 PRs merged in-window. Hard cutover applied to dev/preview; **production cutover pending** (Eric's quiet-minute call: prod `db push` → `/promote-production`, DB before code).
 
+---
+
+## Phase 10 — Supabase → Neon + service layer + code-auth (32 pts)
+
+**HIGH PRIORITY (Eric, 2026-07-02).** Off Supabase entirely: Neon free tier (`pg` Pool, no ORM), muster's SQL migration runner + clean `0001_init.sql` baseline, shared-access-code auth replacing Google OAuth, RLS deleted (the service layer already IS the boundary), docker Postgres for local/CI. DEC-046–049; @architect pass 2026-07-02 (Opus). Muster is the reference implementation — this aligns both projects on one stack.
+
+**Sequencing:** 10.7 is the blast-radius step — one quiet-minute outage covers BOTH the pending DEC-041 prod cutover and the Neon move (only `products`/`product_units`/`customers` migrate; the rest is wiped by DEC-041 anyway). Gate it behind everything green on dev/preview. Phase 11 must not start until 10.2 + 10.3 merge.
+
+| # | Task | Pts | Status |
+|---|---|---|---|
+| 10.0 | Neon project + branches + docker CI Postgres | 3 | [#253](https://github.com/mobiustripper42/bushel/issues/253) |
+| 10.1 | Port `db/migrate.ts` runner + `0001_init.sql` clean baseline | 5 | [#254](https://github.com/mobiustripper42/bushel/issues/254) |
+| 10.2 | `pg` data layer — swap the ~15 supabase-js call sites | 8 | [#255](https://github.com/mobiustripper42/bushel/issues/255) |
+| 10.3 | Code-auth: muster `session.ts` + access-code login (DEC-047) | 5 | [#256](https://github.com/mobiustripper42/bushel/issues/256) |
+| 10.4 | Delete RLS + untangle auth.users; prune pgTAP (DEC-048) | 3 | [#257](https://github.com/mobiustripper42/bushel/issues/257) |
+| 10.5 | Remove `@supabase/*` deps + env/branch config (DEC-049) | 3 | [#258](https://github.com/mobiustripper42/bushel/issues/258) |
+| 10.6 | Playwright: headless code-auth helper + full suite green | 3 | [#259](https://github.com/mobiustripper42/bushel/issues/259) |
+| 10.7 | Prod cutover: Neon move co-timed with DEC-041 cutover | 2 | [#260](https://github.com/mobiustripper42/bushel/issues/260) |
+
+---
+
+## Phase 11 — Expo mobile app: muster rehearsal, push-first (20 pts)
+
+Separate repo `bushel-mobile` (DEC-050): Expo/React Native, push notifications as the point (long-term path off SMS/Twilio for non-SMS users), read-only orders list + one mutation. Annabel = Android sideload APK ($0, full push). Emma = iPhone free-signed 7-day builds, install-only — **iOS remote push is gated on the deferred $99 Apple Developer enrollment** (APNs key requires paid membership). Bushel's first real `/api/*` routes (Server Actions are uncallable from native), authenticated by DEC-047's bearer-consumable session.
+
+**Gated on Phase 10** (10.2 data layer + 10.3 auth merged) — building API routes against the Supabase layer would be throwaway work.
+
+| # | Task | Pts | Status |
+|---|---|---|---|
+| 11.1 | `/api/*` routes on bushel + bearer-token auth guard | 5 | [#261](https://github.com/mobiustripper42/bushel/issues/261) |
+| 11.2 | Expo app scaffold + code-auth login + orders list | 5 | [#262](https://github.com/mobiustripper42/bushel/issues/262) |
+| 11.3 | Expo push: token registration + Android push end-to-end | 5 | [#263](https://github.com/mobiustripper42/bushel/issues/263) |
+| 11.4 | Mark-fulfilled mutation from the app | 2 | [#264](https://github.com/mobiustripper42/bushel/issues/264) |
+| 11.5 | Android EAS build → sideloaded APK; iOS free-sign install | 3 | [#265](https://github.com/mobiustripper42/bushel/issues/265) |
+
 DEC-039 (#218's additive-orders decision) lands in `DECISIONS.md` when 9.1 merges; DEC-040–045 are already written. Customer-facing order history (#136) stays in the backlog.
 
 ---
