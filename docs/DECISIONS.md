@@ -563,15 +563,15 @@ A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`
 
 ---
 
-## DEC-047 — Admin auth: shared access code + self-rolled HMAC session (drops Google OAuth / Supabase Auth)
+## DEC-047 — Admin auth: email → login code + self-rolled HMAC session via Resend (drops Google OAuth / Supabase Auth)
 
-**Decision:** Admin login is a short access code (the sailbook/muster pattern), verified against an env-configured value (or a 2-row `admin_codes` table), minting a stateless HMAC-SHA256 session token stored in an httpOnly cookie. Session code is ported verbatim from muster's `src/auth/session.ts` (pure node:crypto, zero dependencies). Google OAuth and `@supabase/ssr` are removed. The session token is **dual-consumable** — cookie for the browser, bearer header for the Phase 11 native client — so Phase 11 needs no re-auth work.
+**Decision:** Admin login is muster's full flow, ported verbatim: admin enters their email, a short-lived one-time code lands in their inbox via **Resend**, and verifying it mints a stateless HMAC-SHA256 session token stored in an httpOnly cookie. The port covers muster's `src/auth/session.ts` (pure node:crypto, zero dependencies) plus its `login_codes` table (TTL + attempt cap) and code-email sending. Admin identities live in a 2-row `admins` table (Annabel, Emma) — only listed emails can request a code. Google OAuth and `@supabase/ssr` are removed. The session token is **dual-consumable** — cookie for the browser, bearer header for the Phase 11 native client — so Phase 11 needs no re-auth work.
 
-**Why:** Two known operators (Annabel, Emma) and no email service (DEC-033 chose Telegram precisely to avoid onboarding a mail provider) make muster's full email→code→login_codes machinery unnecessary. A shared code that isn't emailed to anyone needs no TTL table and no attempt cap at this scale. Removing OAuth also unblocks headless admin Playwright auth (long a sore point — Phase 1's authenticated admin tests were deferred to #27 over exactly this).
+**Why:** The first draft of this DEC used a shared access code in an env var, reasoning that DEC-033's "no mail provider" stance made muster's email machinery not worth it. Rejected as hacky: a shared static secret has no per-user attribution, rotates only via redeploy, and saves very little — the Resend wire-up is trivial and the rest of the flow ports from muster unchanged. Per-user attribution now comes free. Removing OAuth still unblocks headless admin Playwright auth (long a sore point — Phase 1's authenticated admin tests were deferred to #27 over exactly this): global-setup requests a code and reads it straight from `login_codes` in the test DB, no inbox in the loop.
+
+**Resend scope:** auth-only. It amends DEC-033's rationale (a mail provider now exists) but not its outcome — alerting does not move to email. Telegram remains today's alert channel only until DEC-050's push replaces it; Eric wants off Telegram, and push is that path, not email.
 
 **Supersedes:** DEC-003 (single admin via Google OAuth / Supabase Auth). **Unaffected:** DEC-004 customer token auth — customers never used Supabase Auth; the `bbf_customer_token` cookie → `customers.token` path is untouched.
-
-**Trade-off accepted:** a shared code has no per-user attribution. If Annabel vs Emma attribution ever matters (it doesn't today — `send_queue.sent_by_user_id` is the only current consumer and can go nullable/dropped), issue per-user codes against the 2-row table then.
 
 ---
 
@@ -579,7 +579,7 @@ A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`
 
 **Decision:** All RLS policies are dropped, not translated. The auth boundary is already the service layer — customer reads resolve `bbf_customer_token` → `customers.token` then query with full DB privilege (documented in `src/lib/customer/queries.ts`); admin reads sit behind the DEC-047 session. RLS was belt-and-suspenders, tested by pgTAP, never the app's access path.
 
-**Schema untangle** (Supabase-auth tendrils that can't exist on Neon): drop `public.users` + its `auth.users` mirror trigger; `send_queue.sent_by_user_id` (FK → auth.users) drops the FK, column goes nullable or is removed (DEC-047 trade-off); all `auth.uid()` policies removed with RLS.
+**Schema untangle** (Supabase-auth tendrils that can't exist on Neon): drop `public.users` + its `auth.users` mirror trigger; `send_queue.sent_by_user_id` (FK → auth.users) drops the FK and either repoints to the DEC-047 `admins` table or is removed; all `auth.uid()` policies removed with RLS.
 
 **pgTAP disposition:** the RLS-only files (`customers_rls`, `fulfillment_link_rls`, `rls_tables`) are deleted; the FUNCTION/DATA tests (`place_order_additive`, `place_order_units`, `product_units`, `set_base_unit`, `order_status_codes`, `customer_sends_modes`) stay and keep running against docker Postgres — they're the regression net for the concurrency-sensitive `place_order` path.
 
@@ -607,7 +607,9 @@ A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`
 
 **iOS scope reset:** remote push to iOS requires an APNs key, which requires paid Apple Developer Program membership ($99/yr, deferred). Free 7-day personal-team signing installs and runs on Emma's iPhone but does NOT grant remote push. So **v1 push is ANDROID-ONLY (Annabel)**; iPhone push is explicitly gated behind the $99 enrollment. Android proves the Expo push loop for the muster rehearsal.
 
-**Repo shape:** separate repo, not in-repo `apps/mobile` — a monorepo root collides with the seeds-template sync (root-file-oriented, single-app-root assumption). Muster decides its own shape independently.
+**Repo shape:** separate repo, not in-repo `apps/mobile` — a monorepo root collides with the seeds-template sync (root-file-oriented, single-app-root assumption). This sets no precedent for muster's repo layout — muster makes its own monorepo-vs-separate call when it builds its app.
+
+**Web↔app parity:** the two surfaces need to stay close, not 1:1. Two mechanisms: (1) admin mutations are implemented as service-layer functions first, with the Server Action (web) and `/api/*` route (app) as thin wrappers over the same function — parity is then a wrapper, not a reimplementation; (2) each phase retro includes a parity pass — which admin capabilities added that phase should the app pick up, and which diverge deliberately. Divergence is fine when named; drift is not.
 
 **Build/signing:** Android via EAS free tier → sideloaded APK ($0). iOS via free-signed 7-day EAS builds for install/run only (no push) until $99 lands. No Mac in the loop for Android.
 
