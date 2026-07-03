@@ -547,6 +547,74 @@ A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`
 
 ---
 
+---
+
+## DEC-046 — Off Supabase to Neon; `pg` + hand-rolled SQL migration runner
+
+**Decision:** Bushel moves Postgres from Supabase Cloud to Neon (free tier). Data access is `pg` (node-postgres) `Pool` via `DATABASE_URL` — no ORM, no query builder. Migrations are plain SQL files `db/migrations/NNNN_name.sql` applied by a ~70-line runner ported from muster (`db/migrate.ts`: `_migrations` tracking table, each file in its own transaction). Local + CI test against docker Postgres; Neon hosts dev/preview + prod only.
+
+**Why:** Consolidates billing off Supabase; aligns bushel with muster (same stack, one maintenance surface for a solo dev); muster already runs this on Neon, so it's a proven path, not a spike. `pg` + plain SQL clears the dependency bar where Drizzle/Prisma do not — the queries are hand-written already and "migrations are source of truth" stays literally true.
+
+**Rejected:** Drizzle/Prisma (new paradigm + tooling for no gain at this scale); drizzle-kit (the SQL runner is portable and understood); replaying the 27 Supabase migrations (a third are RLS/mirror churn that gets deleted — author a clean `0001_init.sql` baseline instead, validated by the surviving pgTAP function tests). Also consciously rejected: staying on Supabase with just code-auth + one project — satisfies OAuth/billing goals without a DB move, but leaves bushel and muster on divergent stacks forever; the muster-alignment dividend is the tie-breaker.
+
+**Migration:** fresh baseline schema on Neon; `place_order` plpgsql + `order_items` trigger port unchanged (pure Postgres). Data crosses via targeted `pg_dump -t products -t product_units -t customers` (orders/order_items/customer_sends are wiped by DEC-041's cutover, so they don't move).
+
+**Sequencing:** the Neon data move happens in the SAME quiet-minute as the pending DEC-041 production cutover — one outage on the live tool, not two.
+
+---
+
+## DEC-047 — Admin auth: email → login code + self-rolled HMAC session via Resend (drops Google OAuth / Supabase Auth)
+
+**Decision:** Admin login is muster's full flow, ported verbatim: admin enters their email, a short-lived one-time code lands in their inbox via **Resend**, and verifying it mints a stateless HMAC-SHA256 session token stored in an httpOnly cookie. The port covers muster's `src/auth/session.ts` (pure node:crypto, zero dependencies) plus its `login_codes` table (TTL + attempt cap) and code-email sending. Admin identities live in a 2-row `admins` table (Annabel, Emma) — only listed emails can request a code. Google OAuth and `@supabase/ssr` are removed. The session token is **dual-consumable** — cookie for the browser, bearer header for the Phase 11 native client — so Phase 11 needs no re-auth work.
+
+**Why:** The first draft of this DEC used a shared access code in an env var, reasoning that DEC-033's "no mail provider" stance made muster's email machinery not worth it. Rejected as hacky: a shared static secret has no per-user attribution, rotates only via redeploy, and saves very little — the Resend wire-up is trivial and the rest of the flow ports from muster unchanged. Per-user attribution now comes free. Removing OAuth still unblocks headless admin Playwright auth (long a sore point — Phase 1's authenticated admin tests were deferred to #27 over exactly this): global-setup requests a code and reads it straight from `login_codes` in the test DB, no inbox in the loop.
+
+**Resend scope:** auth-only. It amends DEC-033's rationale (a mail provider now exists) but not its outcome — alerting does not move to email. Telegram remains today's alert channel only until DEC-050's push replaces it; Eric wants off Telegram, and push is that path, not email.
+
+**Supersedes:** DEC-003 (single admin via Google OAuth / Supabase Auth). **Unaffected:** DEC-004 customer token auth — customers never used Supabase Auth; the `bbf_customer_token` cookie → `customers.token` path is untouched.
+
+---
+
+## DEC-048 — RLS deleted; the service layer IS the access boundary (formalizes existing reality; untangles auth.users)
+
+**Decision:** All RLS policies are dropped, not translated. The auth boundary is already the service layer — customer reads resolve `bbf_customer_token` → `customers.token` then query with full DB privilege (documented in `src/lib/customer/queries.ts`); admin reads sit behind the DEC-047 session. RLS was belt-and-suspenders, tested by pgTAP, never the app's access path.
+
+**Schema untangle** (Supabase-auth tendrils that can't exist on Neon): drop `public.users` + its `auth.users` mirror trigger; `send_queue.sent_by_user_id` (FK → auth.users) drops the FK and either repoints to the DEC-047 `admins` table or is removed; all `auth.uid()` policies removed with RLS.
+
+**pgTAP disposition:** the RLS-only files (`customers_rls`, `fulfillment_link_rls`, `rls_tables`) are deleted; the FUNCTION/DATA tests (`place_order_additive`, `place_order_units`, `product_units`, `set_base_unit`, `order_status_codes`, `customer_sends_modes`) stay and keep running against docker Postgres — they're the regression net for the concurrency-sensitive `place_order` path.
+
+**Why now:** with the DB moving anyway, keeping RLS would mean re-authoring every policy against a role model Neon doesn't share, to protect a path the app never uses. Deleting is both simpler and honest about how access actually works.
+
+---
+
+## DEC-049 — Environment model: Neon branches replace the two-project split; prod-write protection via connection-string discipline
+
+**Decision:** One Neon project, two branches — `main` (dev/preview) and `production`. Vercel Production → Neon `production` branch URL; Vercel Preview/Development + `.env.local` → Neon `main` branch URL. CI/local tests run docker Postgres (unchanged). No per-PR ephemeral-branch automation.
+
+**Production-write protection** (replaces DEC-S009's Supabase relink dance): production `DATABASE_URL` lives ONLY in Vercel and a separate, deliberately-sourced `.envrc.production` — never the shell default. `db/migrate.ts` takes the connection string as an arg, so a prod migration is an explicit `tsx db/migrate.ts "$PROD_DATABASE_URL"`, not a lingering link state. Strictly safer than the "link to prod for a few seconds, always relink back" ritual — there is no default-prod state to forget out of.
+
+**Supersedes:** DEC-S009 mechanics (the two-Supabase-project split + link discipline) and the Supabase↔Vercel env-sync section — replaced by two Neon branch URLs and the same "both Vercel scopes must stay coherent" diff-check.
+
+---
+
+## DEC-050 — Expo native app: muster rehearsal, push-first, thin scope
+
+**Decision:** A separate-repo Expo (React Native) app, `bushel-mobile`, whose v1 scope is exactly: (a) receive Expo push notifications, (b) a read-only active-orders list, (c) one mutation — mark-fulfilled. It authenticates to bushel's Next.js `/api/*` routes with the DEC-047 HMAC session as a bearer token — never direct DB access from the phone. Not an admin port.
+
+**Why:** bushel is the rehearsal for muster, where native + background-sync are real requirements — and long-term, in-app push is the path off SMS/carrier costs for users who don't want texts. Bushel's only alert channel today is Telegram (DEC-033; the PWA push idea #170 was closed *parked*, never built), so the app also replaces that hack for Annabel — but the scope stays thin because the rehearsal is the point.
+
+**Net-new API surface:** bushel mutations are Server Actions (uncallable from native), so Phase 11 builds the first real `/api/*` routes — list orders, mark-fulfilled, register push token, order-arrival push fan-out. The DEC-047 session is bearer-consumable specifically to serve these.
+
+**iOS scope reset:** remote push to iOS requires an APNs key, which requires paid Apple Developer Program membership ($99/yr, deferred). Free 7-day personal-team signing installs and runs on Emma's iPhone but does NOT grant remote push. So **v1 push is ANDROID-ONLY (Annabel)**; iPhone push is explicitly gated behind the $99 enrollment. Android proves the Expo push loop for the muster rehearsal.
+
+**Repo shape:** separate repo, not in-repo `apps/mobile` — a monorepo root collides with the seeds-template sync (root-file-oriented, single-app-root assumption). This sets no precedent for muster's repo layout — muster makes its own monorepo-vs-separate call when it builds its app.
+
+**Web↔app parity:** the two surfaces need to stay close, not 1:1. Two mechanisms: (1) admin mutations are implemented as service-layer functions first, with the Server Action (web) and `/api/*` route (app) as thin wrappers over the same function — parity is then a wrapper, not a reimplementation; (2) each phase retro includes a parity pass — which admin capabilities added that phase should the app pick up, and which diverge deliberately. Divergence is fine when named; drift is not.
+
+**Build/signing:** Android via EAS free tier → sideloaded APK ($0). iOS via free-signed 7-day EAS builds for install/run only (no push) until $99 lands. No Mac in the loop for Android.
+
+---
+
 ## Open / Pending Product Owner Discussion
 
 - **Minimum delivery amount (in dollars).** Threshold below which delivery is unavailable, or above which delivery is free. Phase 7+ candidate.
