@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.1] - 2026-07-04
+- PR #266: Phase 10 + 11 setup: Supabase→Neon and Expo app — DEC-046–050, plan, issues
+
 ## [0.11.0] - 2026-07-02 — Phase 9
 - 25 pts shipped across 3 sessions (throughput 19.1 pts/calendar-wk)
 - Open-order pivot (DEC-040–045); see `docs/RETROSPECTIVES.md`
