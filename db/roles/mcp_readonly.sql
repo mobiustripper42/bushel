@@ -4,6 +4,13 @@
 -- Then set the password out-of-band (never commit it):
 --   ALTER ROLE mcp_readonly WITH PASSWORD '<generate one>';
 -- The MCP server connects with this role's URL — SELECT-only, no writes possible.
+--
+-- Two assumptions this file bakes in:
+-- 1. The database is named `neondb` (Neon's default; matches bushel's project).
+-- 2. The DEFAULT PRIVILEGES grant below binds to the role EXECUTING this script.
+--    It must be the same role that runs prod migrations (neondb_owner via
+--    PROD_DATABASE_URL_UNPOOLED), or tables created by future migrations are
+--    silently invisible to mcp_readonly.
 
 CREATE ROLE mcp_readonly WITH LOGIN;
 
