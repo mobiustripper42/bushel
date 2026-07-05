@@ -2,11 +2,11 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   ADMIN_STORAGE_STATE,
   TEST_PRODUCTS,
-  admin,
   resetProductUnits,
   setProductQty,
   setProductUnits,
 } from "./helpers";
+import { query } from "@/lib/db";
 
 // #208 (DEC-038) — changeable base unit. "Make base" on a non-base unit row
 // opens a confirm modal; confirming calls the atomic set_base_unit RPC, which
@@ -75,26 +75,29 @@ test.describe("admin inventory · make base unit", () => {
 
     // DB: per lb is now 1.0, bunch rescaled to 2.0, stock 10 / 0.5 = 20,
     // prices untouched, new base sorts first.
-    const sb = admin();
-    const { data: units } = await sb
-      .from("product_units")
-      .select("label, conversion_to_base, unit_price_cents, sort_order")
-      .eq("product_id", KALE.id)
-      .order("sort_order");
+    const units = await query<{
+      label: string;
+      conversion_to_base: number;
+      unit_price_cents: number;
+      sort_order: number;
+    }>(
+      `select label, conversion_to_base, unit_price_cents, sort_order
+         from product_units where product_id = $1 order by sort_order`,
+      [KALE.id],
+    );
     expect(units).toHaveLength(2);
-    expect(units![0].label).toBe("per lb");
-    expect(Number(units![0].conversion_to_base)).toBe(1);
-    expect(units![0].unit_price_cents).toBe(800);
-    expect(units![1].label).toBe(KALE.unit);
-    expect(Number(units![1].conversion_to_base)).toBe(2);
-    expect(units![1].unit_price_cents).toBe(KALE.price_cents);
+    expect(units[0].label).toBe("per lb");
+    expect(Number(units[0].conversion_to_base)).toBe(1);
+    expect(units[0].unit_price_cents).toBe(800);
+    expect(units[1].label).toBe(KALE.unit);
+    expect(Number(units[1].conversion_to_base)).toBe(2);
+    expect(units[1].unit_price_cents).toBe(KALE.price_cents);
 
-    const { data: product } = await sb
-      .from("products")
-      .select("qty_available")
-      .eq("id", KALE.id)
-      .single();
-    expect(Number(product!.qty_available)).toBe(20);
+    const products = await query<{ qty_available: number }>(
+      `select qty_available from products where id = $1`,
+      [KALE.id],
+    );
+    expect(Number(products[0]!.qty_available)).toBe(20);
 
     // Reload + reopen: the drawer now badges "per lb" as base, and the inline
     // row's unit cell follows (it mirrors the base unit per DEC-037).
@@ -118,14 +121,12 @@ test.describe("admin inventory · make base unit", () => {
     await expect(confirmModal(page)).toBeHidden();
     await expect(drawer(page)).toBeVisible();
 
-    const sb = admin();
-    const { data } = await sb
-      .from("product_units")
-      .select("conversion_to_base")
-      .eq("product_id", KALE.id)
-      .eq("label", "per lb")
-      .single();
-    expect(Number(data!.conversion_to_base)).toBe(0.5);
+    const rows = await query<{ conversion_to_base: number }>(
+      `select conversion_to_base from product_units
+        where product_id = $1 and label = $2`,
+      [KALE.id, "per lb"],
+    );
+    expect(Number(rows[0]!.conversion_to_base)).toBe(0.5);
   });
 
   test("make base is gated while the drawer has unsaved edits", async ({ page }) => {

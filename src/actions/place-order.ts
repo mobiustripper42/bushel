@@ -2,14 +2,14 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
 import {
   CUSTOMER_TOKEN_COOKIE,
   lookupCustomerByToken,
 } from "@/lib/customer/session";
+import { query } from "@/lib/db";
 import { sendAdminOrderAlert } from "@/lib/notifications/admin-telegram";
 import { totalItemCount } from "@/lib/order-items";
-import type { Json } from "@/lib/supabase/types";
+import { pgMessage } from "@/lib/pg-errors";
 import { weekOfMondayNY } from "@/lib/week";
 
 export type PlaceOrderItem = {
@@ -60,33 +60,32 @@ export async function placeOrder(
     return { error: "Add at least one item before submitting." };
   }
 
-  const supabase = createAdminClient();
   // DEC-039: place_order returns table(order_id, appended) — `appended`
   // tells us whether this submission created the week's order or topped up
-  // an existing one, which picks the alert copy below. .single() collapses
-  // the one-row set.
-  const { data, error } = await supabase
-    .rpc("place_order", {
-      p_customer_id: customer.id,
-      p_week_of: weekOfMondayNY(),
-      p_fulfillment_type: payload.mode,
-      p_delivery_address:
+  // an existing one, which picks the alert copy below.
+  let appended = false;
+  try {
+    const rows = await query<{ order_id: string; appended: boolean }>(
+      `select * from place_order($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        customer.id,
+        weekOfMondayNY(),
+        payload.mode,
         payload.mode === "delivery" ? (customer.delivery_address ?? "") : "",
-      p_delivery_preference:
         payload.mode === "delivery" ? payload.delivery_preference.trim() : "",
-      p_pickup_note: payload.mode === "pickup" ? payload.pickup_note.trim() : "",
-      p_notes: payload.notes.trim(),
-      p_items: payload.items as unknown as Json,
-      p_submission_id: payload.submission_id,
-    })
-    .single();
-
-  if (error) {
+        payload.mode === "pickup" ? payload.pickup_note.trim() : "",
+        payload.notes.trim(),
+        JSON.stringify(payload.items),
+        payload.submission_id,
+      ],
+    );
+    appended = rows[0]?.appended ?? false;
+  } catch (e) {
     // #132 / DEC-036: place_order rejects items whose product is sold out
     // (qty_available = 0) at submit time — the stale-tab race. Surface a
-    // friendly, actionable message instead of the raw RPC text; reloading
+    // friendly, actionable message instead of the raw error text; reloading
     // re-fetches inventory and greys the sold-out rows.
-    if (error.message.includes("is sold out")) {
+    if (pgMessage(e).includes("is sold out")) {
       return {
         error:
           "Some items sold out while you were ordering. Reload to see what's still available.",
@@ -95,9 +94,8 @@ export async function placeOrder(
     // DEC-041: the old "already fulfilled" refusal is gone — a submission
     // arriving after the open order went terminal simply creates a fresh
     // open order (fulfilled orders drop out of the identity).
-    return { error: error.message };
+    return { error: pgMessage(e) };
   }
-  const appended = data?.appended ?? false;
 
   // Best-effort admin alert (DEC-033). Failure is swallowed inside the
   // wrapper — order placement never blocks on a notification miss. We

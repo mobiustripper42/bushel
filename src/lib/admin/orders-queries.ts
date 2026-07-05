@@ -1,120 +1,20 @@
-// Admin order-list reads (Phase 5.1). Service-role client — admin only.
+// Admin order-list reads (Phase 5.1). Full-privilege pg reads — admin only.
+// The pure order-status domain (types, status sets, transition rules) lives
+// in order-status.ts so client components can import it without dragging pg
+// into the browser bundle; re-exported here for server-side callers.
 import { consolidateItems, consolidationKey } from "@/lib/order-items";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { query } from "@/lib/db";
+import {
+  OPEN_ORDER_STATUSES,
+  ORDER_STATUSES,
+  TERMINAL_ORDER_STATUSES,
+  type OrderItem,
+  type OrderRow,
+  type OrderStatus,
+} from "@/lib/admin/order-status";
 import { weekOfMondayNY } from "@/lib/week";
 
-// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked_up | delivered).
-// Confirmed is optional. Ordering matches codes.sort_order.
-// DEC-044: snake_case picked_up is canonical — matches the codes table row.
-export type OrderStatus =
-  | "new"
-  | "confirmed"
-  | "ready"
-  | "picked_up"
-  | "delivered";
-
-export const ORDER_STATUSES: OrderStatus[] = [
-  "new",
-  "confirmed",
-  "ready",
-  "picked_up",
-  "delivered",
-];
-
-// DEC-041: the open-order identity set. A customer has at most one order in
-// these statuses (partial unique index orders_one_open_per_customer); a
-// terminal order drops out and frees a new one. Keep this list identical to
-// the index predicate in the DEC-041 migration.
-export const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "confirmed", "ready"];
-
-// The complement — every status is in exactly one of these two sets, so an
-// order can never fall out of both admin views (DEC-045). isTerminalStatus
-// and the Fulfilled-view filter both derive from this single list.
-export const TERMINAL_ORDER_STATUSES: OrderStatus[] = ["picked_up", "delivered"];
-
-// The no-regress auto-advance rule for confirm-sends (DEC-035): sending the
-// confirmation text moves a new order to confirmed, but must never regress a
-// ready/terminal order. Wired to the confirm-send action in the Orders-page
-// action stack (#192); lives here as a pure, testable helper.
-export function statusAfterConfirmSend(current: OrderStatus): OrderStatus {
-  return current === "new" ? "confirmed" : current;
-}
-
-// DEC-041: terminal = the box has been handed over. A terminal order drops
-// out of the open-order identity — /confirmed renders it read-only and the
-// next submission creates a fresh order. Takes raw text because orders.status
-// is app-enforced text in the DB (DEC-010) — customer-side reads arrive untyped.
-export function isTerminalStatus(status: string): boolean {
-  return (TERMINAL_ORDER_STATUSES as string[]).includes(status);
-}
-
-// DEC-035 (amends DEC-010): new → [confirmed] → ready → (picked_up | delivered).
-// Confirmed is optional — new → ready stays valid (Annabel may pack before
-// texting). Fulfillment type pins which terminal state is valid. Pure +
-// exported so advance-order-status.ts (a "use server" module, which can only
-// export async actions) can import it and tests can exercise the table.
-export function isValidTransition(
-  from: OrderStatus,
-  to: OrderStatus,
-  fulfillmentType: "pickup" | "delivery",
-): boolean {
-  if (from === "new" && to === "confirmed") return true;
-  if (from === "new" && to === "ready") return true;
-  if (from === "confirmed" && to === "ready") return true;
-  if (from === "ready" && to === "picked_up") return fulfillmentType === "pickup";
-  if (from === "ready" && to === "delivered") return fulfillmentType === "delivery";
-  return false;
-}
-
-export type OrderItem = {
-  productId: string;
-  name: string;
-  // DEC-043: Wave "Item Number" inputs for this line's unit. sku is
-  // Annabel-edited (matches her Wave catalog); slug is the generated
-  // fallback. The export resolves sku → slug → blank. products.description
-  // left this shape entirely — it's the customer-facing long description,
-  // nothing more.
-  sku: string | null;
-  slug: string | null;
-  // Product-level base unit label (the product_units row with
-  // conversion_to_base = 1.0, per DEC-037). Used where a per-product unit is
-  // needed (fulfillment report "total N <base>"); display surfaces should use
-  // unitLabel for per-line accuracy under multi-unit.
-  unit: string;
-  // 6.5f: per-line unit label resolved from product_units.label via
-  // order_items.product_unit_id. For single-unit products this matches `unit`;
-  // for multi-unit lines this is the unit the customer actually selected.
-  unitLabel: string;
-  // 6.5f: conversion factor for the line's unit. Used for unit-aware oversold
-  // math (qty * conversionToBase vs base qty_available).
-  conversionToBase: number;
-  qty: number;
-  unitPriceCents: number;
-  qtyAvailable: number;
-};
-
-export type OrderRow = {
-  id: string;
-  customerId: string;
-  customerName: string;
-  // Drives the per-order Send actions (#192). Null → "No phone" disabled state.
-  phone: string | null;
-  placedAt: string;
-  weekOf: string;
-  fulfillmentType: "pickup" | "delivery";
-  deliveryAddress: string | null;
-  deliveryPreference: string | null;
-  pickupNote: string | null;
-  notes: string | null;
-  status: OrderStatus;
-  needsReconciliation: boolean;
-  items: OrderItem[];
-  totalCents: number;
-  // Per-mode sent timestamps for this customer's current-week sends (#192).
-  // Null = not yet sent. Drives the Send/Re-send state in the action stack.
-  confirmSentAt: string | null;
-  reminderSentAt: string | null;
-};
+export * from "@/lib/admin/order-status";
 
 function narrowStatus(s: string): OrderStatus {
   return (ORDER_STATUSES as string[]).includes(s) ? (s as OrderStatus) : "new";
@@ -155,58 +55,127 @@ export async function listFulfilledOrders(): Promise<OrderRow[]> {
 export async function countOrdersByStatus(
   statuses: OrderStatus[],
 ): Promise<number> {
-  const supabase = createAdminClient();
-  const { count, error } = await supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .in("status", statuses);
-  if (error) throw new Error(`countOrdersByStatus: ${error.message}`);
-  return count ?? 0;
+  const rows = await query<{ count: number }>(
+    `select count(*)::int as count from orders where status = any($1)`,
+    [statuses],
+  );
+  return rows[0].count;
 }
+
+// Row shape the SQL below builds — mirrors the old PostgREST embed so the
+// mapping code beneath is unchanged.
+type QueryOrdersRow = {
+  id: string;
+  customer_id: string;
+  created_at: string;
+  week_of: string;
+  fulfillment_type: string;
+  delivery_address: string | null;
+  delivery_preference: string | null;
+  pickup_note: string | null;
+  notes: string | null;
+  status: string;
+  needs_reconciliation: boolean;
+  customers: { id: string; name: string; phone: string | null } | null;
+  order_items: Array<{
+    product_id: string;
+    qty: number;
+    unit_price_cents: number;
+    products: {
+      name: string;
+      qty_available: number;
+      product_units: Array<{ label: string; conversion_to_base: number }>;
+    } | null;
+    product_units: {
+      label: string;
+      conversion_to_base: number;
+      sku: string | null;
+      slug: string | null;
+    } | null;
+  }>;
+};
 
 async function queryOrders(filter: {
   weekOf?: string;
   activeOnly?: boolean;
   terminalOnly?: boolean;
 }): Promise<OrderRow[]> {
-  const supabase = createAdminClient();
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filter.weekOf) {
+    params.push(filter.weekOf);
+    where.push(`o.week_of = $${params.length}`);
+  }
+  if (filter.activeOnly) {
+    params.push(OPEN_ORDER_STATUSES);
+    where.push(`o.status = any($${params.length})`);
+  }
+  if (filter.terminalOnly) {
+    params.push(TERMINAL_ORDER_STATUSES);
+    where.push(`o.status = any($${params.length})`);
+  }
 
-  let ordersQuery = supabase
-    .from("orders")
-    .select(
-      `id, customer_id, created_at, week_of, fulfillment_type,
-       delivery_address, delivery_preference, pickup_note, notes,
-       status, needs_reconciliation,
-       customers(id, name, phone),
-       order_items(product_id, qty, unit_price_cents,
-         products(name, qty_available,
-           product_units(label, conversion_to_base)),
-         product_units(label, conversion_to_base, sku, slug))`,
-    )
-    .order("created_at", { ascending: false });
-  if (filter.weekOf) ordersQuery = ordersQuery.eq("week_of", filter.weekOf);
-  if (filter.activeOnly)
-    ordersQuery = ordersQuery.in("status", OPEN_ORDER_STATUSES);
-  if (filter.terminalOnly)
-    ordersQuery = ordersQuery.in("status", TERMINAL_ORDER_STATUSES);
-
-  const { data, error } = await ordersQuery;
-  if (error) throw new Error(`queryOrders: ${error.message}`);
+  const data = await query<QueryOrdersRow>(
+    `select o.id, o.customer_id, o.created_at, o.week_of, o.fulfillment_type,
+            o.delivery_address, o.delivery_preference, o.pickup_note, o.notes,
+            o.status, o.needs_reconciliation,
+            json_build_object('id', c.id, 'name', c.name, 'phone', c.phone) as customers,
+            coalesce(
+              json_agg(
+                json_build_object(
+                  'product_id', oi.product_id,
+                  'qty', oi.qty,
+                  'unit_price_cents', oi.unit_price_cents,
+                  'products', case when pr.id is null then null else json_build_object(
+                    'name', pr.name,
+                    'qty_available', pr.qty_available,
+                    'product_units', coalesce(
+                      (select json_agg(json_build_object(
+                                'label', u.label,
+                                'conversion_to_base', u.conversion_to_base))
+                         from product_units u where u.product_id = pr.id),
+                      '[]')
+                  ) end,
+                  'product_units', case when pu.id is null then null else json_build_object(
+                    'label', pu.label,
+                    'conversion_to_base', pu.conversion_to_base,
+                    'sku', pu.sku,
+                    'slug', pu.slug
+                  ) end
+                )
+                order by oi.created_at
+              ) filter (where oi.id is not null),
+              '[]'
+            ) as order_items
+       from orders o
+       join customers c on c.id = o.customer_id
+       left join order_items oi on oi.order_id = o.id
+       left join products pr on pr.id = oi.product_id
+       left join product_units pu on pu.id = oi.product_unit_id
+      ${where.length ? `where ${where.join(" and ")}` : ""}
+      group by o.id, c.id
+      order by o.created_at desc`,
+    params,
+  );
 
   // customer_sends stays week-keyed (DEC-042), so the Send state for each
   // order is the send row of the order's OWN week_of stamp. Fetched after the
   // orders because the active view can span weeks — the sends lookup needs
   // the set of weeks actually present.
-  const weeks = [...new Set((data ?? []).map((o) => o.week_of))];
-  const sendsResult =
+  const weeks = [...new Set(data.map((o) => o.week_of))];
+  const sendsRows =
     weeks.length === 0
-      ? { data: [], error: null }
-      : await supabase
-          .from("customer_sends")
-          .select("customer_id, week_of, mode, sent_at")
-          .in("week_of", weeks);
-  if (sendsResult.error)
-    throw new Error(`queryOrders(sends): ${sendsResult.error.message}`);
+      ? []
+      : await query<{
+          customer_id: string;
+          week_of: string;
+          mode: string;
+          sent_at: string;
+        }>(
+          `select customer_id, week_of, mode, sent_at
+             from customer_sends where week_of = any($1)`,
+          [weeks],
+        );
 
   // Reminder mode is per-fulfillment (#193): pickup orders use pickup_reminder,
   // delivery orders use delivery_reminder — tracked separately, resolved per
@@ -220,7 +189,7 @@ async function queryOrders(filter: {
   // customer can appear with sends in more than one week — the old per-
   // customer key silently merged them.
   const sentByCustomerWeek = new Map<string, SentEntry>();
-  for (const s of sendsResult.data ?? []) {
+  for (const s of sendsRows) {
     const key = `${s.customer_id}:${s.week_of}`;
     const entry = sentByCustomerWeek.get(key) ?? {
       confirm: null,
@@ -233,37 +202,17 @@ async function queryOrders(filter: {
     sentByCustomerWeek.set(key, entry);
   }
 
-  return (data ?? [])
+  return data
     .filter((o) => o.customers !== null)
     .map((o) => {
-      const c = o.customers as { id: string; name: string; phone: string | null };
+      const c = o.customers!;
       const sent = sentByCustomerWeek.get(`${c.id}:${o.week_of}`) ?? {
         confirm: null,
         pickupReminder: null,
         deliveryReminder: null,
       };
       const fulfillmentType = narrowFulfillment(o.fulfillment_type);
-      const items: OrderItem[] = ((o.order_items ?? []) as Array<{
-        product_id: string;
-        qty: number;
-        unit_price_cents: number;
-        products: {
-          name: string;
-          qty_available: number;
-          // The product's full unit set (reverse join). Only the base row
-          // (conversion_to_base = 1.0) is read here, for OrderItem.unit.
-          product_units: Array<{
-            label: string;
-            conversion_to_base: number;
-          }>;
-        } | null;
-        product_units: {
-          label: string;
-          conversion_to_base: number;
-          sku: string | null;
-          slug: string | null;
-        } | null;
-      }>)
+      const items: OrderItem[] = o.order_items
         .filter((i) => i.products !== null)
         .map((i) => {
           // DEC-037: the product-level unit is the base product_units row.

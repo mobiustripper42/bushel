@@ -3,13 +3,13 @@ import { weekOfMondayNY } from "@/lib/week";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerOrderUrl,
   resetCustomerOrderState,
   resetProductUnits,
   setProductUnits,
   setProductQty,
 } from "./helpers";
+import { query } from "@/lib/db";
 
 // 6.5c — Customer order form: per-product unit picker (#153). Kale is set up
 // as a two-unit product (bunch base + pound at 2× conversion). Eggs stays
@@ -143,42 +143,43 @@ test.describe("/c/[token] · per-product unit picker", () => {
     await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
-    const sb = admin();
-    const { data: customer } = await sb
-      .from("customers")
-      .select("id")
-      .eq("token", TEST_CUSTOMERS.farmStand.token)
-      .single();
-    const { data: order } = await sb
-      .from("orders")
-      .select("id")
-      .eq("customer_id", customer!.id)
-      .eq("week_of", weekOfMondayNY())
-      .single();
-    const { data: lineItem } = await sb
-      .from("order_items")
-      .select("qty, unit_price_cents, product_unit_id, product_units(label)")
-      .eq("order_id", order!.id)
-      .eq("product_id", KALE.id)
-      .single();
+    const customers = await query<{ id: string }>(
+      `select id from customers where token = $1`,
+      [TEST_CUSTOMERS.farmStand.token],
+    );
+    const customer = customers[0]!;
+    const orders = await query<{ id: string }>(
+      `select id from orders where customer_id = $1 and week_of = $2`,
+      [customer.id, weekOfMondayNY()],
+    );
+    const order = orders[0]!;
+    const lineItems = await query<{
+      qty: number;
+      unit_price_cents: number;
+      product_unit_id: string;
+      unit_label: string;
+    }>(
+      `select oi.qty, oi.unit_price_cents, oi.product_unit_id, pu.label as unit_label
+         from order_items oi
+         join product_units pu on pu.id = oi.product_unit_id
+        where oi.order_id = $1 and oi.product_id = $2`,
+      [order.id, KALE.id],
+    );
+    const lineItem = lineItems[0] ?? null;
 
     // 6.5d: order_items.unit_price_cents pulled from product_units at RPC
     // time, product_unit_id matches the lb row (not the bunch fallback),
     // and qty stays in selected-unit units.
     expect(lineItem?.unit_price_cents).toBe(KALE_LB_PRICE);
     expect(lineItem?.qty).toBe(2);
-    expect(
-      (lineItem as unknown as { product_units: { label: string } })
-        ?.product_units?.label,
-    ).toBe("lb");
+    expect(lineItem?.unit_label).toBe("lb");
 
     // qty_available decremented by qty * conversion_to_base.
-    const { data: kale } = await sb
-      .from("products")
-      .select("qty_available")
-      .eq("id", KALE.id)
-      .single();
-    expect(Number(kale?.qty_available)).toBeCloseTo(
+    const kaleRows = await query<{ qty_available: number }>(
+      `select qty_available from products where id = $1`,
+      [KALE.id],
+    );
+    expect(Number(kaleRows[0]?.qty_available)).toBeCloseTo(
       KALE.qty_available - 2 * KALE_LB_CONV,
       2,
     );
@@ -187,9 +188,8 @@ test.describe("/c/[token] · per-product unit picker", () => {
   test("long product name is fully visible at 375px (resolves #144)", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "mobile", "Wrap behavior is mobile-viewport-specific.");
     // Temporarily rename Kale to a long name to exercise the wrap path.
-    const sb = (await import("./helpers")).admin();
     const longName = "Heirloom Tuscan dinosaur kale (extra long name)";
-    await sb.from("products").update({ name: longName }).eq("id", KALE.id);
+    await query(`update products set name = $1 where id = $2`, [longName, KALE.id]);
     try {
       await page.goto(customerOrderUrl(TEST_CUSTOMERS.farmStand.token));
 
@@ -207,7 +207,7 @@ test.describe("/c/[token] · per-product unit picker", () => {
       });
       expect(lineCount).toBeGreaterThan(1);
     } finally {
-      await sb.from("products").update({ name: KALE.name }).eq("id", KALE.id);
+      await query(`update products set name = $1 where id = $2`, [KALE.name, KALE.id]);
     }
   });
 });

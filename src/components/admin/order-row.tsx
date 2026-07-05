@@ -5,7 +5,7 @@ import { useState, useTransition, Fragment } from "react";
 import { advanceOrderStatus } from "@/actions/advance-order-status";
 import { OrderDetail } from "@/components/admin/order-detail";
 import { OrderActions } from "@/components/admin/order-actions";
-import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/orders-queries";
+import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/order-status";
 import { totalItemCount } from "@/lib/order-items";
 
 type Props = {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { csvFilename, toCsv, toTsv } from "@/lib/admin/export-orders";
-import type { OrderRow } from "@/lib/admin/orders-queries";
+import type { OrderRow } from "@/lib/admin/order-status";
 
 type Props = {
   orders: OrderRow[];

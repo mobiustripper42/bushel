@@ -1,8 +1,8 @@
 "use client";
 
 import { SendAction } from "@/components/admin/send-action";
-import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/orders-queries";
-import { statusAfterConfirmSend } from "@/lib/admin/orders-queries";
+import type { OrderRow as OrderRowData, OrderStatus } from "@/lib/admin/order-status";
+import { statusAfterConfirmSend } from "@/lib/admin/order-status";
 import {
   deliveryReminderBody,
   orderConfirmationBody,

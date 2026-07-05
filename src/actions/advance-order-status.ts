@@ -2,46 +2,45 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
-import { isValidTransition, type OrderStatus } from "@/lib/admin/orders-queries";
+import { getAdminUser } from "@/lib/admin/auth";
+import { isValidTransition, type OrderStatus } from "@/lib/admin/order-status";
+import { query } from "@/lib/db";
+import { pgMessage } from "@/lib/pg-errors";
 
-// Uses cookie-bound client (not admin) — the admin_all_orders RLS policy
-// (migration 20260508014838) is the gate on writes here. Matches the
-// recordSend pattern.
+// Admin gate first, then full-privilege pg writes (DEC-048 — the service
+// layer is the boundary; RLS is gone).
 export async function advanceOrderStatus(
   orderId: string,
   nextStatus: OrderStatus,
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAdminUser();
   if (!user) return { error: "Unauthorized" };
 
-  const { data: order, error: readError } = await supabase
-    .from("orders")
-    .select("status, fulfillment_type")
-    .eq("id", orderId)
-    .single();
-  if (readError) return { error: readError.message };
-  if (!order) return { error: "Order not found" };
+  try {
+    const rows = await query<{ status: string; fulfillment_type: string }>(
+      `select status, fulfillment_type from orders where id = $1`,
+      [orderId],
+    );
+    const order = rows[0];
+    if (!order) return { error: "Order not found" };
 
-  const from = order.status as OrderStatus;
-  const fulfillmentType =
-    order.fulfillment_type === "delivery" ? "delivery" : "pickup";
+    const from = order.status as OrderStatus;
+    const fulfillmentType =
+      order.fulfillment_type === "delivery" ? "delivery" : "pickup";
 
-  if (!isValidTransition(from, nextStatus, fulfillmentType)) {
-    return {
-      error: `Cannot move ${from} → ${nextStatus} (${fulfillmentType})`,
-    };
+    if (!isValidTransition(from, nextStatus, fulfillmentType)) {
+      return {
+        error: `Cannot move ${from} → ${nextStatus} (${fulfillmentType})`,
+      };
+    }
+
+    await query(
+      `update orders set status = $1, updated_at = now() where id = $2`,
+      [nextStatus, orderId],
+    );
+  } catch (e) {
+    return { error: pgMessage(e) };
   }
-
-  const { error: updateError } = await supabase
-    .from("orders")
-    .update({ status: nextStatus, updated_at: new Date().toISOString() })
-    .eq("id", orderId);
-  if (updateError) return { error: updateError.message };
 
   revalidatePath("/admin/orders");
   return { error: null };

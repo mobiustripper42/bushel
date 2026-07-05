@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgCode, pgMessage, FOREIGN_KEY_VIOLATION } from "@/lib/pg-errors";
 
 export type UnitInput = {
   // null = new unit (insert); non-null = existing (update)
@@ -101,66 +104,79 @@ export async function saveProductUnits(
     };
   }
 
-  const supabase = await createClient();
+  // RLS is gone (DEC-048) — explicit gate replaces the cookie-client policy pair.
+  const user = await getAdminUser();
+  if (!user) return { error: "Unauthorized" };
 
-  const { data: product, error: prodErr } = await supabase
-    .from("products")
-    .select("id, name")
-    .eq("id", input.productId)
-    .single();
-  if (prodErr || !product) {
-    return { error: prodErr?.message ?? "Product not found." };
+  const productRows = await query<{ id: string; name: string }>(
+    `select id, name from products where id = $1`,
+    [input.productId],
+  );
+  const product = productRows[0];
+  if (!product) {
+    return { error: "Product not found." };
   }
 
   // Delete first so existing labels can be reassigned within the same save
   // without colliding on the unique (product_id, label) index.
   if (input.deletedUnitIds.length > 0) {
-    const { error } = await supabase
-      .from("product_units")
-      .delete()
-      .in("id", input.deletedUnitIds);
-    if (error) {
-      // 23503 = foreign_key_violation — order_items.product_unit_id is ON
-      // DELETE RESTRICT. Surface a friendly message so Annabel knows the
-      // remedy (deactivate instead of delete) without seeing the raw FK
-      // constraint name.
-      if (error.code === "23503") {
+    try {
+      await query(`delete from product_units where id = any($1)`, [
+        input.deletedUnitIds,
+      ]);
+    } catch (e) {
+      // order_items.product_unit_id is ON DELETE RESTRICT. Surface a friendly
+      // message so Annabel knows the remedy (deactivate instead of delete)
+      // without seeing the raw FK constraint name.
+      if (pgCode(e) === FOREIGN_KEY_VIOLATION) {
         return {
           error:
             "Can't delete a unit that's already on an existing order. Turn the Active switch off instead — customers won't see it next week.",
         };
       }
-      return { error: error.message };
+      return { error: pgMessage(e) };
     }
   }
 
   for (const u of trimmed) {
-    if (u.id === null) {
-      const slug = unitSlug(product.name, product.id, u.label);
-      const { error } = await supabase.from("product_units").insert({
-        product_id: input.productId,
-        label: u.label,
-        conversion_to_base: u.conversion_to_base,
-        unit_price_cents: u.unit_price_cents,
-        is_active: u.is_active,
-        sort_order: u.sort_order,
-        sku: u.sku,
-        slug,
-      });
-      if (error) return { error: error.message };
-    } else {
-      const { error } = await supabase
-        .from("product_units")
-        .update({
-          label: u.label,
-          conversion_to_base: u.conversion_to_base,
-          unit_price_cents: u.unit_price_cents,
-          is_active: u.is_active,
-          sort_order: u.sort_order,
-          sku: u.sku,
-        })
-        .eq("id", u.id);
-      if (error) return { error: error.message };
+    try {
+      if (u.id === null) {
+        const slug = unitSlug(product.name, product.id, u.label);
+        await query(
+          `insert into product_units
+             (product_id, label, conversion_to_base, unit_price_cents,
+              is_active, sort_order, sku, slug)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            input.productId,
+            u.label,
+            u.conversion_to_base,
+            u.unit_price_cents,
+            u.is_active,
+            u.sort_order,
+            u.sku,
+            slug,
+          ],
+        );
+      } else {
+        await query(
+          `update product_units
+              set label = $1, conversion_to_base = $2, unit_price_cents = $3,
+                  is_active = $4, sort_order = $5, sku = $6, updated_at = now()
+            where id = $7`,
+          [
+            u.label,
+            u.conversion_to_base,
+            u.unit_price_cents,
+            u.is_active,
+            u.sort_order,
+            u.sku,
+            u.id,
+          ],
+        );
+      }
+    } catch (e) {
+      return { error: pgMessage(e) };
     }
   }
 

@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgCode, pgMessage, UNIQUE_VIOLATION } from "@/lib/pg-errors";
 import { generateToken } from "@/lib/tokens";
 
 const TOKEN_INSERT_RETRIES = 5;
@@ -40,8 +43,10 @@ export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerRe
   const err = validate(input);
   if (err) return { error: err };
 
-  const supabase = await createClient();
-  const now = new Date().toISOString();
+  // RLS is gone (DEC-048) — the explicit gate replaces the old cookie-client
+  // + admin_all policy pair.
+  const user = await getAdminUser();
+  if (!user) return { error: "Unauthorized" };
 
   const trimmed = {
     name: input.name.trim(),
@@ -51,33 +56,61 @@ export async function saveCustomer(input: CustomerInput): Promise<SaveCustomerRe
     delivery_address: input.delivery_address?.trim() || null,
     priority: input.priority,
     send_weekly_link: input.send_weekly_link,
-    updated_at: now,
   };
 
   if (input.id) {
-    const { error } = await supabase
-      .from("customers")
-      .update(trimmed)
-      .eq("id", input.id);
-    if (error) return { error: error.message };
+    try {
+      await query(
+        `update customers
+            set name = $1, business_name = $2, email = $3, phone = $4,
+                delivery_address = $5, priority = $6, send_weekly_link = $7,
+                updated_at = now()
+          where id = $8`,
+        [
+          trimmed.name,
+          trimmed.business_name,
+          trimmed.email,
+          trimmed.phone,
+          trimmed.delivery_address,
+          trimmed.priority,
+          trimmed.send_weekly_link,
+          input.id,
+        ],
+      );
+    } catch (e) {
+      return { error: pgMessage(e) };
+    }
     revalidatePath("/admin/customers");
     revalidatePath("/admin/inventory");
     return { error: null, customerId: input.id };
   }
 
   for (let attempt = 0; attempt < TOKEN_INSERT_RETRIES; attempt++) {
-    const { data, error } = await supabase
-      .from("customers")
-      .insert({ ...trimmed, token: generateToken(), is_active: true })
-      .select("id")
-      .single();
-    if (!error) {
+    try {
+      const rows = await query<{ id: string }>(
+        `insert into customers
+           (name, business_name, email, phone, delivery_address, priority,
+            send_weekly_link, token, is_active)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, true)
+         returning id`,
+        [
+          trimmed.name,
+          trimmed.business_name,
+          trimmed.email,
+          trimmed.phone,
+          trimmed.delivery_address,
+          trimmed.priority,
+          trimmed.send_weekly_link,
+          generateToken(),
+        ],
+      );
       revalidatePath("/admin/customers");
       revalidatePath("/admin/inventory");
-      return { error: null, customerId: data.id };
+      return { error: null, customerId: rows[0].id };
+    } catch (e) {
+      // Token collision → retry with a fresh token; anything else surfaces.
+      if (pgCode(e) !== UNIQUE_VIOLATION) return { error: pgMessage(e) };
     }
-    // 23505 = unique_violation in Postgres
-    if (error.code !== "23505") return { error: error.message };
   }
   return { error: "Could not generate a unique token. Try again." };
 }

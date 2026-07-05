@@ -1,18 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgMessage } from "@/lib/pg-errors";
 
 export async function toggleSubscribed(
   id: string,
   send_weekly_link: boolean,
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("customers")
-    .update({ send_weekly_link, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) return { error: error.message };
+  const user = await getAdminUser();
+  if (!user) return { error: "Unauthorized" };
+  try {
+    await query(
+      `update customers set send_weekly_link = $1, updated_at = now() where id = $2`,
+      [send_weekly_link, id],
+    );
+  } catch (e) {
+    return { error: pgMessage(e) };
+  }
   revalidatePath("/admin/customers");
   revalidatePath("/admin/inventory");
   return { error: null };

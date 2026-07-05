@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { query } from "@/lib/db";
 import {
   TEST_CUSTOMERS,
-  admin,
   customerOrderUrl,
   resetCustomerOrderState,
 } from "./helpers";
@@ -18,12 +18,11 @@ test.describe("/c/[token] route", () => {
   // into a paused-shell render.
   test.beforeEach(async () => {
     await resetCustomerOrderState();
-    const sb = admin();
     for (const token of [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]) {
-      await sb
-        .from("customers")
-        .update({ is_active: true, send_weekly_link: true })
-        .eq("token", token);
+      await query(
+        `update customers set is_active = true, send_weekly_link = true where token = $1`,
+        [token],
+      );
     }
   });
 
@@ -69,19 +68,17 @@ test.describe("/c/[token] route", () => {
   // renders and the order form is gone. Restore flags after each path.
   test.describe("account-state shells", () => {
     test.afterEach(async () => {
-      const sb = admin();
-      await sb
-        .from("customers")
-        .update({ is_active: true, send_weekly_link: true })
-        .eq("token", TEST_CUSTOMERS.restaurant.token);
+      await query(
+        `update customers set is_active = true, send_weekly_link = true where token = $1`,
+        [TEST_CUSTOMERS.restaurant.token],
+      );
     });
 
     test("send_weekly_link=false renders the paused shell", async ({ page }) => {
-      const sb = admin();
-      await sb
-        .from("customers")
-        .update({ send_weekly_link: false })
-        .eq("token", TEST_CUSTOMERS.restaurant.token);
+      await query(
+        `update customers set send_weekly_link = false where token = $1`,
+        [TEST_CUSTOMERS.restaurant.token],
+      );
 
       await page.goto(customerOrderUrl(TEST_CUSTOMERS.restaurant.token));
       await expect(page.getByRole("heading", { name: /weekly order link is paused/i })).toBeVisible();
@@ -91,11 +88,10 @@ test.describe("/c/[token] route", () => {
     });
 
     test("is_active=false renders the closed shell", async ({ page }) => {
-      const sb = admin();
-      await sb
-        .from("customers")
-        .update({ is_active: false })
-        .eq("token", TEST_CUSTOMERS.restaurant.token);
+      await query(
+        `update customers set is_active = false where token = $1`,
+        [TEST_CUSTOMERS.restaurant.token],
+      );
 
       await page.goto(customerOrderUrl(TEST_CUSTOMERS.restaurant.token));
       await expect(page.getByRole("heading", { name: /account is closed/i })).toBeVisible();
@@ -104,18 +100,17 @@ test.describe("/c/[token] route", () => {
     });
 
     test("toggling back restores the order form", async ({ page }) => {
-      const sb = admin();
-      await sb
-        .from("customers")
-        .update({ send_weekly_link: false })
-        .eq("token", TEST_CUSTOMERS.restaurant.token);
+      await query(
+        `update customers set send_weekly_link = false where token = $1`,
+        [TEST_CUSTOMERS.restaurant.token],
+      );
       await page.goto(customerOrderUrl(TEST_CUSTOMERS.restaurant.token));
       await expect(page.getByRole("heading", { name: /paused/i })).toBeVisible();
 
-      await sb
-        .from("customers")
-        .update({ send_weekly_link: true })
-        .eq("token", TEST_CUSTOMERS.restaurant.token);
+      await query(
+        `update customers set send_weekly_link = true where token = $1`,
+        [TEST_CUSTOMERS.restaurant.token],
+      );
       await page.reload();
       await expect(page.getByRole("heading", { name: /what.s available/i })).toBeVisible();
     });

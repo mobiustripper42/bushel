@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { OrderRow } from "@/components/admin/order-row";
 import { ExportOrdersButton } from "@/components/admin/export-orders-button";
-import type { OrderRow as OrderRowData } from "@/lib/admin/orders-queries";
+import type { OrderRow as OrderRowData } from "@/lib/admin/order-status";
 
 type SortKey = "placed" | "customer" | "total";
 type SortDir = "asc" | "desc";

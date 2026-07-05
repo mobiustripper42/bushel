@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { OrderRow as OrderRowData } from "@/lib/admin/orders-queries";
+import type { OrderRow as OrderRowData } from "@/lib/admin/order-status";
 
 function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;

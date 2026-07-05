@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgMessage } from "@/lib/pg-errors";
 
 export type SaveScheduleInput = {
   useSchedule: boolean;
@@ -12,28 +15,25 @@ export type SaveScheduleInput = {
 };
 
 export async function saveSchedule(input: SaveScheduleInput): Promise<string | null> {
-  const supabase = await createClient();
+  const user = await getAdminUser();
+  if (!user) return "Unauthorized";
 
-  const patch = input.useSchedule
-    ? {
-        weekly_open_day: input.openDay,
-        weekly_open_time: input.openTime,
-        weekly_close_day: input.closeDay,
-        weekly_close_time: input.closeTime,
-      }
-    : {
-        weekly_open_day: null,
-        weekly_open_time: null,
-        weekly_close_day: null,
-        weekly_close_time: null,
-      };
+  const values = input.useSchedule
+    ? [input.openDay, input.openTime, input.closeDay, input.closeTime]
+    : [null, null, null, null];
 
-  const { error } = await supabase
-    .from("ordering_schedule")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("is_singleton", true);
-
-  if (error) return error.message;
+  try {
+    await query(
+      `update ordering_schedule
+          set weekly_open_day = $1, weekly_open_time = $2,
+              weekly_close_day = $3, weekly_close_time = $4,
+              updated_at = now()
+        where is_singleton = true`,
+      values,
+    );
+  } catch (e) {
+    return pgMessage(e);
+  }
 
   revalidatePath("/admin/settings");
   return null;

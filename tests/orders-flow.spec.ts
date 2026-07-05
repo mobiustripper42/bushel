@@ -4,7 +4,6 @@ import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerOrderUrl,
   customerIds,
   clearOrdersForWeek,
@@ -14,6 +13,7 @@ import {
   setProductQty,
   setProductUnits,
 } from "./helpers";
+import { query } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 import { EXPORT_COLUMNS } from "@/lib/admin/export-orders";
 
@@ -74,14 +74,12 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await customerCtx.close();
 
     // Pick up the order id the customer just created
-    const sb = admin();
     const ids = await customerIds();
-    const { data: order } = await sb
-      .from("orders")
-      .select("id")
-      .eq("customer_id", ids.farmStand)
-      .eq("week_of", thisWeek)
-      .single();
+    const orderRows = await query<{ id: string }>(
+      `select id from orders where customer_id = $1 and week_of = $2`,
+      [ids.farmStand, thisWeek],
+    );
+    const order = orderRows[0] ?? null;
     expect(order?.id).toBeTruthy();
     const orderId = order!.id;
 
@@ -101,8 +99,11 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
     await expect
       .poll(async () => {
-        const { data } = await sb.from("orders").select("status").eq("id", orderId).single();
-        return data?.status ?? null;
+        const rows = await query<{ status: string }>(
+          `select status from orders where id = $1`,
+          [orderId],
+        );
+        return rows[0]?.status ?? null;
       }, { timeout: 5000 })
       .toBe("ready");
 
@@ -113,8 +114,11 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
     await expect(row).toHaveAttribute("data-status", "delivered", { timeout: 5000 });
     await expect
       .poll(async () => {
-        const { data } = await sb.from("orders").select("status").eq("id", orderId).single();
-        return data?.status ?? null;
+        const rows = await query<{ status: string }>(
+          `select status from orders where id = $1`,
+          [orderId],
+        );
+        return rows[0]?.status ?? null;
       }, { timeout: 5000 })
       .toBe("delivered");
 
@@ -320,22 +324,20 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
       await customerCtx.close();
 
       // Find the order id.
-      const sb = admin();
       const ids = await customerIds();
-      const { data: order } = await sb
-        .from("orders")
-        .select("id")
-        .eq("customer_id", ids.farmStand)
-        .eq("week_of", thisWeek)
-        .single();
+      const orderRows = await query<{ id: string }>(
+        `select id from orders where customer_id = $1 and week_of = $2`,
+        [ids.farmStand, thisWeek],
+      );
+      const order = orderRows[0] ?? null;
       expect(order?.id).toBeTruthy();
 
       // Inventory decremented by qty * conversion_to_base = 2 * 2 = 4.
-      const { data: kale } = await sb
-        .from("products")
-        .select("qty_available")
-        .eq("id", TEST_PRODUCTS.kale.id)
-        .single();
+      const kaleRows = await query<{ qty_available: number }>(
+        `select qty_available from products where id = $1`,
+        [TEST_PRODUCTS.kale.id],
+      );
+      const kale = kaleRows[0] ?? null;
       expect(Number(kale?.qty_available)).toBeCloseTo(
         TEST_PRODUCTS.kale.qty_available - 2 * LB_CONV,
         2,
@@ -393,14 +395,13 @@ test.describe("orders flow — cross-task (customer ↔ admin ↔ export)", () =
       await customerPage.waitForURL(/\/c\/[^/]+\/confirmed$/);
       await customerCtx.close();
 
-      const sb = admin();
       const ids = await customerIds();
-      const { data: order } = await sb
-        .from("orders")
-        .select("id, needs_reconciliation")
-        .eq("customer_id", ids.farmStand)
-        .eq("week_of", thisWeek)
-        .single();
+      const orderRows = await query<{ id: string; needs_reconciliation: boolean }>(
+        `select id, needs_reconciliation
+           from orders where customer_id = $1 and week_of = $2`,
+        [ids.farmStand, thisWeek],
+      );
+      const order = orderRows[0] ?? null;
       expect(order?.needs_reconciliation).toBe(true);
 
       // Admin orders detail → recon callout + per-line "lb oversold" message.

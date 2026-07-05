@@ -3,24 +3,22 @@ import { test, expect } from "@playwright/test";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerIds,
   clearOrdersForWeek,
   seedOrder,
 } from "./helpers";
+import { query } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 
 // #195 — public Harvest & Pack Sheet at /f/[token]. Read-only rollup over the
 // week's orders. Runs on desktop + mobile (farm hands view it on phones).
 
 async function fulfillmentToken(): Promise<string> {
-  const sb = admin();
-  const { data, error } = await sb
-    .from("fulfillment_link")
-    .select("token")
-    .single();
-  if (error || !data) throw new Error(`fulfillment token: ${error?.message}`);
-  return data.token;
+  const rows = await query<{ token: string }>(
+    `select token from fulfillment_link`,
+  );
+  if (!rows[0]) throw new Error("fulfillment token: no row");
+  return rows[0].token;
 }
 
 const WEEK = weekOfMondayNY();
@@ -90,13 +88,11 @@ test("invalid token 404s", async ({ page }) => {
 
 test("excludes picked_up / delivered orders (#200)", async ({ page }) => {
   const ids = await customerIds();
-  const sb = admin();
   // The restaurant's (delivery) order is fulfilled — out the door.
-  await sb
-    .from("orders")
-    .update({ status: "delivered" })
-    .eq("customer_id", ids.restaurant)
-    .eq("week_of", WEEK);
+  await query(
+    `update orders set status = 'delivered' where customer_id = $1 and week_of = $2`,
+    [ids.restaurant, WEEK],
+  );
 
   try {
     await page.goto(`/f/${await fulfillmentToken()}`);
@@ -115,11 +111,10 @@ test("excludes picked_up / delivered orders (#200)", async ({ page }) => {
     ).toHaveText("3");
     await expect(page.locator(".fr-hv-line", { hasText: "Honey" })).toHaveCount(0);
   } finally {
-    await sb
-      .from("orders")
-      .update({ status: "new" })
-      .eq("customer_id", ids.restaurant)
-      .eq("week_of", WEEK);
+    await query(
+      `update orders set status = 'new' where customer_id = $1 and week_of = $2`,
+      [ids.restaurant, WEEK],
+    );
   }
 });
 
@@ -127,16 +122,14 @@ test("excludes picked_up / delivered orders (#200)", async ({ page }) => {
 // order that crosses a week boundary keeps printing until it's out the door.
 test("shows open orders from past weeks", async ({ page }) => {
   const ids = await customerIds();
-  const sb = admin();
   const [y, m, d] = WEEK.split("-").map((n) => parseInt(n, 10));
   const lastMonday = new Date(Date.UTC(y, m - 1, d - 7)).toISOString().slice(0, 10);
   // Re-stamp the farm stand's open order into LAST week (update, not insert —
   // the partial unique index allows only one open order per customer).
-  await sb
-    .from("orders")
-    .update({ week_of: lastMonday })
-    .eq("customer_id", ids.farmStand)
-    .eq("week_of", WEEK);
+  await query(
+    `update orders set week_of = $1 where customer_id = $2 and week_of = $3`,
+    [lastMonday, ids.farmStand, WEEK],
+  );
 
   try {
     await page.goto(`/f/${await fulfillmentToken()}`);
@@ -148,10 +141,9 @@ test("shows open orders from past weeks", async ({ page }) => {
       page.locator(".fr-hv-line", { hasText: "Kale" }).locator(".fr-hv-qty"),
     ).toHaveText("5");
   } finally {
-    await sb
-      .from("orders")
-      .update({ week_of: WEEK })
-      .eq("customer_id", ids.farmStand)
-      .eq("week_of", lastMonday);
+    await query(
+      `update orders set week_of = $1 where customer_id = $2 and week_of = $3`,
+      [WEEK, ids.farmStand, lastMonday],
+    );
   }
 });

@@ -2,30 +2,27 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
-  admin,
 } from "./helpers";
+import { query } from "@/lib/db";
 
 async function resetTestCustomers() {
-  const supabase = admin();
-  for (const token of [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]) {
-    await supabase
-      .from("customers")
-      .update({
-        business_name: null,
-        email: null,
-        phone: null,
-        delivery_address: null,
-        is_active: true,
-        send_weekly_link: true,
-        priority: 100,
-      })
-      .eq("token", token);
+  const seedTokens = [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token];
+  for (const token of seedTokens) {
+    await query(
+      `update customers
+          set business_name = null,
+              email = null,
+              phone = null,
+              delivery_address = null,
+              is_active = true,
+              send_weekly_link = true,
+              priority = 100
+        where token = $1`,
+      [token],
+    );
   }
   // Drop any non-seed customers created by tests
-  await supabase
-    .from("customers")
-    .delete()
-    .not("token", "in", `(${[TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token].map((t) => `"${t}"`).join(",")})`);
+  await query(`delete from customers where token <> all($1)`, [seedTokens]);
 }
 
 function rowByName(page: Page, name: string) {
@@ -81,8 +78,10 @@ test.describe("admin customers", () => {
 
   test("Hide customer deactivates and drops the row from the list", async ({ page }) => {
     // Seed phone so beforeEach-cleaned customer can be edited
-    const supabase = admin();
-    await supabase.from("customers").update({ phone: "216-555-0100" }).eq("token", TEST_CUSTOMERS.restaurant.token);
+    await query(`update customers set phone = $1 where token = $2`, [
+      "216-555-0100",
+      TEST_CUSTOMERS.restaurant.token,
+    ]);
 
     await page.goto("/admin/customers");
     await rowByName(page, TEST_CUSTOMERS.restaurant.name).click();
@@ -108,7 +107,6 @@ test.describe("admin customers", () => {
   });
 
   test("Regenerate rotates the customer token and refreshes the row", async ({ page }) => {
-    const supabase = admin();
     const seedToken = TEST_CUSTOMERS.restaurant.token;
 
     try {
@@ -133,10 +131,10 @@ test.describe("admin customers", () => {
       expect(newToken).not.toBe(seedToken);
     } finally {
       // Restore the seed token so subsequent tests + global-setup upsert behave.
-      await supabase
-        .from("customers")
-        .update({ token: seedToken })
-        .eq("name", TEST_CUSTOMERS.restaurant.name);
+      await query(`update customers set token = $1 where name = $2`, [
+        seedToken,
+        TEST_CUSTOMERS.restaurant.name,
+      ]);
     }
   });
 
@@ -176,17 +174,15 @@ test.describe("admin customers", () => {
     // Wait for the server action's round-trip to persist before reloading —
     // otherwise on slow projects (mobile WebKit) the reload can race and read
     // the pre-toggle DB row.
-    const supabase = admin();
     const expectedFlipped = initial === "true" ? false : true;
     await expect
       .poll(
         async () => {
-          const { data } = await supabase
-            .from("customers")
-            .select("send_weekly_link")
-            .eq("token", TEST_CUSTOMERS.farmStand.token)
-            .single();
-          return data?.send_weekly_link ?? null;
+          const rows = await query<{ send_weekly_link: boolean }>(
+            `select send_weekly_link from customers where token = $1`,
+            [TEST_CUSTOMERS.farmStand.token],
+          );
+          return rows[0]?.send_weekly_link ?? null;
         },
         { timeout: 5000 },
       )
@@ -206,11 +202,9 @@ test.describe("admin customers", () => {
   // beforeEach (resetTestCustomers) restores is_active=true on both seed rows
   // so the bare hide doesn't leak.
   test("Show hidden reveals inactive rows; drawer Restore restores them", async ({ page }) => {
-    const supabase = admin();
-    await supabase
-      .from("customers")
-      .update({ is_active: false })
-      .eq("token", TEST_CUSTOMERS.restaurant.token);
+    await query(`update customers set is_active = false where token = $1`, [
+      TEST_CUSTOMERS.restaurant.token,
+    ]);
 
     await page.goto("/admin/customers");
 

@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@/lib/supabase/types";
-
-type ScheduleUpdate = Database["public"]["Tables"]["ordering_schedule"]["Update"];
+import { query } from "@/lib/db";
 
 // DORMANT (DEC-040): the vercel.json crons entry was removed — nothing calls
 // this route anymore. The store is always-open; is_open changes only via the
@@ -16,6 +13,15 @@ type ScheduleUpdate = Database["public"]["Tables"]["ordering_schedule"]["Update"
 // Vercel passes it automatically as Authorization: Bearer <secret> for
 // cron jobs; for manual testing use the same header.
 
+type ScheduleRow = {
+  is_open: boolean;
+  weekly_open_day: number | null;
+  weekly_open_time: string | null;
+  weekly_close_day: number | null;
+  weekly_close_time: string | null;
+  override_closes_at: string | null;
+};
+
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -27,24 +33,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
-  const { data: row, error } = await supabase
-    .from("ordering_schedule")
-    .select("is_open, weekly_open_day, weekly_open_time, weekly_close_day, weekly_close_time, override_closes_at")
-    .eq("is_singleton", true)
-    .single();
-
-  if (error || !row) {
+  const rows = await query<ScheduleRow>(
+    `select is_open, weekly_open_day, weekly_open_time, weekly_close_day,
+            weekly_close_time, override_closes_at
+       from ordering_schedule
+      where is_singleton = true`,
+  );
+  const row = rows[0];
+  if (!row) {
     return NextResponse.json({ error: "No schedule row" }, { status: 500 });
   }
 
   const now = new Date();
-  let patch: ScheduleUpdate | null = null;
+  let patch: { is_open?: boolean; override_closes_at?: null } | null = null;
   let action: string | null = null;
 
   // 1. override_closes_at — highest priority
   if (row.override_closes_at && new Date(row.override_closes_at) <= now) {
-    patch = { is_open: false, override_closes_at: null, updated_at: now.toISOString() };
+    patch = { is_open: false, override_closes_at: null };
     action = "override-expired → closed";
   }
 
@@ -66,10 +72,10 @@ export async function GET(request: Request) {
     const isCloseDay = dayNow === row.weekly_close_day;
 
     if (isCloseDay && minutesNow >= closeMinutes && row.is_open) {
-      patch = { is_open: false, updated_at: now.toISOString() };
+      patch = { is_open: false };
       action = "schedule → closed";
     } else if (isOpenDay && minutesNow >= openMinutes && !row.is_open) {
-      patch = { is_open: true, updated_at: now.toISOString() };
+      patch = { is_open: true };
       action = "schedule → open";
     }
   }
@@ -78,13 +84,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, action: "no-op" });
   }
 
-  const { error: updateError } = await supabase
-    .from("ordering_schedule")
-    .update(patch)
-    .eq("is_singleton", true);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  try {
+    await query(
+      `update ordering_schedule
+          set is_open = coalesce($1, is_open),
+              override_closes_at = case when $2 then null else override_closes_at end,
+              updated_at = now()
+        where is_singleton = true`,
+      [patch.is_open ?? null, "override_closes_at" in patch],
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, action });
