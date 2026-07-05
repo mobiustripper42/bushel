@@ -32,7 +32,7 @@ Roles:
 - **Backend:** Supabase (PostgreSQL + Auth + RLS) — no separate API server
 - **Notifications:** Operator-sent customer SMS via native `sms:` deep links — no third-party SMS provider (DEC-026). Admin order-arrival alert via transactional email (DEC-027); PWA push as stretch upgrade.
 - **Hosting:** Vercel (frontend), Supabase Cloud (database)
-- **Testing:** pgTAP (RLS), Playwright (integration, mobile/tablet/desktop), axe-core (a11y)
+- **Testing:** vitest (unit + pg-integration, DEC-051), Playwright (E2E, mobile/tablet/desktop), axe-core (a11y). pgTAP retired with Supabase.
 - **Domain:** `order.baybranchfarm.com` (CNAME → Vercel); apex stays Astro/Netlify
 
 ## Core Data Model (target — see Phase 1.1)
@@ -62,8 +62,9 @@ supabase migration new <name>
 supabase db push
 
 # Testing
-supabase test db                                # pgTAP RLS
-npx playwright test                             # full suite (workers=1 by config — do not override)
+npm run test:unit                               # vitest: unit + pg-integration (DEC-051; needs docker pg for the integration files, skips them if down)
+npm run test:watch                              # vitest watch
+npx playwright test                             # full E2E suite (workers=1 by config — do not override)
 npx playwright test tests/foo.spec.ts --project=desktop  # targeted, dev mode
 npx playwright test --ui                        # browser UI
 
@@ -85,7 +86,7 @@ Project-specific docs beyond the baseline `## Key Docs` table in the shell:
 
 ## Workflow Overrides
 Overrides to the shell's `## Micro Workflow` (customer-side is mobile-prioritized):
-- **Step 5/6 testing** — Playwright + pgTAP if RLS-touching (DEC-023); also run mobile/webkit projects for customer-side changes, not just desktop.
+- **Step 5/6 testing** — Playwright (E2E) + vitest (unit for pure logic, pg-integration for DB functions/constraints/triggers — DEC-051); also run mobile/webkit projects for customer-side changes, not just desktop.
 - **Step 7 mobile screenshot** — confirm 375px specifically for the customer-side.
 
 ## Migration Protocol (project)
@@ -231,7 +232,7 @@ grep "SUPABASE_URL" .env.production.tmp   # expect piaobrnrmoxnfrpnpixw.supabase
 ### Testing (DEC-023)
 - **Test the user, not the function.** Heavy integration, light unit.
 - **Test-first when behavior changes.** Update the test, then the code.
-- pgTAP in `supabase/tests/`, Playwright in `tests/`.
+- vitest in `db/tests/` (pg-integration) + `src/**/*.test.ts` (unit); Playwright `*.spec.ts` in `tests/` (DEC-051).
 - Viewports: 375px (mobile), 768px (tablet), 1440px (desktop).
 - WebKit on every PR for customer-side (mobile-prioritized).
 - Full matrix on main / release.

@@ -54,14 +54,16 @@ jobs:
       - name: Start Supabase
         run: supabase start
 
-      - name: Run pgTAP tests
-        run: supabase test db
-
       - name: Install dependencies
         run: npm ci
 
       - name: Run migrations (pg data DB)
         run: npx tsx db/migrate.ts "$DATABASE_URL"
+
+      # vitest unit + pg-integration tests (DEC-051, replaces `supabase test db`).
+      # Migrations already applied above; DATABASE_URL is the job-level bushel_test.
+      - name: Run vitest (unit + pg-integration)
+        run: npm run test:unit
 
       # Typecheck + lint gate (#238 follow-up): neither was a CI gate, so both
       # silently drifted to 50 accumulated errors before anyone noticed. They
