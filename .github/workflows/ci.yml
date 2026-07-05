@@ -9,8 +9,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Plain Postgres for the migration runner + tests (DEC-046, task 10.0).
+    # Port 5433 matches the local docker-compose mapping so one DATABASE_URL
+    # convention works in both places. Supabase steps below coexist until
+    # 10.5/10.6 remove them.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: bushel
+          POSTGRES_PASSWORD: bushel
+          POSTGRES_DB: bushel_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U bushel -d bushel_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Postgres service sanity
+        run: psql "postgresql://bushel:bushel@localhost:5433/bushel_test" -c "SELECT 1"
 
       - uses: actions/setup-node@v4
         with:

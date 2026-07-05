@@ -1,0 +1,27 @@
+# Local Postgres for dev + tests (DEC-046). Mirrors muster's docker-compose:
+# one server, two logical DBs — bushel_dev (the app, once 10.2 lands) and
+# bushel_test (Playwright/pgTAP target from 10.6, freely wiped). Hosted
+# dev/preview + prod live on Neon (DEC-049); this container is local/CI only.
+# Host port 5433, not 5432 — muster's container owns 5432 on this machine.
+services:
+  postgres:
+    image: postgres:17
+    container_name: bushel-postgres
+    environment:
+      POSTGRES_USER: bushel
+      POSTGRES_PASSWORD: bushel
+      POSTGRES_DB: bushel_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - bushel-pgdata:/var/lib/postgresql/data
+      # Runs once on first init: creates the test database alongside bushel_dev.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bushel -d bushel_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  bushel-pgdata:

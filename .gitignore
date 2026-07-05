@@ -44,4 +44,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .envrc
+# Prod DATABASE_URL lives here, deliberately sourced only (DEC-049) — never committed
+.envrc.production
 .sessions-worktree/
