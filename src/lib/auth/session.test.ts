@@ -83,14 +83,12 @@ describe("signSession / verifySession", () => {
       subjectId: "x",
       expiresAt: now(60_000).toISOString(),
     };
-    const payload = Buffer.from(JSON.stringify(forged), "utf8").toString("base64url");
     // Re-sign with the real secret so it clears the HMAC and only the shape check catches it.
     const token = signSession(forged as unknown as Session, SECRET);
     expect(verifySession(token, SECRET, now())).toEqual({
       ok: false,
       reason: "malformed",
     });
-    expect(payload).toBeTruthy(); // guard: the forged payload really was non-empty
   });
 });
 

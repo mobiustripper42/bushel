@@ -309,12 +309,12 @@ d("place_order unit-conversion math (DEC-032)", () => {
   });
 
   it("no order row created — the whole transaction rolled back", async () => {
-    const rows = await query<{ count: string }>(
+    const rows = await query<{ count: number }>(
       `select count(*)::int as count from public.orders
        where customer_id = $1::uuid and week_of = $2`,
       [CUST_6, WEEK],
     );
-    expect(Number(rows[0].count)).toBe(0);
+    expect(rows[0].count).toBe(0);
   });
 
   // === 10. Multi-item atomicity (DEC-036): in-stock line listed first, then a
@@ -349,11 +349,11 @@ d("place_order unit-conversion math (DEC-032)", () => {
   });
 
   it("no order row from the rejected multi-item order", async () => {
-    const rows = await query<{ count: string }>(
+    const rows = await query<{ count: number }>(
       `select count(*)::int as count from public.orders
        where customer_id = $1::uuid`,
       [CUST_7],
     );
-    expect(Number(rows[0].count)).toBe(0);
+    expect(rows[0].count).toBe(0);
   });
 });

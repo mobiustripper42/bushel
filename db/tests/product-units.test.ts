@@ -288,7 +288,7 @@ d("product_units schema + trigger", () => {
 
     it("deleting a product cascades to its product_units rows", async () => {
       await query(`delete from products where id = $1`, [PRODUCT]);
-      const rows = await query<{ n: string }>(
+      const rows = await query<{ n: number }>(
         `select count(*)::int as n from product_units where product_id = $1`,
         [PRODUCT],
       );
