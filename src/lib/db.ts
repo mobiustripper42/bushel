@@ -1,7 +1,8 @@
 // pg Pool (DEC-046). One pool per server process, connection string from
 // DATABASE_URL: Neon pooled endpoint in hosted envs (per-scope in Vercel,
 // DEC-049 — Preview entries must apply to ALL preview branches, or previews
-// silently fall back to the localhost default below and 500 on every query),
+// silently fall back to the localhost default below and 500 on every query;
+// a malformed pasted value surfaces as ENOTFOUND on a nonsense hostname),
 // the docker compose service locally/CI. Never a prod default — prod writes
 // are explicit-arg only (db/migrate.ts).
 import pg from "pg";
