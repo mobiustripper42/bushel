@@ -1,9 +1,11 @@
--- 0001_init.sql — clean baseline (DEC-046). Replaces the 27 Supabase
--- migrations as the source of truth for a fresh database. Authored from a
--- schema-only dump of the final Supabase state, minus what DEC-048 deletes:
--- every RLS policy, public.users + its auth.users FK (Supabase-auth mirror),
--- and the auth.users FK on customer_sends.sent_by_user_id (column kept as a
--- bare uuid; its repoint-or-drop lands with the admins table in 10.3/10.4).
+-- 0001_init.sql — clean baseline (DEC-046/047). The single source of truth for
+-- a fresh database. The data schema is a schema-only dump of the final Supabase
+-- state, minus what DEC-048 deletes: every RLS policy, public.users + its
+-- auth.users FK (Supabase-auth mirror), and the auth.users FK on
+-- customer_sends.sent_by_user_id (kept as a bare uuid holding admins.id).
+-- The DEC-047 admin-auth tables (admins, login_codes) are folded in here — the
+-- earlier standalone 0002 was consolidated into this baseline while no prod data
+-- existed (Phase 10.4), so a fresh DB replays exactly one migration.
 -- The service layer is the access boundary — this schema carries no policies.
 
 -- ── Functions ────────────────────────────────────────────────────────────────
@@ -370,7 +372,7 @@ CREATE TABLE public.customer_sends (
     CONSTRAINT customer_sends_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id) ON DELETE CASCADE
 );
 
-COMMENT ON COLUMN public.customer_sends.sent_by_user_id IS 'Legacy Supabase-auth attribution (was FK → auth.users). Bare uuid on Neon; repoint to admins or drop in 10.3/10.4 (DEC-048).';
+COMMENT ON COLUMN public.customer_sends.sent_by_user_id IS 'Per-admin attribution (DEC-047): the admins.id of the operator who recorded the send. Bare uuid, no FK — the service layer is the access boundary (DEC-048).';
 
 CREATE TABLE public.fulfillment_link (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -480,6 +482,39 @@ CREATE TABLE public.order_items (
 
 COMMENT ON COLUMN public.order_items.submission_id IS 'Client-generated per-submit-attempt UUID (DEC-039). Idempotency key for place_order — a replayed submission is a no-op returning the existing order — and per-submission audit (which submit attempt created this line). Null on rows that predate additive orders.';
 
+-- ── Admin auth (DEC-047) ─────────────────────────────────────────────────────
+
+-- admins — the sign-in allowlist. email is the login identity; only listed rows
+-- can request a login code. id is the session subject + per-admin attribution key.
+CREATE TABLE public.admins (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    email text NOT NULL,
+    name text NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT admins_pkey PRIMARY KEY (id),
+    CONSTRAINT admins_email_key UNIQUE (email)
+);
+
+COMMENT ON TABLE public.admins IS 'Admin sign-in allowlist (DEC-047). email is the login identity; only listed rows can request a login code. id is the session subject + per-admin attribution key.';
+
+-- login_codes — one-time admin sign-in codes. One live code per subject (the PK;
+-- re-request upserts). Only sha256(code) is stored; security rests on the
+-- 5-attempt cap + 10-min TTL, not the code's entropy. No FK (service layer is the
+-- access boundary, DEC-048).
+CREATE TABLE public.login_codes (
+    subject_kind text NOT NULL,               -- 'admin' (bushel has no other subject)
+    subject_id   text NOT NULL,               -- admins.id as text
+    code_hash    text NOT NULL,               -- sha256(code) hex; the code is never stored
+    created_at   timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at   timestamp with time zone NOT NULL,  -- dead past this even if unconsumed
+    attempts     integer DEFAULT 0 NOT NULL,  -- failed verifies; the brute-force ceiling
+    consumed_at  timestamp with time zone,    -- null until redeemed (single-use CAS)
+    CONSTRAINT login_codes_pkey PRIMARY KEY (subject_kind, subject_id)  -- one live code per subject
+);
+
+COMMENT ON TABLE public.login_codes IS 'One-time admin sign-in codes (DEC-047). Keyed by subject so attempts can cap brute-force against the short code. Only the hash is stored.';
+
 -- ── Indexes ──────────────────────────────────────────────────────────────────
 
 CREATE INDEX customer_sends_week_mode_idx ON public.customer_sends USING btree (week_of, mode);
@@ -520,3 +555,11 @@ INSERT INTO public.codes (type, code, label, sort_order) VALUES
 -- fulfillment link token mints fresh per database via the column default.
 INSERT INTO public.ordering_schedule (is_open) VALUES (false);
 INSERT INTO public.fulfillment_link (is_singleton) VALUES (true);
+
+-- Admin sign-in allowlist (DEC-047). Emails are the gate; anything not here
+-- cannot request a login code. (The Playwright test admin is upserted by
+-- tests/global-setup.ts, not seeded here, so it never reaches prod.)
+INSERT INTO public.admins (email, name) VALUES
+  ('e.t.urner217@gmail.com', 'Emma Turner'),
+  ('eric@stoffer.net',       'Eric'),
+  ('annabel@stoffer.net',    'Annabel');
