@@ -583,7 +583,7 @@ A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`
 
 **Schema untangle** (Supabase-auth tendrils that can't exist on Neon): drop `public.users` + its `auth.users` mirror trigger; `send_queue.sent_by_user_id` (FK → auth.users) drops the FK and either repoints to the DEC-047 `admins` table or is removed; all `auth.uid()` policies removed with RLS.
 
-**pgTAP disposition:** the RLS-only files (`customers_rls`, `fulfillment_link_rls`, `rls_tables`) are deleted; the FUNCTION/DATA tests (`place_order_additive`, `place_order_units`, `product_units`, `set_base_unit`, `order_status_codes`, `customer_sends_modes`) stay and keep running against docker Postgres — they're the regression net for the concurrency-sensitive `place_order` path.
+**pgTAP disposition:** the RLS-only files (`customers_rls`, `fulfillment_link_rls`, `rls_tables`) are deleted; the FUNCTION/DATA tests (`place_order_additive`, `place_order_units`, `product_units`, `set_base_unit`, `order_status_codes`, `customer_sends_modes`) stay and keep running against docker Postgres — they're the regression net for the concurrency-sensitive `place_order` path. **Superseded by DEC-051:** those 6 are ported to vitest pg-integration tests (not pgTAP-on-docker), pgTAP is retired, and `supabase/tests/` is deleted.
 
 **Why now:** with the DB moving anyway, keeping RLS would mean re-authoring every policy against a role model Neon doesn't share, to protect a path the app never uses. Deleting is both simpler and honest about how access actually works.
 
@@ -614,6 +614,18 @@ A customer has at most one **non-terminal** order; fulfilled orders (`picked_up`
 **Web↔app parity:** the two surfaces need to stay close, not 1:1. Two mechanisms: (1) admin mutations are implemented as service-layer functions first, with the Server Action (web) and `/api/*` route (app) as thin wrappers over the same function — parity is then a wrapper, not a reimplementation; (2) each phase retro includes a parity pass — which admin capabilities added that phase should the app pick up, and which diverge deliberately. Divergence is fine when named; drift is not.
 
 **Build/signing:** Android via EAS free tier → sideloaded APK ($0). iOS via free-signed 7-day EAS builds for install/run only (no push) until $99 lands. No Mac in the loop for Android.
+
+---
+
+## DEC-051 — Test stack: vitest (unit + pg-integration) + Playwright (E2E-only); pgTAP retired with Supabase
+
+**Decision:** Two layers. **vitest** owns unit tests (pure logic — HMAC session, login-code, conversion math) and **DB-integration** tests (the plpgsql functions + constraints + triggers, driven through the app's own `src/lib/db` pool against docker Postgres). **Playwright** owns end-to-end user flows only. pgTAP is retired.
+
+**Why:** pgTAP was only ever viable because Supabase ships the extension and `supabase test db` ran it in one command. Off Supabase (DEC-046/047), keeping it means baking a test-only extension into the Postgres image and running a Perl TAP harness — infrastructure that exists solely to preserve a Supabase-era format. The concurrency-critical logic (atomic `place_order`) correctly stays in plpgsql; only the *harness* was Supabase-shaped. Testing those functions through the pg driver from TypeScript is the canonical "integration test against a real DB" pattern — same runtime + assertions as the rest of the code, no extension, no pg_prove — and it's where muster landed too. It also finally gives bushel a unit layer (10.3's HMAC/login-code logic had none).
+
+**Shape:** vitest owns `*.test.ts` under `src/` (pure) and `db/tests/` (pg-integration; skips cleanly when no DB is reachable, so `npm run test:unit` stays docker-free for the pure units). Playwright keeps `tests/*.spec.ts`. Different suffix + dir → zero overlap. Integration files run non-parallel (`fileParallelism: false`) since they share one DB and truncate between tests. CI runs `npm run test:unit` where `supabase test db` used to be.
+
+**Amends DEC-048:** its "keep the 6 function/data pgTAP files green on docker Postgres" becomes "port the 6 to vitest pg-integration tests"; the 3 RLS-only pgTAP files are deleted (RLS is gone). `supabase/tests/` is removed entirely.
 
 ---
 
