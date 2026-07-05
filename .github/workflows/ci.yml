@@ -9,18 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # The app + tests read/write this DB (task 10.2). Supabase below is now
-    # vestigial (pgTAP only) — admin auth moved to the self-rolled HMAC session
-    # (DEC-047, task 10.3). The app verifies and global-setup mints sessions with
-    # SESSION_SECRET; any fixed value works as long as both sides share it.
+    # The app + tests read/write this DB (task 10.2). Admin auth is the
+    # self-rolled HMAC session (DEC-047); the app verifies and global-setup mints
+    # sessions with SESSION_SECRET — any fixed value works as long as both sides
+    # share it. Supabase is fully removed (task 10.5).
     env:
       DATABASE_URL: postgres://bushel:bushel@localhost:5433/bushel_test
       SESSION_SECRET: ci-fixed-session-secret-not-a-real-key
 
     # Plain Postgres for the migration runner + tests (DEC-046, task 10.0).
     # Port 5433 matches the local docker-compose mapping so one DATABASE_URL
-    # convention works in both places. Supabase steps below coexist until
-    # 10.5/10.6 remove them.
+    # convention works in both places.
     services:
       postgres:
         image: postgres:17
@@ -47,13 +46,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 2.98.2
-
-      - name: Start Supabase
-        run: supabase start
-
       - name: Install dependencies
         run: npm ci
 
@@ -74,16 +66,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Set Supabase env vars
-        run: |
-          eval $(supabase status --output env)
-          [[ -z "$API_URL" ]] && echo "ERROR: API_URL empty — supabase status failed" && exit 1
-          [[ -z "$ANON_KEY" ]] && echo "ERROR: ANON_KEY empty — supabase status failed" && exit 1
-          [[ -z "$SERVICE_ROLE_KEY" ]] && echo "ERROR: SERVICE_ROLE_KEY empty — supabase status failed" && exit 1
-          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
-
       - name: Build
         run: npm run build
         env:
@@ -98,8 +80,8 @@ jobs:
         run: timeout 30 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 1; done'
 
       - name: Run Playwright tests (in container)
-        # Path D: keep the job on the host runner (so supabase + npm + build all
-        # work natively against host docker without DiD pain), but run the test
+        # Path D: keep the job on the host runner (so npm + build all work
+        # natively against the host postgres service without DiD pain), but run the test
         # step inside the Playwright image so we skip the ~6 min `--with-deps`
         # apt install. We control this `docker run` ourselves, so --network host
         # works (GHA only conflicts with `container:` jobs).
@@ -111,9 +93,6 @@ jobs:
             -e PLAYWRIGHT_BASE_URL=http://localhost:3001 \
             -e NOTIFICATIONS_ENABLED=false \
             -e CI=true \
-            -e NEXT_PUBLIC_SUPABASE_URL \
-            -e NEXT_PUBLIC_SUPABASE_ANON_KEY \
-            -e SUPABASE_SERVICE_ROLE_KEY \
             -e DATABASE_URL \
             -e SESSION_SECRET \
             mcr.microsoft.com/playwright:v1.59.1-noble \

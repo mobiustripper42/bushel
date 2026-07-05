@@ -29,10 +29,11 @@ Roles:
 ## Stack
 
 - **Frontend:** Next.js 16 (App Router), TypeScript strict, sailbook-style CSS (DEC-021)
-- **Backend:** Supabase (PostgreSQL + Auth + RLS) — no separate API server
+- **Backend:** Neon Postgres via `pg` + hand-rolled SQL migration runner (DEC-046) — no separate API server. Access boundary is the service layer, not RLS (DEC-048).
+- **Auth:** self-rolled email→code→HMAC session (DEC-047) — no Supabase Auth, no Google OAuth. Login codes emailed via Resend.
 - **Notifications:** Operator-sent customer SMS via native `sms:` deep links — no third-party SMS provider (DEC-026). Admin order-arrival alert via transactional email (DEC-027); PWA push as stretch upgrade.
-- **Hosting:** Vercel (frontend), Supabase Cloud (database)
-- **Testing:** vitest (unit + pg-integration, DEC-051), Playwright (E2E, mobile/tablet/desktop), axe-core (a11y). pgTAP retired with Supabase.
+- **Hosting:** Vercel (frontend), Neon (Postgres — one project, `main` + `production` branches, DEC-049). Docker Postgres locally + CI.
+- **Testing:** vitest (unit + pg-integration, DEC-051), Playwright (E2E, mobile/tablet/desktop), axe-core (a11y). pgTAP + Supabase retired.
 - **Domain:** `order.baybranchfarm.com` (CNAME → Vercel); apex stays Astro/Netlify
 
 ## Core Data Model (target — see Phase 1.1)
@@ -54,12 +55,12 @@ npm run dev
 npm run build
 npm run lint
 
-# Database (local Supabase)
-supabase start
-supabase stop
-supabase db reset
-supabase migration new <name>
-supabase db push
+# Database (docker Postgres — DEC-046)
+npm run db:up                                   # docker compose up (bushel_dev + bushel_test on :5433)
+npm run db:down
+npm run db:migrate                              # apply db/migrations/*.sql to DATABASE_URL (or explicit arg)
+# new migration: add db/migrations/NNNN_<name>.sql (next number), then db:migrate
+# prod migrate is ALWAYS the explicit-arg form (DEC-049): npx tsx db/migrate.ts "$DATABASE_URL_UNPOOLED"
 
 # Testing
 npm run test:unit                               # vitest: unit + pg-integration (DEC-051; needs docker pg for the integration files, skips them if down)
@@ -67,9 +68,6 @@ npm run test:watch                              # vitest watch
 npx playwright test                             # full E2E suite (workers=1 by config — do not override)
 npx playwright test tests/foo.spec.ts --project=desktop  # targeted, dev mode
 npx playwright test --ui                        # browser UI
-
-# Types
-npx supabase gen types typescript --local > src/lib/supabase/types.ts
 ```
 
 ## Additional Docs
@@ -78,7 +76,7 @@ Project-specific docs beyond the baseline `## Key Docs` table in the shell:
 | File | Purpose |
 |------|-------|
 | `docs/SPEC.md` | Scope is V1 vs **V1.5** vs V2 (bushel-specific phasing) |
-| `docs/SCHEMA.md` | Finalized table shapes; gates migrations + RLS |
+| `docs/SCHEMA.md` | Finalized table shapes; gates migrations |
 | `docs/DECISIONS.md` | bushel decisions run DEC-001…DEC-032 (project-own; distinct from seeds' DEC-S### refs) |
 | `docs/USER_STORIES.md` | B2B-reframed; pending review |
 | `docs/AGENTS.md` | The repo-root `AGENTS.md` is a Next.js-agent rules stub for IDE tooling — **not** the project agent doc; `docs/AGENTS.md` is canonical |
@@ -92,98 +90,49 @@ Overrides to the shell's `## Micro Workflow` (customer-side is mobile-prioritize
 ## Migration Protocol (project)
 The migration **discipline** lives in the shell's `## Migration Protocol`. bushel's toolchain:
 
-**All schema changes go through `supabase/migrations/`.** No exceptions.
+**All schema changes go through `db/migrations/NNNN_<name>.sql`.** Hand-rolled SQL, applied in filename order by `db/migrate.ts`, tracked in a `_migrations` table so re-runs are no-ops. No framework, no dashboard edits.
 
-- `supabase migration new <name>` to create
-- `supabase db reset` to test locally (replays + seed)
-- `supabase db push` to apply to remote
-- Never edit through the dashboard
-- After schema changes: `npx supabase gen types typescript --local > src/lib/supabase/types.ts`
-- Before creating: `gh pr list` to check overlapping migrations; merge in-flight first or rename to later timestamp.
+- New migration: add `db/migrations/NNNN_<name>.sql` (next number in sequence).
+- Apply to docker dev: `npm run db:migrate` (defaults to the local compose service).
+- **Never hand-patch an already-applied migration** — a re-run won't re-apply it (the ledger tracks by name), so the file silently diverges from the DB. Edit one only if you also re-baseline every DB that holds it (`drop schema public cascade` + re-migrate), and only while no real data exists.
+- Before creating: `gh pr list` for open PRs touching the same tables; merge in-flight first or bump the number to keep the ledger ordered.
+- **Use the UNPOOLED/direct endpoint for migrations.** DDL runs in a transaction and Neon's pooled endpoint is PgBouncer (transaction mode), which can mangle it. The app reads the pooled `DATABASE_URL` at runtime; migrations take `DATABASE_URL_UNPOOLED`.
 
-### Two Supabase projects (dev/preview + prod)
+### Neon branch model (DEC-049)
 
-Bushel runs against **two Supabase projects** under the bushel-billed org:
+One Neon project, two branches — `production` is a downstream deploy pointer, never a PR base:
 
-| Role | Project ref | Used by |
-|------|------------|-------|
-| dev/preview | `nnmfubmlvnkouxxfxxlh` | `.env.local`, Vercel Development + Preview environments, local Playwright runs |
-| production | `piaobrnrmoxnfrpnpixw` | Vercel Production environment only — `order.baybranchfarm.com` |
+| Branch | Used by |
+|--------|---------|
+| `main` | Vercel Preview + Development scopes; backs the deployed **preview** app |
+| `production` | Vercel Production scope only — `order.baybranchfarm.com` |
 
-**Why split:** Annabel uses production daily for real customers/inventory. Dev work — migrations, schema changes, fixture data — happens against the dev/preview project so a botched migration or a `db reset` can't take prod with it.
+Local dev + CI + Playwright + vitest run against **docker Postgres** (`bushel_dev` / `bushel_test` on :5433), not Neon. Neon `main` backs the deployed preview; Neon `production` is empty until the 10.7 cutover.
 
-**Migration discipline (with the split)** — all `supabase link`/`db push` commands need the bushel PAT, so make sure `.envrc` is loaded (direnv or `source .envrc`):
+**Prod-write protection (DEC-049)** — the prod DB URL lives ONLY in Vercel and a deliberately-sourced `.envrc.production` (gitignored), never the shell default. A prod migration is an explicit-arg `npx tsx db/migrate.ts "$PROD_DATABASE_URL"` (use the direct/unpooled endpoint — DDL in a transaction) — there is no default-prod state to forget out of, so no relink dance. Strictly safer than the old Supabase link/relink ritual it replaced.
 
-1. `supabase link --project-ref nnmfubmlvnkouxxfxxlh` is the default state. Stay linked here.
-2. Write migration → `supabase db reset` against local for a syntax sanity check → `supabase db push` against dev/preview → vet against the running dev/preview app.
-3. When dev/preview is happy and the PR has merged, push to prod:
-   ```bash
-   supabase link --project-ref piaobrnrmoxnfrpnpixw
-   supabase db push
-   supabase link --project-ref nnmfubmlvnkouxxfxxlh   # relink back, always
-   ```
-4. The relink-back step is non-negotiable. A forgotten link-to-prod is how `supabase db reset` becomes a resume-update event.
+### Env vars (`.env.local`) + Vercel ↔ Neon sync
 
-**Local Supabase is NOT the development backend.** `.env.local` and `npm run dev` point at the dev/preview cloud project, not `127.0.0.1:54421`. The reason is Google OAuth — registering `http://localhost:54421` as a redirect on the Google Cloud OAuth client is enough friction (and enough mental-mode-switching for the admin side that uses OAuth) that it's not worth the speed of a purely-local loop. Local Supabase is still used for:
+All env lives in `.env.local` for day-to-day dev/test (DEC-049; Next + Playwright auto-load it via dotenv) — no `.envrc`/direnv. The one exception is the gitignored `.envrc.production`, sourced deliberately only for a prod migration (see Prod-write protection above). Keys in `.env.local`:
+- `DATABASE_URL` — pooled Neon `main`, app runtime.
+- `DATABASE_URL_UNPOOLED` — direct Neon `main`, migrations (pooled = PgBouncer transaction mode, mangles DDL transactions).
+- `RESEND_API_KEY` + `RESEND_FROM` — login-code email. FROM must be `@brewcle.com` (the verified Resend domain; the `crew-tips` subdomain is NOT verified → 403). Sends ride the brewcle Resend account (DEC-047).
+- `SESSION_SECRET` — HMAC session signing key (`openssl rand -hex 32`); required in prod (fails fast if unset).
 
-- `supabase db reset` — applies all migrations on a clean local DB to catch syntax errors before pushing to dev/preview.
-- `supabase test db` — pgTAP tests, no auth needed, fast.
-- Playwright integration tests (CI + `/kill-this`) — env-overridden to local Supabase via the test commands, isolated per run, no cloud round-trip.
+Test tooling deliberately does NOT read `.env.local`'s `DATABASE_URL`: vitest integration + Playwright target docker `bushel_test` explicitly (a run truncates data — pointing it at the dev DB would wipe it).
 
-`.env.local` keeps the commented-out local URLs at the bottom — handy if this decision is ever reversed, but the default state is cloud.
-
-**Auth config is per-project** — Google OAuth, redirect URLs, providers all live on each project independently. Changes (new OAuth client, new redirect URL, provider toggle) must be applied to both. The dev project's "this works" doesn't carry to prod automatically.
-
-There is no active guard against destructive ops on prod — the defense is the discipline above: link to dev by default, link to prod only for the seconds it takes to push, relink to dev.
-
-### Supabase CLI auth (mill-dev)
-
-**TL;DR — anytime you need to push migrations or hit remote Supabase, run:**
-
-```bash
-source .envrc && supabase db push
-```
-
-(Or `direnv allow` once to make `.envrc` auto-load on every `cd ~/bushel/`.)
-
-**Why:** the global `supabase login` on mill-dev is the **sailbook** account. Bushel lives in a different Supabase account, so any bushel CLI command that talks to the cloud project must use `SUPABASE_ACCESS_TOKEN` (a Personal Access Token generated in the bushel account's profile, kept in `.envrc` — gitignored).
-
-Without the token: `Your account does not have the necessary privileges` — that's the symptom. Local-only commands (`supabase start`, `supabase test db`, `supabase migration new`) don't need it.
-
-Why two accounts: bushel is billed separately from sailbook so LTSC can take sailbook later without untangling shared accounts.
-
-### Cross-system env-var sync (Supabase ↔ Vercel)
-
-**Vercel env vars and Supabase project refs do not auto-sync.** Bushel runs two Supabase projects (see above); Vercel Production points at the prod project, Vercel Preview/Development + `.env.local` point at dev/preview. The three vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) appear **twice** in Vercel — once per environment scope — with intentionally different values.
-
-When you rotate keys, switch project refs, or otherwise touch these vars, both scopes must stay coherent:
-- Vercel **Production** → matches prod project's URL + keys.
-- Vercel **Preview + Development** → matches dev/preview project's URL + keys, which is what `.env.local` has.
-
-Vercel does not redeploy on env-var change. After updating, trigger a redeploy of `main` (Deployments → ⋯ → Redeploy) or push any commit.
+**Vercel ↔ Neon:** Vercel env vars don't auto-sync with Neon branch URLs. Production scope → Neon `production` branch URL; Preview + Development + `.env.local` → Neon `main` branch URL. The per-scope vars must stay coherent. Sharp edges — CLI can't add unbranched Preview vars; a wrong branch URL 500s every DB route; a malformed paste surfaces as `ENOTFOUND` on a nonsense host — are in the `vercel-preview-env-gotchas` memory. Vercel doesn't redeploy on env change; trigger one after edits.
 
 Failure modes:
-- **Undefined values:** `createServerClient()` gets `undefined` for URL or key → `HTTP 500` site-wide. Local `npm run dev` keeps working because it reads `.env.local` directly, masking the regression until someone hits the deployed site. Session 19 (2026-05-14) lost an hour to this during the bushel/sailbook account split.
-- **Swapped projects:** Prod points at the dev DB or vice versa. Symptoms: prod login works but shows test fixtures, or Annabel's real data appears on a preview URL. Diff-check before assuming everything is wired correctly.
-- **Name typo:** A Vercel-side name like `SUPABASE_ANON_KEY` instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY` produces the same 500 even when the value is correct.
-
-Diff-check ritual after any rotation:
-
-```bash
-vercel env pull --environment=production .env.production.tmp
-vercel env pull --environment=preview    .env.preview.tmp
-# Preview should match .env.local:
-diff <(grep -E "SUPABASE" .env.local            | sort) \
-     <(grep -E "SUPABASE" .env.preview.tmp      | sort)
-# Production should NOT match .env.local — it should reference the prod project ref:
-grep "SUPABASE_URL" .env.production.tmp   # expect piaobrnrmoxnfrpnpixw.supabase.co
-```
+- **Missing/undefined `DATABASE_URL`** → the pg pool falls back to the localhost default and 500s every DB route on the deployed site (local `npm run dev` reads `.env.local`, masking it).
+- **Wrong Neon branch** → `42P01` (relation does not exist) when the branch is empty/behind — e.g. Neon `production` before the 10.7 cutover.
+- **Missing `SESSION_SECRET`** in prod → hard fail on any `/admin` or `/login` request (fail-fast by design).
 
 ## Conventions
 
 ### TypeScript
 - Strict mode. No `any`.
-- Generated Supabase types from `lib/supabase/types.ts`. Regenerate after every schema change.
+- Postgres rows are typed by hand at the call site — `query<T>()` / `queryOne<T>()` from `src/lib/db.ts` with an inline row type (DEC-046). No codegen.
 
 ### Next.js 16 routing
 - `src/proxy.ts` is the middleware entry point — export name is `proxy`, not `middleware`. Do NOT create `src/middleware.ts`; Next.js 16 will reject both existing simultaneously.
@@ -196,15 +145,14 @@ grep "SUPABASE_URL" .env.production.tmp   # expect piaobrnrmoxnfrpnpixw.supabase
 - Under 200 lines per component. Split if larger.
 
 ### Data Fetching
-- Server Components fetch via Supabase server client.
-- Mutations via Server Actions (not API routes).
-- Real-time / post-interaction client data uses Supabase browser client.
+- Server Components + Server Actions query Postgres via `query`/`queryOne` from `src/lib/db.ts` (the pg pool).
+- Mutations via Server Actions (not API routes). Every action gates on `getAdminUser()` (DEC-047) for admin surfaces.
+- No client-side DB access — customer reads resolve `bbf_customer_token` → `customers.token` server-side (DEC-004).
 
-### Auth & RLS
-- All auth through Supabase. No custom JWT.
-- Role flags on users table; not mutually exclusive.
-- Every table needs RLS policies before shipping. Every RLS change needs a pgTAP test.
-- Middleware handles role-based redirects.
+### Auth & access
+- Admin: self-rolled email→code→HMAC session (DEC-047), verified in `src/proxy.ts` + `getAdminUser()`. No Supabase Auth, no OAuth, no JWT library.
+- The **service layer is the access boundary** — no RLS (DEC-048). Admin routes sit behind the session; customer routes behind the token.
+- `src/proxy.ts` handles the `/admin` gate + redirects.
 
 ### Error Handling
 - Form actions: `string | null` (null = success).
@@ -220,7 +168,7 @@ grep "SUPABASE_URL" .env.production.tmp   # expect piaobrnrmoxnfrpnpixw.supabase
 - Components: `PascalCase`
 - Server Actions: `camelCase` in `actions/`
 - DB columns: `snake_case`
-- Migrations: `supabase/migrations/YYYYMMDDHHMMSS_descriptive_name.sql`
+- Migrations: `db/migrations/NNNN_descriptive_name.sql` (zero-padded sequence)
 
 ### UI / Brand
 - White/black base, semantic shadcn tokens. No color for color's sake.
@@ -273,9 +221,7 @@ To keep the preview URL bookmarkable on a phone, a fixed subdomain points at whi
 - Project → Settings → Domains → `preview.baybranchfarm.com` → **Edit** → Git Branch → select `task/X.Y-current-branch` → Save.
 - New preview build for that branch repoints the subdomain. ~30s.
 
-**Supabase OAuth allowlist (one-time):**
-- Supabase Dashboard → Authentication → URL Configuration → Redirect URLs → add `https://preview.baybranchfarm.com/**`.
-- **Double-star, not single-star.** `/*` matches one path segment only (so `/auth/callback` fails to match); `/**` matches any path. A single-star slip costs an hour of "auth almost works" debugging — Supabase silently falls back to Site URL on a non-match, and the user lands on `/?code=...` with the callback route never running. Session 19 (2026-05-14) burned this exact hour.
+(Admin auth is now the self-rolled email-code session (DEC-047) — no OAuth redirect allowlist to maintain. Preview login just needs `SESSION_SECRET` + `RESEND_*` on the Vercel Preview scope.)
 
 If the subdomain returns 500 or 404 right after reassignment, the new branch hasn't pushed a commit yet — Vercel only builds on new SHAs (404 = no deployment exists for that branch; 500 = deployment exists but is broken, usually a different bug). An empty commit (`git commit --allow-empty -m "Trigger preview"`) kicks a build.
 
@@ -293,7 +239,7 @@ Universal workflow notes live in the shell's `## Workflow Notes`. bushel-specifi
 
 - **Before starting `npm run dev`:** run `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` first. If it returns 200, skip the start — a server is already up. Only start a new one if the check fails.
 - **Stale `next start` on port 3001:** Playwright's webServer config reuses an existing server on port 3001 when one is running. A `next start` left over from an earlier debug run will serve the previous build's bundle to every test in the new run, producing phantom failures (asset 404s, "old code" assertions, hydration mismatches) that vanish on a fresh process. Before the first targeted `npx playwright test` invocation in a session — especially after build changes — kill any orphan: `lsof -ti:3001 | xargs -r kill -9` (or `pkill -f "next start"`). Re-check with `lsof -ti:3001` — empty output means the port is clean. Do this once per session, not per test run.
-- **No `source .envrc` for `npx playwright test`:** Playwright reads `.env.local` via `dotenv` in `playwright.config.ts` — it does not need `.envrc`. The `source .envrc &&` prefix is for `supabase link` / `supabase db push` only (lines above), because those need `SUPABASE_ACCESS_TOKEN`. Prefixing test commands with `source .envrc &&` triggers a permission prompt per invocation (the leading `source` falls outside `Bash(npx *)`), and each variation — different spec, project, or pipe target — is a new prompt. Run tests bare: `npx playwright test tests/foo.spec.ts --project=desktop`.
+- **Run test commands bare.** Playwright reads `.env.local` via `dotenv` in `playwright.config.ts`, and vitest integration tests default to docker `bushel_test` — neither needs any env prefix. Don't prefix with `source …` or `DATABASE_URL=… &&` unless deliberately retargeting; a leading `source`/`export` falls outside the `Bash(npx *)` allowance and triggers a permission prompt per variation. Just `npx playwright test tests/foo.spec.ts --project=desktop` / `npm run test:unit`.
 
 ## Approval Before Action (project)
 The shell's `## Approval Before Action` applies. bushel addition:
