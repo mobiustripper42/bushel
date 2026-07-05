@@ -1,133 +1,70 @@
 import { chromium } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { mkdir } from "fs/promises";
 
 import { query } from "@/lib/db";
+import { signSession } from "@/lib/auth/session";
+import {
+  ADMIN_SESSION_COOKIE,
+  SESSION_TTL_MS,
+  sessionSecret,
+} from "@/lib/auth/config";
 
 export const TEST_ADMIN_EMAIL = "test-admin@bushel.test";
-export const TEST_ADMIN_PASSWORD = "BushelTest1!";
-const MAX_CHUNK_SIZE = 3180;
+// Fixed id so specs can assert on per-admin attribution deterministically. Not
+// seeded by 0002 (that migration runs against prod) — upserted here only.
+export const TEST_ADMIN_ID = "a0000000-0000-0000-0000-000000000001";
 
-// Re-export the storage-state path so other tests/helpers can rebuild it.
 export const ADMIN_STORAGE_STATE_PATH = "playwright/.auth/admin.json";
 
-// Sign in the test admin and write a fresh storageState file. Extracted from
-// globalSetup so the admin-shell sign-out test can refresh the shared state
-// after it invalidates the session, keeping later specs (notifications-flow)
-// authenticated. @supabase/ssr's getUser() on subsequent contexts otherwise
-// rejects the post-signOut JWT even with scope:"local" — empirically observed.
+// Mint the admin session cookie directly (DEC-047) and write a fresh
+// storageState file. No email in the loop — the pure HMAC session is minted with
+// the same SESSION_SECRET the app verifies with (CI sets it; dev/test share the
+// insecure default). Extracted from globalSetup so the admin-shell sign-out test
+// can rebuild the shared state after it clears the cookie, keeping later specs
+// authenticated. (Exercising the real request→verify code path headlessly is
+// 10.6; this deterministic mint is what keeps the suite green here.)
 export async function writeAdminStorageState(): Promise<void> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
-
-  const anonClient = createClient(supabaseUrl, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const { data, error } = await anonClient.auth.signInWithPassword({
-    email: TEST_ADMIN_EMAIL,
-    password: TEST_ADMIN_PASSWORD,
-  });
-  if (error || !data.session) {
-    throw new Error(`writeAdminStorageState sign-in failed: ${error?.message ?? "no session"}`);
-  }
-
-  const sessionCookies = sessionToCookies(data.session, storageKeyFromUrl(supabaseUrl));
   const hostname = new URL(baseURL).hostname;
   const secure = baseURL.startsWith("https://");
 
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  const token = signSession(
+    { subjectKind: "admin", subjectId: TEST_ADMIN_ID, expiresAt },
+    sessionSecret(),
+  );
+
   const browser = await chromium.launch();
   const context = await browser.newContext({ baseURL });
-  await context.addCookies(
-    sessionCookies.map(({ name, value }) => ({
-      name,
-      value,
+  await context.addCookies([
+    {
+      name: ADMIN_SESSION_COOKIE,
+      value: token,
       domain: hostname,
       path: "/",
-      httpOnly: false,
+      httpOnly: true,
       secure,
       sameSite: "Lax" as const,
-    })),
-  );
+      expires: Math.floor(Date.parse(expiresAt) / 1000),
+    },
+  ]);
   await mkdir("playwright/.auth", { recursive: true });
   await context.storageState({ path: ADMIN_STORAGE_STATE_PATH });
   await browser.close();
 }
 
-// @supabase/ssr v0.10+ derives the storage key from the project hostname:
-// sb-<hostname[0]>-auth-token (e.g. sb-nnmfubmlvnkouxxfxxlh-auth-token for remote,
-// sb-127-auth-token for local). Hard-coding "supabase.auth.token" breaks the lookup.
-function storageKeyFromUrl(supabaseUrl: string): string {
-  return `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
-}
-
-function sessionToCookies(
-  session: object,
-  storageKey: string,
-): Array<{ name: string; value: string }> {
-  const encoded =
-    "base64-" +
-    Buffer.from(JSON.stringify(session), "utf-8").toString("base64url");
-  if (encoded.length <= MAX_CHUNK_SIZE) {
-    return [{ name: storageKey, value: encoded }];
-  }
-  const chunks: Array<{ name: string; value: string }> = [];
-  for (let i = 0, offset = 0; offset < encoded.length; i++, offset += MAX_CHUNK_SIZE) {
-    chunks.push({
-      name: `${storageKey}.${i}`,
-      value: encoded.slice(offset, offset + MAX_CHUNK_SIZE),
-    });
-  }
-  return chunks;
-}
-
 export default async function globalSetup() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
+  // ── Admin allowlist: upsert the test admin with its fixed id. The three real
+  //    admins come from migration 0002; test-admin is test-only. ──
+  await query(
+    `insert into admins (id, email, name)
+     values ($1, $2, 'Test Admin')
+     on conflict (email) do update set id = excluded.id, name = excluded.name`,
+    [TEST_ADMIN_ID, TEST_ADMIN_EMAIL],
+  );
 
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-    throw new Error(
-      "Missing Supabase env vars for test setup.\n" +
-        "Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY\n" +
-        "For local dev: add SUPABASE_SERVICE_ROLE_KEY to .envrc or your shell before running tests.",
-    );
-  }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  // Create test admin user — if already exists, the error is benign
-  let userId: string | undefined;
-  const { data: createData } = await adminClient.auth.admin.createUser({
-    email: TEST_ADMIN_EMAIL,
-    password: TEST_ADMIN_PASSWORD,
-    email_confirm: true,
-  });
-  userId = createData?.user?.id;
-
-  if (!userId) {
-    // User already exists — page through up to 1000 users to find them
-    const { data: listData } = await adminClient.auth.admin.listUsers({
-      perPage: 1000,
-    });
-    userId = listData?.users?.find((u) => u.email === TEST_ADMIN_EMAIL)?.id;
-  }
-  if (!userId) throw new Error("Could not create or find test admin user");
-
-  // Ensure public.users row with is_admin = true. This lives in the SUPABASE
-  // (auth) database, not the pg data DB — Supabase Auth remains the admin
-  // login until DEC-047 lands (10.3).
-  const { error: upsertError } = await adminClient
-    .from("users")
-    .upsert({ id: userId, is_admin: true }, { onConflict: "id" });
-  if (upsertError)
-    throw new Error(`public.users upsert failed: ${upsertError.message}`);
-
-  // ── Data seeding below targets the pg data DB (DATABASE_URL), the same
-  //    database the app under test reads/writes (task 10.2). ──
+  // ── Data seeding targets the pg data DB (DATABASE_URL), the same database the
+  //    app under test reads/writes. ──
 
   // Upsert test products so inventory tests are self-contained
   await query(
@@ -203,42 +140,5 @@ export default async function globalSetup() {
         )`,
   );
 
-  // Sign in to get a real, server-verified session
-  const anonClient = createClient(supabaseUrl, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const { data: signInData, error: signInError } =
-    await anonClient.auth.signInWithPassword({
-      email: TEST_ADMIN_EMAIL,
-      password: TEST_ADMIN_PASSWORD,
-    });
-  if (signInError || !signInData.session) {
-    throw new Error(
-      `Test admin sign-in failed: ${signInError?.message ?? "no session returned"}`,
-    );
-  }
-
-  // Inject session into browser context via @supabase/ssr cookie format
-  const sessionCookies = sessionToCookies(signInData.session, storageKeyFromUrl(supabaseUrl));
-  const hostname = new URL(baseURL).hostname;
-  const secure = baseURL.startsWith("https://");
-
-  const browser = await chromium.launch();
-  const context = await browser.newContext({ baseURL });
-
-  await context.addCookies(
-    sessionCookies.map(({ name, value }) => ({
-      name,
-      value,
-      domain: hostname,
-      path: "/",
-      httpOnly: false,
-      secure,
-      sameSite: "Lax" as const,
-    })),
-  );
-
-  await mkdir("playwright/.auth", { recursive: true });
-  await context.storageState({ path: "playwright/.auth/admin.json" });
-  await browser.close();
+  await writeAdminStorageState();
 }

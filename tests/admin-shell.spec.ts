@@ -8,9 +8,9 @@ test.describe("admin shell — unauthenticated", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("login page renders sign-in button", async ({ page }) => {
+  test("login page renders the email-code request form", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /email me a code/i })).toBeVisible();
   });
 });
 
@@ -92,16 +92,13 @@ test.describe("admin shell — authenticated", () => {
   });
 });
 
-// Isolated from the shared-session block — sign-out invalidates the refresh
-// token server-side (scope: global), which would corrupt retries of sibling tests.
+// Isolated from the shared-session block. The session is a stateless HMAC cookie
+// (DEC-047), so sign-out only clears THIS context's cookie — the shared
+// storageState file on disk is untouched. The afterAll re-mint is belt-and-
+// suspenders, keeping the shared state fresh for later specs regardless.
 test.describe("admin shell — sign-out", () => {
   test.use({ storageState: ADMIN_STORAGE_STATE });
 
-  // Re-write ADMIN_STORAGE_STATE after the sign-out test runs. Empirically,
-  // even with scope:"local" the post-signOut JWT is rejected by @supabase/ssr's
-  // getUser() on a fresh context that loads the same cookies — so later specs
-  // (notifications-flow) get bounced to /login. Re-signing in writes a fresh
-  // session to disk so subsequent contexts authenticate cleanly.
   test.afterAll(async () => {
     await writeAdminStorageState();
   });
