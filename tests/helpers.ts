@@ -261,6 +261,18 @@ export async function resetProductUnits(
   const product = products[0];
   if (!product) return;
 
+  // order_items.product_unit_id is ON DELETE RESTRICT — line items placed
+  // against these units during the test must go first. (The supabase-era
+  // helper silently swallowed this FK error and no-op'd until the next
+  // resetCustomerOrderState cleared the orders; pg throws, so clean up the
+  // dependents explicitly. The affected orders are this spec's own fixtures
+  // and get deleted by the next reset anyway.)
+  await query(
+    `delete from order_items
+      where product_unit_id in (select id from product_units where product_id = $1)`,
+    [productId],
+  );
+
   // Non-atomic: a concurrent reader between delete + insert would observe
   // zero units for this product. Relies on Playwright's workers=1 config.
   await query(`delete from product_units where product_id = $1`, [productId]);
@@ -301,6 +313,12 @@ export async function setProductUnits(
   const product = products[0];
   if (!product) return;
 
+  // Same FK-dependent cleanup as resetProductUnits (see comment there).
+  await query(
+    `delete from order_items
+      where product_unit_id in (select id from product_units where product_id = $1)`,
+    [productId],
+  );
   await query(`delete from product_units where product_id = $1`, [productId]);
 
   const nameSlug = product.name
