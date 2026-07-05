@@ -499,6 +499,8 @@ CREATE INDEX product_units_product_id_idx ON public.product_units USING btree (p
 -- place_order's ON CONFLICT infers this index — it is load-bearing.
 CREATE UNIQUE INDEX orders_one_open_per_customer ON public.orders USING btree (customer_id) WHERE (status = ANY (ARRAY['new'::text, 'confirmed'::text, 'ready'::text]));
 
+COMMENT ON INDEX public.orders_one_open_per_customer IS 'DEC-041: at most one non-terminal order per customer. Terminal statuses (picked_up/delivered) fall outside the predicate and free a new order.';
+
 -- ── Triggers ─────────────────────────────────────────────────────────────────
 
 CREATE TRIGGER order_items_default_unit_trigger BEFORE INSERT ON public.order_items FOR EACH ROW EXECUTE FUNCTION public.order_items_default_unit();
