@@ -4,12 +4,12 @@ import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerIds,
   clearOrdersForWeek,
   seedOrder,
   setProductQty,
 } from "./helpers";
+import { query } from "@/lib/db";
 import { shiftWeek, weekOfMondayNY } from "@/lib/week";
 import type { Locator } from "@playwright/test";
 
@@ -41,7 +41,7 @@ test.describe("admin orders list", () => {
     await clearOrdersForWeek(thisWeek);
     // Clear the week's sends so the action-stack Send buttons start at "Send"
     // (not "Re-send") regardless of prior-test/prior-run send state.
-    await admin().from("customer_sends").delete().eq("week_of", thisWeek);
+    await query(`delete from customer_sends where week_of = $1`, [thisWeek]);
   });
 
   test.afterAll(async () => {
@@ -196,8 +196,6 @@ test.describe("admin orders list", () => {
     await expect(row).toHaveAttribute("data-status", "new");
     await expandRow(row);
 
-    const sb = admin();
-
     await detailRowFor(row, orderId).getByRole("button", { name: /mark ready/i }).click();
     await expect(row).toHaveAttribute("data-status", "ready", { timeout: 5000 });
     // Wait for first transition to commit to DB before chaining the next click.
@@ -206,8 +204,11 @@ test.describe("admin orders list", () => {
     await expect
       .poll(
         async () => {
-          const { data } = await sb.from("orders").select("status").eq("id", orderId).single();
-          return data?.status ?? null;
+          const rows = await query<{ status: string }>(
+            `select status from orders where id = $1`,
+            [orderId],
+          );
+          return rows[0]?.status ?? null;
         },
         { timeout: 5000 },
       )
@@ -220,8 +221,11 @@ test.describe("admin orders list", () => {
     await expect
       .poll(
         async () => {
-          const { data } = await sb.from("orders").select("status").eq("id", orderId).single();
-          return data?.status ?? null;
+          const rows = await query<{ status: string }>(
+            `select status from orders where id = $1`,
+            [orderId],
+          );
+          return rows[0]?.status ?? null;
         },
         { timeout: 5000 },
       )
@@ -281,16 +285,14 @@ test.describe("admin orders list", () => {
     await expect(row).toHaveAttribute("data-status", "picked_up", { timeout: 5000 });
 
     // DB confirmation
-    const sb = admin();
     await expect
       .poll(
         async () => {
-          const { data } = await sb
-            .from("orders")
-            .select("status")
-            .eq("id", orderId)
-            .single();
-          return data?.status ?? null;
+          const rows = await query<{ status: string }>(
+            `select status from orders where id = $1`,
+            [orderId],
+          );
+          return rows[0]?.status ?? null;
         },
         { timeout: 5000 },
       )
@@ -312,10 +314,10 @@ test.describe("admin orders list", () => {
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 1, unitPriceCents: 300 }],
     });
     // The Confirm/Send link only renders with a phone on file (else "No phone").
-    await admin()
-      .from("customers")
-      .update({ phone: "2165550100" })
-      .eq("id", ids.restaurant);
+    await query(`update customers set phone = $1 where id = $2`, [
+      "2165550100",
+      ids.restaurant,
+    ]);
 
     await page.goto("/admin/orders");
 
@@ -448,7 +450,6 @@ test.describe("admin orders list", () => {
 
   test("expand row reveals line items, customer note, and reconciliation callout", async ({ page }) => {
     const ids = await customerIds();
-    const sb = admin();
     const orderId = await seedOrder({
       customerId: ids.farmStand,
       weekOf: thisWeek,
@@ -456,10 +457,10 @@ test.describe("admin orders list", () => {
       needsReconciliation: true,
       items: [{ productId: TEST_PRODUCTS.kale.id, qty: 4, unitPriceCents: 300 }],
     });
-    await sb
-      .from("orders")
-      .update({ notes: "Front gate is sticky — knock twice." })
-      .eq("id", orderId);
+    await query(`update orders set notes = $1 where id = $2`, [
+      "Front gate is sticky — knock twice.",
+      orderId,
+    ]);
 
     await page.goto("/admin/orders");
     const row = page.locator(`tr.ord-row[data-order-id="${orderId}"]`);

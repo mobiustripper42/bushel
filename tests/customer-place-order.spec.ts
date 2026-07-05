@@ -1,23 +1,21 @@
 import { test, expect, type Page } from "@playwright/test";
 import { weekOfMondayNY } from "@/lib/week";
+import { query } from "@/lib/db";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerOrderUrl,
   resetCustomerOrderState,
   setProductQty,
 } from "./helpers";
 
 async function getCustomerId(token: string): Promise<string> {
-  const sb = admin();
-  const { data, error } = await sb
-    .from("customers")
-    .select("id")
-    .eq("token", token)
-    .single();
-  if (error || !data) throw new Error(`Could not resolve customer ${token}`);
-  return data.id;
+  const rows = await query<{ id: string }>(
+    `select id from customers where token = $1`,
+    [token],
+  );
+  if (!rows[0]) throw new Error(`Could not resolve customer ${token}`);
+  return rows[0].id;
 }
 
 // Bumps the stepper on a named product to qty without relying on press-and-hold.
@@ -61,22 +59,25 @@ test.describe("/c/[token] place order", () => {
     // 2×$3.00 + 1×$6.00 = $12.00
     await expect(page.locator(".confirm-total")).toContainText("12.00");
 
-    const sb = admin();
     const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
-    const { data: order } = await sb
-      .from("orders")
-      .select("id, needs_reconciliation, fulfillment_type")
-      .eq("customer_id", farmStandId)
-      .eq("week_of", weekOfMondayNY())
-      .single();
+    const orderRows = await query<{
+      id: string;
+      needs_reconciliation: boolean;
+      fulfillment_type: string;
+    }>(
+      `select id, needs_reconciliation, fulfillment_type
+         from orders where customer_id = $1 and week_of = $2`,
+      [farmStandId, weekOfMondayNY()],
+    );
+    const order = orderRows[0] ?? null;
     expect(order?.needs_reconciliation).toBe(false);
     expect(order?.fulfillment_type).toBe("delivery");
 
-    const { data: kale } = await sb
-      .from("products")
-      .select("qty_available")
-      .eq("id", TEST_PRODUCTS.kale.id)
-      .single();
+    const kaleRows = await query<{ qty_available: number }>(
+      `select qty_available from products where id = $1`,
+      [TEST_PRODUCTS.kale.id],
+    );
+    const kale = kaleRows[0] ?? null;
     expect(kale?.qty_available).toBe(TEST_PRODUCTS.kale.qty_available - 2);
   });
 
@@ -146,29 +147,27 @@ test.describe("/c/[token] place order", () => {
     await eggsInput.blur();
 
     // Sneak in a stock cut so the submit will oversell by 4.
-    const sb = admin();
-    await sb
-      .from("products")
-      .update({ qty_available: 1 })
-      .eq("id", TEST_PRODUCTS.eggs.id);
+    await query(`update products set qty_available = 1 where id = $1`, [
+      TEST_PRODUCTS.eggs.id,
+    ]);
 
     await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
     const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
-    const { data: order } = await sb
-      .from("orders")
-      .select("needs_reconciliation")
-      .eq("customer_id", farmStandId)
-      .eq("week_of", weekOfMondayNY())
-      .single();
+    const orderRows = await query<{ needs_reconciliation: boolean }>(
+      `select needs_reconciliation
+         from orders where customer_id = $1 and week_of = $2`,
+      [farmStandId, weekOfMondayNY()],
+    );
+    const order = orderRows[0] ?? null;
     expect(order?.needs_reconciliation).toBe(true);
 
-    const { data: eggs } = await sb
-      .from("products")
-      .select("qty_available")
-      .eq("id", TEST_PRODUCTS.eggs.id)
-      .single();
+    const eggsRows = await query<{ qty_available: number }>(
+      `select qty_available from products where id = $1`,
+      [TEST_PRODUCTS.eggs.id],
+    );
+    const eggs = eggsRows[0] ?? null;
     expect(eggs?.qty_available).toBe(-4);
   });
 
@@ -199,12 +198,10 @@ test.describe("/c/[token] place order", () => {
     // (Status-filtered so the global-setup delivered fixture doesn't
     // inflate the count.)
     const farmStandId = await getCustomerId(TEST_CUSTOMERS.farmStand.token);
-    const sb = admin();
-    const { data: orders } = await sb
-      .from("orders")
-      .select("id")
-      .eq("customer_id", farmStandId)
-      .in("status", ["new", "confirmed", "ready"]);
+    const orders = await query<{ id: string }>(
+      `select id from orders where customer_id = $1 and status = any($2)`,
+      [farmStandId, ["new", "confirmed", "ready"]],
+    );
     expect(orders).toHaveLength(1);
   });
 });

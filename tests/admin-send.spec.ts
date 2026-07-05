@@ -3,37 +3,35 @@ import { test, expect } from "@playwright/test";
 import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
-  admin,
   customerIds,
 } from "./helpers";
+import { query } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 
 async function clearSends(): Promise<void> {
-  const sb = admin();
   const weekOf = weekOfMondayNY();
-  await sb.from("customer_sends").delete().eq("week_of", weekOf);
+  await query(`delete from customer_sends where week_of = $1`, [weekOf]);
 }
 
 async function clearIntroNote(): Promise<void> {
-  const sb = admin();
-  await sb.from("ordering_schedule").update({ intro_note: null }).eq("is_singleton", true);
+  await query(
+    `update ordering_schedule set intro_note = null where is_singleton = true`,
+  );
 }
 
 async function clearCurrentWeekOrders(): Promise<void> {
-  const sb = admin();
   const weekOf = weekOfMondayNY();
   for (const c of Object.values(TEST_CUSTOMERS)) {
-    const { data } = await sb
-      .from("customers")
-      .select("id")
-      .eq("token", c.token)
-      .maybeSingle();
-    if (data?.id) {
-      await sb
-        .from("orders")
-        .delete()
-        .eq("customer_id", data.id)
-        .eq("week_of", weekOf);
+    const rows = await query<{ id: string }>(
+      `select id from customers where token = $1`,
+      [c.token],
+    );
+    const customer = rows[0] ?? null;
+    if (customer?.id) {
+      await query(
+        `delete from orders where customer_id = $1 and week_of = $2`,
+        [customer.id, weekOf],
+      );
     }
   }
 }
@@ -43,25 +41,18 @@ async function clearCurrentWeekOrders(): Promise<void> {
 // test flips send_weekly_link without restoring), so we re-establish phones,
 // priorities, subscribed state, and is_active each time.
 async function ensureTestCustomerState(): Promise<void> {
-  const sb = admin();
-  await sb
-    .from("customers")
-    .update({
-      phone: "(216) 555-0100",
-      priority: 200,
-      send_weekly_link: true,
-      is_active: true,
-    })
-    .eq("token", TEST_CUSTOMERS.farmStand.token);
-  await sb
-    .from("customers")
-    .update({
-      phone: "(216) 555-0200",
-      priority: 100,
-      send_weekly_link: true,
-      is_active: true,
-    })
-    .eq("token", TEST_CUSTOMERS.restaurant.token);
+  await query(
+    `update customers
+        set phone = $1, priority = $2, send_weekly_link = true, is_active = true
+      where token = $3`,
+    ["(216) 555-0100", 200, TEST_CUSTOMERS.farmStand.token],
+  );
+  await query(
+    `update customers
+        set phone = $1, priority = $2, send_weekly_link = true, is_active = true
+      where token = $3`,
+    ["(216) 555-0200", 100, TEST_CUSTOMERS.restaurant.token],
+  );
 }
 
 test.describe("admin send-queue", () => {
@@ -143,17 +134,15 @@ test.describe("admin send-queue", () => {
 
     // DB side. The pill flips optimistically before the server action
     // completes, so poll for the actual row insertion.
-    const sb = admin();
     await expect
       .poll(
         async () => {
-          const { data } = await sb
-            .from("customer_sends")
-            .select("customer_id")
-            .eq("customer_id", ids.farmStand)
-            .eq("week_of", weekOfMondayNY())
-            .eq("mode", "weekly_update");
-          return data?.length ?? 0;
+          const rows = await query<{ customer_id: string }>(
+            `select customer_id from customer_sends
+              where customer_id = $1 and week_of = $2 and mode = $3`,
+            [ids.farmStand, weekOfMondayNY(), "weekly_update"],
+          );
+          return rows.length;
         },
         { timeout: 5000 },
       )
@@ -207,17 +196,15 @@ test.describe("admin send-queue", () => {
     await expect(farmStandRow).toHaveAttribute("data-sent", "true");
 
     // DB confirmation.
-    const sb = admin();
     await expect
       .poll(
         async () => {
-          const { data } = await sb
-            .from("customer_sends")
-            .select("customer_id")
-            .eq("customer_id", ids.farmStand)
-            .eq("week_of", weekOfMondayNY())
-            .eq("mode", "weekly_update");
-          return data?.length ?? 0;
+          const rows = await query<{ customer_id: string }>(
+            `select customer_id from customer_sends
+              where customer_id = $1 and week_of = $2 and mode = $3`,
+            [ids.farmStand, weekOfMondayNY(), "weekly_update"],
+          );
+          return rows.length;
         },
         { timeout: 5000 },
       )

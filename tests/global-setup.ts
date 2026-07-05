@@ -2,6 +2,8 @@ import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { mkdir } from "fs/promises";
 
+import { query } from "@/lib/db";
+
 export const TEST_ADMIN_EMAIL = "test-admin@bushel.test";
 export const TEST_ADMIN_PASSWORD = "BushelTest1!";
 const MAX_CHUNK_SIZE = 3180;
@@ -115,52 +117,66 @@ export default async function globalSetup() {
   }
   if (!userId) throw new Error("Could not create or find test admin user");
 
-  // Ensure public.users row with is_admin = true (service role bypasses RLS)
+  // Ensure public.users row with is_admin = true. This lives in the SUPABASE
+  // (auth) database, not the pg data DB — Supabase Auth remains the admin
+  // login until DEC-047 lands (10.3).
   const { error: upsertError } = await adminClient
     .from("users")
     .upsert({ id: userId, is_admin: true }, { onConflict: "id" });
   if (upsertError)
     throw new Error(`public.users upsert failed: ${upsertError.message}`);
 
+  // ── Data seeding below targets the pg data DB (DATABASE_URL), the same
+  //    database the app under test reads/writes (task 10.2). ──
+
   // Upsert test products so inventory tests are self-contained
-  const { error: productsError } = await adminClient.from("products").upsert(
-    [
-      { id: "cccccccc-0000-0000-0000-000000000001", name: "Kale",  qty_available: 10, is_available: true,  sort_order: 1 },
-      { id: "cccccccc-0000-0000-0000-000000000002", name: "Eggs",  qty_available: 5,  is_available: true,  sort_order: 2 },
-      { id: "cccccccc-0000-0000-0000-000000000003", name: "Honey", qty_available: 8,  is_available: true,  sort_order: 3 },
-    ],
-    { onConflict: "id" },
+  await query(
+    `insert into products (id, name, qty_available, is_available, sort_order)
+     values
+       ('cccccccc-0000-0000-0000-000000000001', 'Kale',  10, true, 1),
+       ('cccccccc-0000-0000-0000-000000000002', 'Eggs',   5, true, 2),
+       ('cccccccc-0000-0000-0000-000000000003', 'Honey',  8, true, 3)
+     on conflict (id) do update
+       set name = excluded.name, qty_available = excluded.qty_available,
+           is_available = excluded.is_available, sort_order = excluded.sort_order`,
   );
-  if (productsError)
-    throw new Error(`products upsert failed: ${productsError.message}`);
 
   // DEC-037: unit label + price live on the base product_units row and nothing
   // auto-spawns it — upsert the base rows alongside the products. Keyed on
   // (product_id, label) so a price drifted by a prior run is restored without
   // colliding with leftover extra units (specs reset those via
   // resetProductUnits / setProductUnits).
-  const { error: unitsError } = await adminClient.from("product_units").upsert(
-    [
-      { product_id: "cccccccc-0000-0000-0000-000000000001", label: "bunch", conversion_to_base: 1, unit_price_cents: 300,  is_active: true, sort_order: 0, slug: "kale-cccccccc" },
-      { product_id: "cccccccc-0000-0000-0000-000000000002", label: "dozen", conversion_to_base: 1, unit_price_cents: 600,  is_active: true, sort_order: 0, slug: "eggs-cccccccc" },
-      { product_id: "cccccccc-0000-0000-0000-000000000003", label: "jar",   conversion_to_base: 1, unit_price_cents: 1200, is_active: true, sort_order: 0, slug: "honey-cccccccc" },
-    ],
-    { onConflict: "product_id,label" },
+  await query(
+    `insert into product_units
+       (product_id, label, conversion_to_base, unit_price_cents, is_active, sort_order, slug)
+     values
+       ('cccccccc-0000-0000-0000-000000000001', 'bunch', 1, 300,  true, 0, 'kale-cccccccc'),
+       ('cccccccc-0000-0000-0000-000000000002', 'dozen', 1, 600,  true, 0, 'eggs-cccccccc'),
+       ('cccccccc-0000-0000-0000-000000000003', 'jar',   1, 1200, true, 0, 'honey-cccccccc')
+     on conflict (product_id, label) do update
+       set conversion_to_base = excluded.conversion_to_base,
+           unit_price_cents = excluded.unit_price_cents,
+           is_active = excluded.is_active,
+           sort_order = excluded.sort_order,
+           slug = excluded.slug`,
   );
-  if (unitsError)
-    throw new Error(`product_units upsert failed: ${unitsError.message}`);
 
   // Upsert test customers so customer-CRUD tests are self-contained.
   // is_active defaults true; tests that deactivate must reset to true.
-  const { error: customersError } = await adminClient.from("customers").upsert(
-    [
-      { name: "Test Farm Stand", token: "testtoken-farmstand-0001",  is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: "100 Farm Stand Way, Lakewood, OH 44107" },
-      { name: "Test Restaurant", token: "testtoken-restaurant-0001", is_active: true, send_weekly_link: true, priority: 100, business_name: null, email: null, phone: null, delivery_address: "200 Restaurant Row, Cleveland, OH 44102" },
-    ],
-    { onConflict: "token" },
+  await query(
+    `insert into customers
+       (name, token, is_active, send_weekly_link, priority, delivery_address)
+     values
+       ('Test Farm Stand', 'testtoken-farmstand-0001', true, true, 100,
+        '100 Farm Stand Way, Lakewood, OH 44107'),
+       ('Test Restaurant', 'testtoken-restaurant-0001', true, true, 100,
+        '200 Restaurant Row, Cleveland, OH 44102')
+     on conflict (token) do update
+       set name = excluded.name, is_active = excluded.is_active,
+           send_weekly_link = excluded.send_weekly_link,
+           priority = excluded.priority,
+           delivery_address = excluded.delivery_address`,
   );
-  if (customersError)
-    throw new Error(`customers upsert failed: ${customersError.message}`);
 
   // Seed a prior delivery order for Test Farm Stand so 3.4 delivery_preference
   // prefill is testable. week_of is in the past and status terminal so it
@@ -172,36 +188,20 @@ export default async function globalSetup() {
   // and orders-flow's "export respects the active view" test relies on it
   // emitting zero CSV rows (export is per line item). Adding items here
   // breaks that spec's not-toContain assertions.
-  const { data: farmStandRow, error: lookupError } = await adminClient
-    .from("customers")
-    .select("id")
-    .eq("token", "testtoken-farmstand-0001")
-    .single();
-  if (lookupError || !farmStandRow)
-    throw new Error(`farm stand lookup failed: ${lookupError?.message ?? "no row"}`);
-
-  const { data: existingPrior, error: priorLookupError } = await adminClient
-    .from("orders")
-    .select("id")
-    .eq("customer_id", farmStandRow.id)
-    .eq("week_of", "2026-04-27")
-    .maybeSingle();
-  if (priorLookupError)
-    throw new Error(`prior order lookup failed: ${priorLookupError.message}`);
-  if (!existingPrior) {
-    const { error: priorOrderError } = await adminClient.from("orders").insert({
-      customer_id: farmStandRow.id,
-      week_of: "2026-04-27",
-      fulfillment_type: "delivery",
-      delivery_address: "100 Farm Stand Way, Lakewood, OH 44107",
-      delivery_preference: "Back door, gate code 4321",
-      status: "delivered",
-      notes: null,
-      pickup_note: null,
-    });
-    if (priorOrderError)
-      throw new Error(`prior order insert failed: ${priorOrderError.message}`);
-  }
+  await query(
+    `insert into orders
+       (customer_id, week_of, fulfillment_type, delivery_address,
+        delivery_preference, status)
+     select id, '2026-04-27', 'delivery',
+            '100 Farm Stand Way, Lakewood, OH 44107',
+            'Back door, gate code 4321', 'delivered'
+       from customers
+      where token = 'testtoken-farmstand-0001'
+        and not exists (
+          select 1 from orders o
+           where o.customer_id = customers.id and o.week_of = '2026-04-27'
+        )`,
+  );
 
   // Sign in to get a real, server-verified session
   const anonClient = createClient(supabaseUrl, anonKey, {

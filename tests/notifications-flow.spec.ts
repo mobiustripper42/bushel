@@ -3,9 +3,9 @@ import { test, expect } from "@playwright/test";
 import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
-  admin,
   customerIds,
 } from "./helpers";
+import { query } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 
 // Phase 4.4 — cross-task integration tests covering the gaps that 4.1, 4.2,
@@ -15,59 +15,52 @@ import { weekOfMondayNY } from "@/lib/week";
 // modes independent on the (customer_id, week_of, mode) PK?
 
 async function resetCustomerState(): Promise<void> {
-  const sb = admin();
   for (const token of [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]) {
-    const { data, error } = await sb
-      .from("customers")
-      .update({
-        phone: "(216) 555-0100",
-        priority: 200,
-        send_weekly_link: true,
-        is_active: true,
-      })
-      .eq("token", token)
-      .select("id");
-    if (error) throw new Error(`resetCustomerState(${token}): ${error.message}`);
-    if (!data?.length) throw new Error(`resetCustomerState(${token}): no rows updated — test customer missing`);
+    const rows = await query<{ id: string }>(
+      `update customers
+          set phone = $1, priority = $2, send_weekly_link = true, is_active = true
+        where token = $3
+        returning id`,
+      ["(216) 555-0100", 200, token],
+    );
+    if (!rows.length) throw new Error(`resetCustomerState(${token}): no rows updated — test customer missing`);
   }
 }
 
 async function clearSends(): Promise<void> {
-  await admin()
-    .from("customer_sends")
-    .delete()
-    .eq("week_of", weekOfMondayNY());
+  await query(`delete from customer_sends where week_of = $1`, [
+    weekOfMondayNY(),
+  ]);
 }
 
 // admin-settings.spec.ts flips ordering_schedule.is_open without restoring,
 // and the "deep-link → customer page" test below renders the customer order
 // page (which redirects to the closed state when is_open=false).
 async function ensureOrderingOpen(): Promise<void> {
-  await admin()
-    .from("ordering_schedule")
-    .update({ is_open: true, override_closes_at: null })
-    .eq("is_singleton", true);
+  await query(
+    `update ordering_schedule
+        set is_open = true, override_closes_at = null
+      where is_singleton = true`,
+  );
 }
 
 // Polls customer_sends for a row's sent_at, optionally requiring it to
 // differ from a prior value (used to detect a second upsert landed). Real
 // signal of "the server action completed" — beats a fixed sleep.
 async function pollSentAt(
-  sb: ReturnType<typeof admin>,
   customerId: string,
   mode: string,
   notEqualTo: string | null,
 ): Promise<string | null> {
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
-    const { data } = await sb
-      .from("customer_sends")
-      .select("sent_at")
-      .eq("customer_id", customerId)
-      .eq("week_of", weekOfMondayNY())
-      .eq("mode", mode)
-      .maybeSingle();
-    if (data?.sent_at && data.sent_at !== notEqualTo) return data.sent_at;
+    const rows = await query<{ sent_at: string }>(
+      `select sent_at from customer_sends
+        where customer_id = $1 and week_of = $2 and mode = $3`,
+      [customerId, weekOfMondayNY(), mode],
+    );
+    const row = rows[0] ?? null;
+    if (row?.sent_at && row.sent_at !== notEqualTo) return row.sent_at;
     await new Promise((r) => setTimeout(r, 100));
   }
   return null;
@@ -135,16 +128,14 @@ test.describe("notifications cross-task flow", () => {
     await expect(farmStandRow.locator(".send-status")).toContainText("Sent", { timeout: 5000 });
 
     // Wait for the DB row to land (optimistic flip happens before action completes)
-    const sb = admin();
     await expect
       .poll(async () => {
-        const { data } = await sb
-          .from("customer_sends")
-          .select("customer_id")
-          .eq("customer_id", ids.farmStand)
-          .eq("week_of", weekOfMondayNY())
-          .eq("mode", "weekly_update");
-        return data?.length ?? 0;
+        const rows = await query<{ customer_id: string }>(
+          `select customer_id from customer_sends
+            where customer_id = $1 and week_of = $2 and mode = $3`,
+          [ids.farmStand, weekOfMondayNY(), "weekly_update"],
+        );
+        return rows.length;
       }, { timeout: 5000 })
       .toBe(1);
 
@@ -167,8 +158,7 @@ test.describe("notifications cross-task flow", () => {
 
     // First send
     await farmStandRow.getByRole("link", { name: /^send$/i }).click();
-    const sb = admin();
-    const firstSentAt = await pollSentAt(sb, ids.farmStand, "weekly_update", null);
+    const firstSentAt = await pollSentAt(ids.farmStand, "weekly_update", null);
     expect(firstSentAt).toBeTruthy();
 
     // Reload so the button now reads "Re-send"
@@ -183,17 +173,15 @@ test.describe("notifications cross-task flow", () => {
     // second action completed (sleep-then-count was flaky-by-construction).
     await reSendLink.click();
     await expect(reloadedRow.locator(".send-status")).toContainText("Sent");
-    const secondSentAt = await pollSentAt(sb, ids.farmStand, "weekly_update", firstSentAt);
+    const secondSentAt = await pollSentAt(ids.farmStand, "weekly_update", firstSentAt);
     expect(secondSentAt).not.toBe(firstSentAt);
 
-    const { data, error } = await sb
-      .from("customer_sends")
-      .select("customer_id")
-      .eq("customer_id", ids.farmStand)
-      .eq("week_of", weekOfMondayNY())
-      .eq("mode", "weekly_update");
-    expect(error).toBeNull();
-    expect(data?.length).toBe(1);
+    const rows = await query<{ customer_id: string }>(
+      `select customer_id from customer_sends
+        where customer_id = $1 and week_of = $2 and mode = $3`,
+      [ids.farmStand, weekOfMondayNY(), "weekly_update"],
+    );
+    expect(rows.length).toBe(1);
   });
 
 });

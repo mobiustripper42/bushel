@@ -1,33 +1,35 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/types";
 
-type ScheduleUpdate = Database["public"]["Tables"]["ordering_schedule"]["Update"];
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgMessage } from "@/lib/pg-errors";
 
 export type ToggleOrderingAction = "open" | "close" | "resume";
 
 export async function toggleOrdering(action: ToggleOrderingAction): Promise<string | null> {
-  const supabase = await createClient();
+  const user = await getAdminUser();
+  if (!user) return "Unauthorized";
 
-  const now = new Date().toISOString();
-  let patch: ScheduleUpdate;
+  // open: flip on. close: flip off + clear any override. resume: clear the
+  // override only (the weekly schedule takes back over).
+  const sql =
+    action === "open"
+      ? `update ordering_schedule set is_open = true, updated_at = now()
+          where is_singleton = true`
+      : action === "close"
+        ? `update ordering_schedule set is_open = false, override_closes_at = null,
+                  updated_at = now()
+            where is_singleton = true`
+        : `update ordering_schedule set override_closes_at = null, updated_at = now()
+            where is_singleton = true`;
 
-  if (action === "open") {
-    patch = { is_open: true, updated_at: now };
-  } else if (action === "close") {
-    patch = { is_open: false, override_closes_at: null, updated_at: now };
-  } else {
-    patch = { override_closes_at: null, updated_at: now };
+  try {
+    await query(sql);
+  } catch (e) {
+    return pgMessage(e);
   }
-
-  const { error } = await supabase
-    .from("ordering_schedule")
-    .update(patch)
-    .eq("is_singleton", true);
-
-  if (error) return error.message;
 
   revalidatePath("/admin/settings");
   return null;

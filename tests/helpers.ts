@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { query } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001";
@@ -31,41 +31,33 @@ export const TEST_PRODUCTS = {
   honey: { id: "cccccccc-0000-0000-0000-000000000003", name: "Honey", unit: "jar",   price_cents: 1200, qty_available: 8  },
 } as const;
 
-// Lazy admin Supabase client — only constructed when a test calls it.
-export function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
+// Test DB access goes through the same pg pool as the app (src/lib/db.ts) —
+// DATABASE_URL must point both at the same database (docker compose service
+// locally, the postgres service container in CI).
 
 // Resolves the two seeded test customers' UUIDs by token. Used by every spec
 // that needs to query orders/sends/etc. scoped to the test fixtures.
 export async function customerIds(): Promise<{ farmStand: string; restaurant: string }> {
-  const sb = admin();
-  const { data, error } = await sb
-    .from("customers")
-    .select("id, token")
-    .in("token", [TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]);
-  if (error || !data) throw new Error(`customerIds: ${error?.message ?? "no rows"}`);
-  const map = new Map(data.map((r) => [r.token, r.id]));
-  return {
-    farmStand: map.get(TEST_CUSTOMERS.farmStand.token)!,
-    restaurant: map.get(TEST_CUSTOMERS.restaurant.token)!,
-  };
+  const rows = await query<{ id: string; token: string }>(
+    `select id, token from customers where token = any($1)`,
+    [[TEST_CUSTOMERS.farmStand.token, TEST_CUSTOMERS.restaurant.token]],
+  );
+  const map = new Map(rows.map((r) => [r.token, r.id]));
+  const farmStand = map.get(TEST_CUSTOMERS.farmStand.token);
+  const restaurant = map.get(TEST_CUSTOMERS.restaurant.token);
+  if (!farmStand || !restaurant) throw new Error("customerIds: seeded customers missing");
+  return { farmStand, restaurant };
 }
+
 // Deletes orders for the two seeded test customers in a given NY-week-Monday.
 // Caller passes the week explicitly (use `weekOfMondayNY()` from @/lib/week
 // for the current week).
 export async function clearOrdersForWeek(weekOf: string): Promise<void> {
-  const sb = admin();
   const ids = await customerIds();
-  await sb
-    .from("orders")
-    .delete()
-    .in("customer_id", [ids.farmStand, ids.restaurant])
-    .eq("week_of", weekOf);
+  await query(
+    `delete from orders where customer_id = any($1) and week_of = $2`,
+    [[ids.farmStand, ids.restaurant], weekOf],
+  );
 }
 
 // Inserts an order + its line items for a seeded test customer. Union of the
@@ -84,35 +76,34 @@ export type SeedOrderInput = {
   items: Array<{ productId: string; qty: number; unitPriceCents: number }>;
 };
 export async function seedOrder(input: SeedOrderInput): Promise<string> {
-  const sb = admin();
-  const { data: order, error: oErr } = await sb
-    .from("orders")
-    .insert({
-      customer_id: input.customerId,
-      week_of: input.weekOf,
-      fulfillment_type: input.fulfillmentType,
-      delivery_address:
-        input.fulfillmentType === "delivery" ? "123 Test St" : null,
-      delivery_preference:
-        input.fulfillmentType === "delivery"
-          ? (input.deliveryPreference ?? null)
-          : null,
-      status: input.status ?? "new",
-      needs_reconciliation: input.needsReconciliation ?? false,
-    })
-    .select("id")
-    .single();
-  if (oErr || !order) throw new Error(`seedOrder: ${oErr?.message}`);
+  const orderRows = await query<{ id: string }>(
+    `insert into orders
+       (customer_id, week_of, fulfillment_type, delivery_address,
+        delivery_preference, status, needs_reconciliation)
+     values ($1, $2, $3, $4, $5, $6, $7)
+     returning id`,
+    [
+      input.customerId,
+      input.weekOf,
+      input.fulfillmentType,
+      input.fulfillmentType === "delivery" ? "123 Test St" : null,
+      input.fulfillmentType === "delivery" ? (input.deliveryPreference ?? null) : null,
+      input.status ?? "new",
+      input.needsReconciliation ?? false,
+    ],
+  );
+  const orderId = orderRows[0].id;
 
-  const rows = input.items.map((i) => ({
-    order_id: order.id,
-    product_id: i.productId,
-    qty: i.qty,
-    unit_price_cents: i.unitPriceCents,
-  }));
-  const { error: iErr } = await sb.from("order_items").insert(rows);
-  if (iErr) throw new Error(`seedOrder items: ${iErr.message}`);
-  return order.id;
+  // product_unit_id omitted — the order_items_default_unit BEFORE-INSERT
+  // trigger fills the product's base unit, same as before.
+  for (const i of input.items) {
+    await query(
+      `insert into order_items (order_id, product_id, qty, unit_price_cents)
+       values ($1, $2, $3, $4)`,
+      [orderId, i.productId, i.qty, i.unitPriceCents],
+    );
+  }
+  return orderId;
 }
 
 // Clears the seeded test customers' current-NY-week orders AND any open
@@ -127,45 +118,36 @@ export async function seedOrder(input: SeedOrderInput): Promise<string> {
 // the global-setup fixture (a delivered 2026-04-27 prior order used to
 // assert delivery_preference prefill) must survive.
 export async function resetCustomerOrderState(): Promise<void> {
-  const sb = admin();
   const currentWeek = weekOfMondayNY();
   for (const c of Object.values(TEST_CUSTOMERS)) {
-    const { data } = await sb
-      .from("customers")
-      .select("id")
-      .eq("token", c.token)
-      .maybeSingle();
-    if (data?.id) {
-      await sb
-        .from("orders")
-        .delete()
-        .eq("customer_id", data.id)
-        .or(`week_of.eq.${currentWeek},status.in.(new,confirmed,ready)`);
-    }
+    await query(
+      `delete from orders
+        where customer_id = (select id from customers where token = $1)
+          and (week_of = $2 or status in ('new', 'confirmed', 'ready'))`,
+      [c.token, currentWeek],
+    );
   }
   for (const p of Object.values(TEST_PRODUCTS)) {
-    await sb
-      .from("products")
-      .update({ qty_available: p.qty_available })
-      .eq("id", p.id);
+    await query(`update products set qty_available = $1 where id = $2`, [
+      p.qty_available,
+      p.id,
+    ]);
   }
   // Phase 3.7 tests can flip is_open=false; restoring here means specs that
   // run after them still see the open form.
-  await sb
-    .from("ordering_schedule")
-    .update({ is_open: true })
-    .eq("is_singleton", true);
+  await query(
+    `update ordering_schedule set is_open = true where is_singleton = true`,
+  );
 }
 
 // Toggles the singleton ordering_schedule row's is_open flag for Phase 3.7
 // state tests. The schedule table has a single row by design; updating any
 // row updates the schedule.
 export async function setOrderingOpen(open: boolean): Promise<void> {
-  const sb = admin();
-  await sb
-    .from("ordering_schedule")
-    .update({ is_open: open })
-    .eq("is_singleton", true);
+  await query(
+    `update ordering_schedule set is_open = $1 where is_singleton = true`,
+    [open],
+  );
 }
 
 // Reset TEST_PRODUCTS sort_order back to seeded values (kale=1, eggs=2,
@@ -174,14 +156,16 @@ export async function setOrderingOpen(open: boolean): Promise<void> {
 // upserts these values, but it only runs once per playwright invocation —
 // in-run leakage needs this finer-grained reset.
 export async function resetProductSortOrder(): Promise<void> {
-  const sb = admin();
   const seeded: Array<{ id: string; sort_order: number }> = [
     { id: TEST_PRODUCTS.kale.id,  sort_order: 1 },
     { id: TEST_PRODUCTS.eggs.id,  sort_order: 2 },
     { id: TEST_PRODUCTS.honey.id, sort_order: 3 },
   ];
   for (const row of seeded) {
-    await sb.from("products").update({ sort_order: row.sort_order }).eq("id", row.id);
+    await query(`update products set sort_order = $1 where id = $2`, [
+      row.sort_order,
+      row.id,
+    ]);
   }
 }
 
@@ -189,13 +173,13 @@ export async function resetProductSortOrder(): Promise<void> {
 // hard-deleted, so a test that adds a throwaway product can't clean up through
 // the editor. This removes it at the DB level for test isolation.
 export async function deleteProductByName(name: string): Promise<void> {
-  await admin().from("products").delete().eq("name", name);
+  await query(`delete from products where name = $1`, [name]);
 }
 
 // #207 — flip a product's soft-delete flag. Hidden products (is_active=false)
 // drop out of the customer order form and the default admin view.
 export async function setProductActive(id: string, active: boolean): Promise<void> {
-  await admin().from("products").update({ is_active: active }).eq("id", id);
+  await query(`update products set is_active = $1 where id = $2`, [active, id]);
 }
 
 // Patches the singleton ordering_schedule row. Pass only the fields you want
@@ -208,8 +192,17 @@ export async function setOrderingSchedule(patch: {
   weekly_close_day?: number | null;
   weekly_close_time?: string | null;
 }): Promise<void> {
-  const sb = admin();
-  await sb.from("ordering_schedule").update(patch).eq("is_singleton", true);
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  for (const [key, value] of Object.entries(patch)) {
+    params.push(value);
+    sets.push(`${key} = $${params.length}`);
+  }
+  if (sets.length === 0) return;
+  await query(
+    `update ordering_schedule set ${sets.join(", ")} where is_singleton = true`,
+    params,
+  );
 }
 
 // Drops every is_available=true product to qty_available = 0 — exercises
@@ -224,27 +217,21 @@ export async function setOrderingSchedule(patch: {
 // devs run tests against the same dev DB in parallel.
 export type ProductQtySnapshot = Array<{ id: string; qty_available: number }>;
 export async function setAllProductsSoldOut(): Promise<ProductQtySnapshot> {
-  const sb = admin();
-  const { data } = await sb
-    .from("products")
-    .select("id, qty_available")
-    .eq("is_available", true);
-  const snapshot: ProductQtySnapshot =
-    data?.map((r) => ({ id: r.id, qty_available: r.qty_available })) ?? [];
-  await sb
-    .from("products")
-    .update({ qty_available: 0 })
-    .eq("is_available", true);
+  const snapshot = await query<{ id: string; qty_available: number }>(
+    `select id, qty_available from products where is_available = true`,
+  );
+  await query(
+    `update products set qty_available = 0 where is_available = true`,
+  );
   return snapshot;
 }
 
 export async function restoreProductQty(snapshot: ProductQtySnapshot): Promise<void> {
-  const sb = admin();
   for (const row of snapshot) {
-    await sb
-      .from("products")
-      .update({ qty_available: row.qty_available })
-      .eq("id", row.id);
+    await query(`update products set qty_available = $1 where id = $2`, [
+      row.qty_available,
+      row.id,
+    ]);
   }
 }
 
@@ -252,8 +239,7 @@ export async function restoreProductQty(snapshot: ProductQtySnapshot): Promise<v
 // per-item sold-out) call this; cleanup is via resetCustomerOrderState in
 // afterEach, which only knows about TEST_PRODUCTS — pass an id in that set.
 export async function setProductQty(id: string, qty: number): Promise<void> {
-  const sb = admin();
-  await sb.from("products").update({ qty_available: qty }).eq("id", id);
+  await query(`update products set qty_available = $1 where id = $2`, [qty, id]);
 }
 
 // Resets a product's units to a single base row: label = baseLabel, conv = 1,
@@ -268,17 +254,28 @@ export async function resetProductUnits(
   basePriceCents: number,
   baseLabel: string,
 ): Promise<void> {
-  const sb = admin();
-  const { data: product } = await sb
-    .from("products")
-    .select("name")
-    .eq("id", productId)
-    .single();
+  const products = await query<{ name: string }>(
+    `select name from products where id = $1`,
+    [productId],
+  );
+  const product = products[0];
   if (!product) return;
+
+  // order_items.product_unit_id is ON DELETE RESTRICT — line items placed
+  // against these units during the test must go first. (The supabase-era
+  // helper silently swallowed this FK error and no-op'd until the next
+  // resetCustomerOrderState cleared the orders; pg throws, so clean up the
+  // dependents explicitly. The affected orders are this spec's own fixtures
+  // and get deleted by the next reset anyway.)
+  await query(
+    `delete from order_items
+      where product_unit_id in (select id from product_units where product_id = $1)`,
+    [productId],
+  );
 
   // Non-atomic: a concurrent reader between delete + insert would observe
   // zero units for this product. Relies on Playwright's workers=1 config.
-  await sb.from("product_units").delete().eq("product_id", productId);
+  await query(`delete from product_units where product_id = $1`, [productId]);
 
   const nameSlug = product.name
     .toLowerCase()
@@ -286,14 +283,12 @@ export async function resetProductUnits(
     .replace(/^-+|-+$/g, "");
   const id8 = productId.slice(0, 8);
 
-  await sb.from("product_units").insert({
-    product_id: productId,
-    label: baseLabel,
-    conversion_to_base: 1,
-    unit_price_cents: basePriceCents,
-    is_active: true,
-    slug: `${nameSlug}-${id8}`,
-  });
+  await query(
+    `insert into product_units
+       (product_id, label, conversion_to_base, unit_price_cents, is_active, slug)
+     values ($1, $2, 1, $3, true, $4)`,
+    [productId, baseLabel, basePriceCents, `${nameSlug}-${id8}`],
+  );
 }
 
 // Replaces a product's entire unit set in one call. The list is interpreted as
@@ -311,15 +306,20 @@ export async function setProductUnits(
   productId: string,
   units: UnitSeed[],
 ): Promise<void> {
-  const sb = admin();
-  const { data: product } = await sb
-    .from("products")
-    .select("name")
-    .eq("id", productId)
-    .single();
+  const products = await query<{ name: string }>(
+    `select name from products where id = $1`,
+    [productId],
+  );
+  const product = products[0];
   if (!product) return;
 
-  await sb.from("product_units").delete().eq("product_id", productId);
+  // Same FK-dependent cleanup as resetProductUnits (see comment there).
+  await query(
+    `delete from order_items
+      where product_unit_id in (select id from product_units where product_id = $1)`,
+    [productId],
+  );
+  await query(`delete from product_units where product_id = $1`, [productId]);
 
   const nameSlug = product.name
     .toLowerCase()
@@ -327,21 +327,25 @@ export async function setProductUnits(
     .replace(/^-+|-+$/g, "");
   const id8 = productId.slice(0, 8);
 
-  const rows = units.map((u, idx) => {
+  for (const [idx, u] of units.entries()) {
     const labelSlug = u.label
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
-    return {
-      product_id: productId,
-      label: u.label,
-      conversion_to_base: u.conversion_to_base,
-      unit_price_cents: u.unit_price_cents,
-      is_active: u.is_active ?? true,
-      sort_order: idx,
-      slug: `${nameSlug}-${labelSlug}-${id8}`,
-    };
-  });
-
-  await sb.from("product_units").insert(rows);
+    await query(
+      `insert into product_units
+         (product_id, label, conversion_to_base, unit_price_cents, is_active,
+          sort_order, slug)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        productId,
+        u.label,
+        u.conversion_to_base,
+        u.unit_price_cents,
+        u.is_active ?? true,
+        idx,
+        `${nameSlug}-${labelSlug}-${id8}`,
+      ],
+    );
+  }
 }

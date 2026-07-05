@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import { ADMIN_STORAGE_STATE, TEST_PRODUCTS, admin, resetProductUnits } from "./helpers";
+import { ADMIN_STORAGE_STATE, TEST_PRODUCTS, resetProductUnits } from "./helpers";
+import { query } from "@/lib/db";
 
 // Per-product Units drawer (#152). The drawer opens from the units chip in
 // each row's unit cell. The 6.5a safety-net trigger gives every product a
@@ -73,9 +74,18 @@ test.describe("admin inventory · units drawer", () => {
     await expect(c).toHaveClass(/is-multi/);
 
     // verify persisted via DB
-    const sb = admin();
-    const { data } = await sb.from("product_units").select("label, unit_price_cents, conversion_to_base, is_active, sku").eq("product_id", KALE.id);
-    const extra = data?.find((u) => u.label === "per lb");
+    const data = await query<{
+      label: string;
+      unit_price_cents: number;
+      conversion_to_base: number;
+      is_active: boolean;
+      sku: string | null;
+    }>(
+      `select label, unit_price_cents, conversion_to_base, is_active, sku
+         from product_units where product_id = $1`,
+      [KALE.id],
+    );
+    const extra = data.find((u) => u.label === "per lb");
     expect(extra).toBeTruthy();
     expect(extra?.unit_price_cents).toBe(800);
     expect(Number(extra?.conversion_to_base)).toBe(0.5);
@@ -85,15 +95,19 @@ test.describe("admin inventory · units drawer", () => {
 
   test("inactive unit is reflected in chip subtext", async ({ page }) => {
     // seed an extra unit, then deactivate it via the drawer
-    const sb = admin();
-    await sb.from("product_units").insert({
-      product_id: EGGS.id,
-      label: "per half-dozen",
-      conversion_to_base: 0.5,
-      unit_price_cents: 350,
-      is_active: true,
-      slug: `eggs-per-half-dozen-${EGGS.id.slice(0, 8)}`,
-    });
+    await query(
+      `insert into product_units
+         (product_id, label, conversion_to_base, unit_price_cents, is_active, slug)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [
+        EGGS.id,
+        "per half-dozen",
+        0.5,
+        350,
+        true,
+        `eggs-per-half-dozen-${EGGS.id.slice(0, 8)}`,
+      ],
+    );
 
     await page.goto("/admin/inventory");
     await expect(chip(page, EGGS.name)).toContainText(/2\s*units/);
@@ -110,15 +124,19 @@ test.describe("admin inventory · units drawer", () => {
   });
 
   test("remove a non-base unit", async ({ page }) => {
-    const sb = admin();
-    await sb.from("product_units").insert({
-      product_id: KALE.id,
-      label: "per lb",
-      conversion_to_base: 0.25,
-      unit_price_cents: 1200,
-      is_active: true,
-      slug: `kale-per-lb-${KALE.id.slice(0, 8)}`,
-    });
+    await query(
+      `insert into product_units
+         (product_id, label, conversion_to_base, unit_price_cents, is_active, slug)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [
+        KALE.id,
+        "per lb",
+        0.25,
+        1200,
+        true,
+        `kale-per-lb-${KALE.id.slice(0, 8)}`,
+      ],
+    );
 
     await page.goto("/admin/inventory");
     await chip(page, KALE.name).click();

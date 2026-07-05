@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgCode, pgMessage, UNIQUE_VIOLATION } from "@/lib/pg-errors";
 
 const ALLOWED_CATEGORIES = ["Vegetables", "Fruit", "Herbs", "Flowers", "Other"] as const;
 type Category = (typeof ALLOWED_CATEGORIES)[number];
@@ -62,20 +65,15 @@ function baseUnitSlug(name: string, productId: string): string {
   return `${nameSlug}-${productId.slice(0, 8)}`;
 }
 
-// unique (product_id, label) — the dropped mirror trigger used to silently
-// skip on this collision; DEC-037 surfaces it as a row error instead.
-function isUniqueViolation(code: string | undefined): boolean {
-  return code === "23505";
-}
-
 export async function saveInventory(input: SaveInventoryInput): Promise<SaveInventoryResult> {
   for (let i = 0; i < input.rows.length; i++) {
     const err = validateRow(input.rows[i], i);
     if (err) return { error: err };
   }
 
-  const supabase = await createClient();
-  const now = new Date().toISOString();
+  // RLS is gone (DEC-048) — explicit gate replaces the cookie-client policy pair.
+  const user = await getAdminUser();
+  if (!user) return { error: "Unauthorized" };
 
   const newIdMap: Record<string, string> = {};
 
@@ -86,71 +84,93 @@ export async function saveInventory(input: SaveInventoryInput): Promise<SaveInve
     const row = input.rows[i];
     const rowLabel = `Row ${i + 1}`;
     const unitLabel = row.unit.trim();
-    const payload = {
-      name: row.name.trim(),
-      category: row.category,
-      description: row.description?.trim() || null,
-      qty_available: Math.round(row.qty_available * 100) / 100,
-      is_available: row.is_available,
-      is_active: row.is_active,
-      sort_order: row.sort_order,
-      updated_at: now,
-    };
+    const payload = [
+      row.name.trim(),
+      row.category,
+      row.description?.trim() || null,
+      Math.round(row.qty_available * 100) / 100,
+      row.is_available,
+      row.is_active,
+      row.sort_order,
+    ];
 
     if (row.isNew) {
-      const { data, error } = await supabase
-        .from("products")
-        .insert(payload)
-        .select("id")
-        .single();
-      if (error) return { error: error.message, newIdMap };
-      if (!data) return { error: `${rowLabel}: insert returned no id.`, newIdMap };
+      let productId: string;
+      try {
+        const rows = await query<{ id: string }>(
+          `insert into products
+             (name, category, description, qty_available, is_available,
+              is_active, sort_order)
+           values ($1, $2, $3, $4, $5, $6, $7)
+           returning id`,
+          payload,
+        );
+        productId = rows[0].id;
+      } catch (e) {
+        return { error: pgMessage(e), newIdMap };
+      }
 
       // DEC-037: the spawn trigger is gone — saveInventory owns the base
       // product_units row. Insert it right after the product; on failure,
       // compensating-delete the product so the "every product has a base
       // unit" invariant holds (same row-by-row non-atomic style as the rest
       // of this action).
-      const { error: unitError } = await supabase.from("product_units").insert({
-        product_id: data.id,
-        label: unitLabel,
-        conversion_to_base: 1.0,
-        unit_price_cents: row.price_cents,
-        is_active: true,
-        sort_order: 0,
-        slug: baseUnitSlug(row.name.trim(), data.id),
-      });
-      if (unitError) {
+      try {
+        await query(
+          `insert into product_units
+             (product_id, label, conversion_to_base, unit_price_cents,
+              is_active, sort_order, slug)
+           values ($1, $2, 1.0, $3, true, 0, $4)`,
+          [productId, unitLabel, row.price_cents, baseUnitSlug(row.name.trim(), productId)],
+        );
+      } catch (e) {
         // Best-effort compensating delete — if it fails we leak a base-unit-less
         // product, but the original error is the one worth surfacing.
-        await supabase.from("products").delete().eq("id", data.id);
-        return { error: `${rowLabel}: ${unitError.message}`, newIdMap };
+        await query(`delete from products where id = $1`, [productId]).catch(
+          () => {},
+        );
+        return { error: `${rowLabel}: ${pgMessage(e)}`, newIdMap };
       }
-      newIdMap[row.id] = data.id;
+      newIdMap[row.id] = productId;
     } else {
-      const { error } = await supabase.from("products").update(payload).eq("id", row.id);
-      if (error) return { error: error.message, newIdMap };
+      try {
+        await query(
+          `update products
+              set name = $1, category = $2, description = $3,
+                  qty_available = $4, is_available = $5, is_active = $6,
+                  sort_order = $7, updated_at = now()
+            where id = $8`,
+          [...payload, row.id],
+        );
+      } catch (e) {
+        return { error: pgMessage(e), newIdMap };
+      }
 
       // Existing product: the inline unit/price fields edit the base unit row.
       // Capture the affected id — a zero-row update means the product has no
       // conversion_to_base = 1.0 row (a violated invariant, normally prevented
       // by saveProductUnits). Fail loud rather than silently dropping the edit.
-      const { data: updated, error: unitError } = await supabase
-        .from("product_units")
-        .update({ label: unitLabel, unit_price_cents: row.price_cents })
-        .eq("product_id", row.id)
-        .eq("conversion_to_base", 1.0)
-        .select("id");
-      if (unitError) {
-        if (isUniqueViolation(unitError.code)) {
+      let updated: Array<{ id: string }>;
+      try {
+        updated = await query<{ id: string }>(
+          `update product_units
+              set label = $1, unit_price_cents = $2, updated_at = now()
+            where product_id = $3 and conversion_to_base = 1.0
+            returning id`,
+          [unitLabel, row.price_cents, row.id],
+        );
+      } catch (e) {
+        // unique (product_id, label) — the dropped mirror trigger used to
+        // silently skip on this collision; DEC-037 surfaces it as a row error.
+        if (pgCode(e) === UNIQUE_VIOLATION) {
           return {
             error: `${rowLabel}: the unit label "${unitLabel}" is already used by another unit on this product.`,
             newIdMap,
           };
         }
-        return { error: `${rowLabel}: ${unitError.message}`, newIdMap };
+        return { error: `${rowLabel}: ${pgMessage(e)}`, newIdMap };
       }
-      if (!updated || updated.length === 0) {
+      if (updated.length === 0) {
         return {
           error: `${rowLabel}: no base unit found for "${row.name.trim()}". Open its units and set one unit's conversion to 1.`,
           newIdMap,

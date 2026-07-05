@@ -3,7 +3,6 @@ import { weekOfMondayNY } from "@/lib/week";
 import {
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerIds,
   customerOrderUrl,
   resetCustomerOrderState,
@@ -12,6 +11,7 @@ import {
   setAllProductsSoldOut,
   setOrderingOpen,
 } from "./helpers";
+import { query } from "@/lib/db";
 
 // #211/DEC-039 + #227/DEC-041/DEC-042 — additive orders on the open-order
 // model. A customer's link renders their OPEN order editable (pre-populated
@@ -72,28 +72,27 @@ test.describe("/c/[token] additional orders", () => {
 
     // DB: still exactly one OPEN orders row for the customer; two line
     // items; inventory decremented for the appended line too.
-    const sb = admin();
     const ids = await customerIds();
-    const { data: orders } = await sb
-      .from("orders")
-      .select("id, status")
-      .eq("customer_id", ids.farmStand)
-      .in("status", ["new", "confirmed", "ready"]);
+    const orders = await query<{ id: string; status: string }>(
+      `select id, status from orders
+        where customer_id = $1 and status = any($2)`,
+      [ids.farmStand, ["new", "confirmed", "ready"]],
+    );
     expect(orders).toHaveLength(1);
 
-    const { data: items } = await sb
-      .from("order_items")
-      .select("id, submission_id")
-      .eq("order_id", orders![0].id);
+    const items = await query<{ id: string; submission_id: string | null }>(
+      `select id, submission_id from order_items where order_id = $1`,
+      [orders[0].id],
+    );
     expect(items).toHaveLength(2);
     // Both submissions carry their idempotency key (per-submission audit).
-    expect(items!.every((i) => i.submission_id !== null)).toBe(true);
+    expect(items.every((i) => i.submission_id !== null)).toBe(true);
 
-    const { data: eggs } = await sb
-      .from("products")
-      .select("qty_available")
-      .eq("id", TEST_PRODUCTS.eggs.id)
-      .single();
+    const eggsRows = await query<{ qty_available: number }>(
+      `select qty_available from products where id = $1`,
+      [TEST_PRODUCTS.eggs.id],
+    );
+    const eggs = eggsRows[0] ?? null;
     expect(eggs?.qty_available).toBe(TEST_PRODUCTS.eggs.qty_available - 1);
   });
 
@@ -129,19 +128,18 @@ test.describe("/c/[token] additional orders", () => {
     await expect(existing).toContainText("3×");
 
     // DB: still two granular rows, each carrying its submission_id.
-    const sb = admin();
     const ids = await customerIds();
-    const { data: orders } = await sb
-      .from("orders")
-      .select("id")
-      .eq("customer_id", ids.farmStand)
-      .in("status", ["new", "confirmed", "ready"]);
-    const { data: rows } = await sb
-      .from("order_items")
-      .select("id, submission_id")
-      .eq("order_id", orders![0].id);
+    const orders = await query<{ id: string }>(
+      `select id from orders
+        where customer_id = $1 and status = any($2)`,
+      [ids.farmStand, ["new", "confirmed", "ready"]],
+    );
+    const rows = await query<{ id: string; submission_id: string | null }>(
+      `select id, submission_id from order_items where order_id = $1`,
+      [orders[0].id],
+    );
     expect(rows).toHaveLength(2);
-    expect(new Set(rows!.map((r) => r.submission_id)).size).toBe(2);
+    expect(new Set(rows.map((r) => r.submission_id)).size).toBe(2);
   });
 
   test("open order renders the form in add mode with fulfillment read-only", async ({ page }) => {
@@ -266,16 +264,15 @@ test.describe("/c/[token] additional orders", () => {
     await page.locator(".submit-btn").click();
     await page.waitForURL(/\/c\/[^/]+\/confirmed$/);
 
-    const sb = admin();
-    const { data: orders } = await sb
-      .from("orders")
-      .select("id, status")
-      .eq("customer_id", ids.farmStand)
-      .eq("week_of", weekOfMondayNY());
+    const orders = await query<{ id: string; status: string }>(
+      `select id, status from orders
+        where customer_id = $1 and week_of = $2`,
+      [ids.farmStand, weekOfMondayNY()],
+    );
     expect(orders).toHaveLength(2);
-    const fulfilled = orders!.find((o) => o.id === fulfilledId);
+    const fulfilled = orders.find((o) => o.id === fulfilledId);
     expect(fulfilled?.status).toBe("picked_up");
-    const fresh = orders!.find((o) => o.id !== fulfilledId);
+    const fresh = orders.find((o) => o.id !== fulfilledId);
     expect(fresh?.status).toBe("new");
   });
 });

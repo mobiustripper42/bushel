@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PausedShell } from "@/components/customer/PausedShell";
 import { StatusShell } from "@/components/customer/StatusShell";
-import { isTerminalStatus } from "@/lib/admin/orders-queries";
+import { isTerminalStatus } from "@/lib/admin/order-status";
 import {
   anyOrderable,
   getAvailableProducts,

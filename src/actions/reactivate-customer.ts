@@ -1,18 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+
+import { getAdminUser } from "@/lib/admin/auth";
+import { query } from "@/lib/db";
+import { pgMessage } from "@/lib/pg-errors";
 
 // #61 — counterpart to deactivateCustomer. Flips is_active back to true.
 // Revalidates /admin/customers (the row jumps back into the default view)
 // and /admin/inventory (subscribed pill is a consumer of the count).
 export async function reactivateCustomer(id: string): Promise<{ error: string | null }> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("customers")
-    .update({ is_active: true, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) return { error: error.message };
+  const user = await getAdminUser();
+  if (!user) return { error: "Unauthorized" };
+  try {
+    await query(
+      `update customers set is_active = true, updated_at = now() where id = $1`,
+      [id],
+    );
+  } catch (e) {
+    return { error: pgMessage(e) };
+  }
   revalidatePath("/admin/customers");
   revalidatePath("/admin/inventory");
   return { error: null };

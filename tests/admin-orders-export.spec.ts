@@ -4,11 +4,11 @@ import {
   ADMIN_STORAGE_STATE,
   TEST_CUSTOMERS,
   TEST_PRODUCTS,
-  admin,
   customerIds,
   clearOrdersForWeek,
   seedOrder,
 } from "./helpers";
+import { query } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 import {
   EXPORT_COLUMNS,
@@ -206,7 +206,10 @@ test.describe("admin orders export — UI", () => {
   // DEC-043: Item Number comes from the line's unit sku (→ slug fallback).
   // Set a sku for the download test's non-fallback path; restored in afterEach.
   async function setUnitSku(productId: string, sku: string | null): Promise<void> {
-    await admin().from("product_units").update({ sku }).eq("product_id", productId);
+    await query(`update product_units set sku = $1 where product_id = $2`, [
+      sku,
+      productId,
+    ]);
   }
 
   test.afterEach(async () => {

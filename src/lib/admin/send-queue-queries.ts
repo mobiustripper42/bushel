@@ -1,8 +1,6 @@
-// Send-queue reads (Phase 4.2). Service-role admin reads — these enumerate
-// every customer in the system. RLS would also allow it (authenticated all-
-// access), but we use service role for consistency with the rest of the
-// admin queries.
-import { createAdminClient } from "@/lib/supabase/admin";
+// Send-queue reads (Phase 4.2). Full-privilege admin reads — these enumerate
+// every customer in the system. Server-only.
+import { query, queryOne } from "@/lib/db";
 import { weekOfMondayNY } from "@/lib/week";
 
 export type SendMode =
@@ -53,37 +51,35 @@ async function loadSendStateMap(
   weekOf: string,
   mode: SendMode,
 ): Promise<Map<string, string>> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("customer_sends")
-    .select("customer_id, sent_at")
-    .eq("week_of", weekOf)
-    .eq("mode", mode);
-  if (error) throw new Error(`loadSendStateMap: ${error.message}`);
-  return new Map((data ?? []).map((r) => [r.customer_id, r.sent_at]));
+  const rows = await query<{ customer_id: string; sent_at: string }>(
+    `select customer_id, sent_at from customer_sends
+      where week_of = $1 and mode = $2`,
+    [weekOf, mode],
+  );
+  return new Map(rows.map((r) => [r.customer_id, r.sent_at]));
 }
 
 // weekly_update queue: every active customer with send_weekly_link=true,
 // priority desc.
 export async function getWeeklyUpdateQueue(): Promise<SendQueueRow[]> {
-  const supabase = createAdminClient();
   const weekOf = weekOfMondayNY();
 
-  const [customersResult, sendMap] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id, name, phone, token, priority")
-      .eq("is_active", true)
-      .eq("send_weekly_link", true)
-      .order("priority", { ascending: false })
-      .order("name", { ascending: true }),
+  const [customers, sendMap] = await Promise.all([
+    query<{
+      id: string;
+      name: string;
+      phone: string | null;
+      token: string;
+      priority: number;
+    }>(
+      `select id, name, phone, token, priority from customers
+        where is_active and send_weekly_link
+        order by priority desc, name asc`,
+    ),
     loadSendStateMap(weekOf, "weekly_update"),
   ]);
 
-  if (customersResult.error)
-    throw new Error(`getWeeklyUpdateQueue: ${customersResult.error.message}`);
-
-  return (customersResult.data ?? []).map((c) => ({
+  return customers.map((c) => ({
     customerId: c.id,
     customerName: c.name,
     phone: c.phone,
@@ -96,16 +92,14 @@ export async function getWeeklyUpdateQueue(): Promise<SendQueueRow[]> {
   }));
 }
 
-// ordering_schedule is a singleton (DEC-030). Same .single() discipline as
+// ordering_schedule is a singleton (DEC-030). Same queryOne discipline as
 // getOrderingOpen — loud failure if the row goes missing.
 export async function getIntroNote(): Promise<string> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("ordering_schedule")
-    .select("intro_note")
-    .single();
-  if (error) throw new Error(`getIntroNote: ${error.message}`);
-  return data.intro_note ?? "";
+  const row = await queryOne<{ intro_note: string | null }>(
+    "getIntroNote",
+    `select intro_note from ordering_schedule`,
+  );
+  return row.intro_note ?? "";
 }
 
 // Count of weekly_update unsent for the current week — used by the admin
@@ -114,26 +108,19 @@ export async function getIntroNote(): Promise<string> {
 // handles. Runs on every admin page render via the layout, so we avoid the
 // full queue load: count subscribers, subtract sent rows for the week.
 export async function getWeeklyUpdateUnsentCount(): Promise<number> {
-  const supabase = createAdminClient();
   const weekOf = weekOfMondayNY();
 
   const [subscribers, sent] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("is_active", true)
-      .eq("send_weekly_link", true),
-    supabase
-      .from("customer_sends")
-      .select("customer_id", { count: "exact", head: true })
-      .eq("week_of", weekOf)
-      .eq("mode", "weekly_update"),
+    query<{ count: number }>(
+      `select count(*)::int as count from customers
+        where is_active and send_weekly_link`,
+    ),
+    query<{ count: number }>(
+      `select count(*)::int as count from customer_sends
+        where week_of = $1 and mode = 'weekly_update'`,
+      [weekOf],
+    ),
   ]);
 
-  if (subscribers.error)
-    throw new Error(`getWeeklyUpdateUnsentCount(subscribers): ${subscribers.error.message}`);
-  if (sent.error)
-    throw new Error(`getWeeklyUpdateUnsentCount(sent): ${sent.error.message}`);
-
-  return Math.max(0, (subscribers.count ?? 0) - (sent.count ?? 0));
+  return Math.max(0, subscribers[0].count - sent[0].count);
 }
