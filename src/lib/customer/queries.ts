@@ -132,6 +132,14 @@ export async function getOpenOrder(
      group by o.id`,
     [customerId, OPEN_ORDER_STATUSES],
   );
+  // The partial unique index guarantees at most one open order; 2+ rows means
+  // the invariant is broken — fail loud (same discipline .maybeSingle() had)
+  // rather than silently picking one.
+  if (rows.length > 1) {
+    throw new Error(
+      `getOpenOrder: ${rows.length} open orders for customer ${customerId} — orders_one_open_per_customer invariant violated`,
+    );
+  }
   return rows[0] ?? null;
 }
 
