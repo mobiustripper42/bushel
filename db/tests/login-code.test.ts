@@ -76,7 +76,12 @@ d("login codes (pg-integration)", () => {
         code: "123456",
         subject: { kind: "admin", id: ADMIN_ID },
       });
-      expect(await storedHash()).toBe(hashCode("123456"));
+      const [row] = await query<{ code_hash: string; attempts: number }>(
+        `select code_hash, attempts from login_codes where subject_kind='admin' and subject_id=$1`,
+        [ADMIN_ID],
+      );
+      expect(row.code_hash).toBe(hashCode("123456"));
+      expect(row.attempts).toBe(0);
     });
 
     it("matches case-insensitively and trims whitespace", async () => {
@@ -109,6 +114,9 @@ d("login codes (pg-integration)", () => {
       expect(within.outcome).toBe("skip");
       // The original code is left in place — the cooldown one was discarded.
       expect(await storedHash()).toBe(hashCode("111111"));
+      // ...and still functionally redeemable (the no-op path didn't corrupt the
+      // row). This consumes it, so the re-mint below now also has a spent code.
+      expect((await verifyLoginCode(EMAIL, "111111", { now: at(31_000) })).ok).toBe(true);
 
       const after = await requestLoginCode(EMAIL, { now: at(120_000), mintCode: fixed("333333") });
       expect(after.outcome).toBe("deliver");
@@ -136,7 +144,7 @@ d("login codes (pg-integration)", () => {
         reason: "invalid",
       });
       const [{ attempts }] = await query<{ attempts: number }>(
-        `select attempts from login_codes where subject_id=$1`,
+        `select attempts from login_codes where subject_kind='admin' and subject_id=$1`,
         [ADMIN_ID],
       );
       expect(attempts).toBe(1);
