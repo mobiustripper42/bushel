@@ -1,34 +1,18 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminUser } from "@/lib/admin/auth";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  // The admins table IS the allowlist (DEC-047): only listed emails can mint a
+  // session, so a valid session subject is already an admin — no is_admin flag
+  // to re-check. Proxy already gated /admin; this is the defense-in-depth read
+  // (and drives the sliding-expiry cookie renewal).
+  const user = await getAdminUser();
   if (!user) {
     redirect("/login");
-  }
-
-  // Proxy already called getUser() for session refresh — this is the second call per request.
-  const { data: profile, error } = await supabase
-    .from("users")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (error) {
-    redirect("/login?error=auth_error");
-  }
-
-  if (!profile?.is_admin) {
-    redirect("/");
   }
 
   return <>{children}</>;

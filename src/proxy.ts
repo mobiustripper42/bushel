@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { verifySession } from "@/lib/auth/session";
+import { ADMIN_SESSION_COOKIE, sessionSecret } from "@/lib/auth/config";
 import {
   CUSTOMER_TOKEN_COOKIE,
   CUSTOMER_TOKEN_COOKIE_MAX_AGE,
@@ -7,15 +8,23 @@ import {
 } from "@/lib/customer/session";
 
 export async function proxy(request: NextRequest) {
-  const { response, user } = await updateSession(request);
+  const response = NextResponse.next({ request });
 
-  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set(
-      "next",
-      request.nextUrl.pathname + request.nextUrl.search,
-    );
-    return NextResponse.redirect(loginUrl);
+  // Admin gate (DEC-047): verify the self-rolled HMAC session cookie. Pure
+  // node:crypto — runs here because Next 16's proxy uses the Node.js runtime.
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const valid = token
+      ? verifySession(token, sessionSecret(), new Date()).ok
+      : false;
+    if (!valid) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set(
+        "next",
+        request.nextUrl.pathname + request.nextUrl.search,
+      );
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   // Token shape: 6+3 alphanumeric with a dash (src/lib/tokens.ts). Min length

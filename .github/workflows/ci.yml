@@ -9,10 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # The app + tests read/write this DB (task 10.2); Supabase below is
-    # auth-only until 10.3.
+    # The app + tests read/write this DB (task 10.2). Supabase below is now
+    # vestigial (pgTAP only) — admin auth moved to the self-rolled HMAC session
+    # (DEC-047, task 10.3). The app verifies and global-setup mints sessions with
+    # SESSION_SECRET; any fixed value works as long as both sides share it.
     env:
       DATABASE_URL: postgres://bushel:bushel@localhost:5433/bushel_test
+      SESSION_SECRET: ci-fixed-session-secret-not-a-real-key
 
     # Plain Postgres for the migration runner + tests (DEC-046, task 10.0).
     # Port 5433 matches the local docker-compose mapping so one DATABASE_URL
@@ -110,6 +113,7 @@ jobs:
             -e NEXT_PUBLIC_SUPABASE_ANON_KEY \
             -e SUPABASE_SERVICE_ROLE_KEY \
             -e DATABASE_URL \
+            -e SESSION_SECRET \
             mcr.microsoft.com/playwright:v1.59.1-noble \
             npx playwright test
 
