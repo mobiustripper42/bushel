@@ -109,11 +109,11 @@ One Neon project, two branches — `production` is a downstream deploy pointer, 
 
 Local dev + CI + Playwright + vitest run against **docker Postgres** (`bushel_dev` / `bushel_test` on :5433), not Neon. Neon `main` backs the deployed preview; Neon `production` is empty until the 10.7 cutover.
 
-**Prod-write protection (DEC-049)** — the prod `DATABASE_URL` lives ONLY in Vercel and a deliberately-sourced `.envrc.production` (gitignored), never the shell default. A prod migration is an explicit-arg `npx tsx db/migrate.ts "$PROD_DATABASE_URL_UNPOOLED"` — there is no default-prod state to forget out of, so no relink dance. Strictly safer than the old Supabase link/relink ritual it replaced.
+**Prod-write protection (DEC-049)** — the prod DB URL lives ONLY in Vercel and a deliberately-sourced `.envrc.production` (gitignored), never the shell default. A prod migration is an explicit-arg `npx tsx db/migrate.ts "$PROD_DATABASE_URL"` (use the direct/unpooled endpoint — DDL in a transaction) — there is no default-prod state to forget out of, so no relink dance. Strictly safer than the old Supabase link/relink ritual it replaced.
 
 ### Env vars (`.env.local`) + Vercel ↔ Neon sync
 
-All env lives in `.env.local` (DEC-049; Next + Playwright auto-load it via dotenv). No `.envrc`/direnv. Keys:
+All env lives in `.env.local` for day-to-day dev/test (DEC-049; Next + Playwright auto-load it via dotenv) — no `.envrc`/direnv. The one exception is the gitignored `.envrc.production`, sourced deliberately only for a prod migration (see Prod-write protection above). Keys in `.env.local`:
 - `DATABASE_URL` — pooled Neon `main`, app runtime.
 - `DATABASE_URL_UNPOOLED` — direct Neon `main`, migrations (pooled = PgBouncer transaction mode, mangles DDL transactions).
 - `RESEND_API_KEY` + `RESEND_FROM` — login-code email. FROM must be `@brewcle.com` (the verified Resend domain; the `crew-tips` subdomain is NOT verified → 403). Sends ride the brewcle Resend account (DEC-047).
