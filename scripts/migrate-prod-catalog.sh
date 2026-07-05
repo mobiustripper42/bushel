@@ -48,14 +48,17 @@ for t in "${TABLES[@]}"; do
   fi
 done
 
-# Idempotency: refuse a double-load. After 0001 these tables are empty (0001
-# seeds only codes / singletons / admins), so any rows mean this already ran.
-existing=$(psql "$TARGET_URL" -tAc "select count(*) from products")
-if [ "$existing" != "0" ]; then
-  echo "ERROR: target 'products' already has $existing row(s) — refusing to double-load." >&2
-  echo "       To re-run cleanly: TRUNCATE products, product_units, customers on the target first." >&2
-  exit 1
-fi
+# Idempotency: refuse a double-load. After 0001 all three are empty (0001 seeds
+# only codes / singletons / admins), so any rows in ANY of them mean this already
+# ran (or was partially run) — check all three, not just products.
+for t in "${TABLES[@]}"; do
+  n=$(psql "$TARGET_URL" -tAc "select count(*) from public.$t")
+  if [ "$n" != "0" ]; then
+    echo "ERROR: target '$t' already has $n row(s) — refusing to double-load." >&2
+    echo "       To re-run cleanly: TRUNCATE products, product_units, customers on the target first." >&2
+    exit 1
+  fi
+done
 
 read -r -p "Copy catalog (products, product_units, customers) Supabase → Neon prod? [type 'yes'] " ans
 [ "$ans" = "yes" ] || { echo "aborted."; exit 1; }

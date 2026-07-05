@@ -28,8 +28,9 @@ code + HMAC session, DEC-047), prod code (v0.11.1 → current `main`).
 - [ ] **Set Vercel Production-scope env vars** (dashboard → Settings → Environment
       Variables → Production). Setting them now is safe — they only take effect on the next
       prod deploy (the promote in step 4).
-  - `DATABASE_URL` = Neon **production** branch **pooled** URL
-  - `DATABASE_URL_UNPOOLED` = Neon **production** branch **direct** URL
+  - `DATABASE_URL` = Neon **production** branch **pooled** URL (the only DB var the
+    app reads at runtime — migrations use the unpooled URL from `.envrc.production`
+    locally, not Vercel)
   - `SESSION_SECRET` = a 32-byte hex (`openssl rand -hex 32`) — **required**, or every
     `/admin` + `/login` request 500s (fail-fast by design)
   - `RESEND_API_KEY` = the brewcle Resend key
@@ -120,9 +121,10 @@ Close #260 once prod is confirmed healthy.
 
 Supabase prod data was only read, never modified — it's intact.
 
-1. **Vercel → Production → Deployments** → find the last **v0.11.1** deployment →
-   **⋯ → Promote to Production** (or redeploy it). That puts the old OAuth/Supabase code
-   back, pointed at Supabase prod. Google-OAuth login + real data return.
+1. **Vercel → Production → Deployments** → find the deployment that was live *before*
+   this cutover (the pre-promote one — confirm by timestamp/commit, currently the
+   v0.11.1 build) → **⋯ → Promote to Production** (or redeploy it). That puts the old
+   OAuth/Supabase code back, pointed at Supabase prod. Google-OAuth login + real data return.
 2. Leave Neon `production` as-is; re-attempt the cutover later.
 
 The rollback is clean precisely because the cutover is copy-forward, not move.
