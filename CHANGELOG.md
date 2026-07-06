@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0] - 2026-07-06 — Phase 10: Supabase → Neon
+- 38 pts across 2 sessions (burst — 38 pts in ~3.2d); see `docs/RETROSPECTIVES.md`
+- Off Supabase entirely: Neon Postgres via `pg`, self-rolled email-code/HMAC admin auth, RLS deleted (service layer is the boundary), vitest replaces pgTAP. Live in production.
+- Per-PR breakdown (the audit trail the 0.11.2 stopgap deferred):
+  - PR #267: 10.0 Neon project + branches + docker CI Postgres
+  - PR #268: 10.1 db/migrate.ts runner + 0001_init.sql clean baseline
+  - PR #269: 10.2 pg data layer — swap supabase-js call sites to pg (DEC-046/048)
+  - PR #271: 10.3 email-code admin auth — session.ts + login_codes + Resend (DEC-047)
+  - PR #273: 10.4b adopt vitest test stack; migrate DB-invariant + auth tests off pgTAP (DEC-051)
+  - PR #274: 10.4 consolidate to a single clean 0001 baseline (fold in login_codes/admins)
+  - PR #275: 10.5 remove @supabase deps + dead files + supabase dir; strip from CI + docs (DEC-049)
+  - PR #276: 10.6 vitest pg-integration coverage for login-code request/verify
+  - PR #277: 10.7 Neon prod cutover runbook + guarded catalog-migration script
+
 ## [0.11.2] - 2026-07-06
 - Phase 10 production cutover: Supabase→Neon data layer + email-code/HMAC admin auth now live in production (PRs #267–#276). Manual patch bump for the deploy; full per-PR breakdown lands at `/retro`.
 
