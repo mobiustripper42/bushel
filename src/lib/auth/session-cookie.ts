@@ -14,20 +14,12 @@ import {
   sessionSecret,
 } from "./config";
 import {
+  makeSession,
   shouldRenew,
   signSession,
   verifySession,
-  type Session,
   type Subject,
 } from "./session";
-
-function makeSession(subject: Subject, now: Date): Session {
-  return {
-    subjectKind: subject.kind,
-    subjectId: subject.id,
-    expiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString(),
-  };
-}
 
 /**
  * Gate `secure` on the actual transport, not NODE_ENV: WebKit refuses Secure
@@ -50,7 +42,7 @@ function cookieOptions(expiresAt: string, secure: boolean) {
 
 /** Mint + set the session cookie (server-action use). */
 export async function startSession(subject: Subject): Promise<void> {
-  const session = makeSession(subject, new Date());
+  const session = makeSession(subject, new Date(), SESSION_TTL_MS);
   const jar = await cookies();
   jar.set(
     ADMIN_SESSION_COOKIE,
@@ -75,7 +67,7 @@ export async function readSubject(): Promise<Subject | null> {
 
   if (shouldRenew(result.session, now, RENEW_WITHIN_MS)) {
     try {
-      const renewed = makeSession(result.subject, now);
+      const renewed = makeSession(result.subject, now, SESSION_TTL_MS);
       jar.set(
         ADMIN_SESSION_COOKIE,
         signSession(renewed, sessionSecret()),
