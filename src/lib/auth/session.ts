@@ -41,6 +41,19 @@ export function signSession(session: Session, secret: string): string {
   return `${payloadB64}.${sign(payloadB64, secret)}`;
 }
 
+/**
+ * Build a fresh session for a subject with the given lifetime. Framework-free so
+ * both the cookie glue (session-cookie.ts) and the bearer/API path mint the same
+ * shape from one place — the token's meaning can't drift between the two entries.
+ */
+export function makeSession(subject: Subject, now: Date, ttlMs: number): Session {
+  return {
+    subjectKind: subject.kind,
+    subjectId: subject.id,
+    expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+  };
+}
+
 export type SessionFailure = "malformed" | "bad_signature" | "expired";
 
 export type SessionResult =

@@ -49,6 +49,7 @@ const RESET_TABLES = [
   "products",
   "customers",
   "login_codes",
+  "push_tokens",
 ];
 
 export async function resetData(): Promise<void> {

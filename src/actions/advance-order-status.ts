@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { getAdminUser } from "@/lib/admin/auth";
-import { isValidTransition, type OrderStatus } from "@/lib/admin/order-status";
-import { query } from "@/lib/db";
-import { pgMessage } from "@/lib/pg-errors";
+import { type OrderStatus } from "@/lib/admin/order-status";
+import { advanceOrder } from "@/lib/admin/order-mutations";
 
-// Admin gate first, then full-privilege pg writes (DEC-048 — the service
-// layer is the boundary; RLS is gone).
+// Admin gate first, then the shared status write path (DEC-052 parity mechanism
+// 1 — same core the /api/mobile route calls). On success, revalidate the Orders
+// page; the bearer route skips this (no page cache to bust).
 export async function advanceOrderStatus(
   orderId: string,
   nextStatus: OrderStatus,
@@ -16,32 +16,7 @@ export async function advanceOrderStatus(
   const user = await getAdminUser();
   if (!user) return { error: "Unauthorized" };
 
-  try {
-    const rows = await query<{ status: string; fulfillment_type: string }>(
-      `select status, fulfillment_type from orders where id = $1`,
-      [orderId],
-    );
-    const order = rows[0];
-    if (!order) return { error: "Order not found" };
-
-    const from = order.status as OrderStatus;
-    const fulfillmentType =
-      order.fulfillment_type === "delivery" ? "delivery" : "pickup";
-
-    if (!isValidTransition(from, nextStatus, fulfillmentType)) {
-      return {
-        error: `Cannot move ${from} → ${nextStatus} (${fulfillmentType})`,
-      };
-    }
-
-    await query(
-      `update orders set status = $1, updated_at = now() where id = $2`,
-      [nextStatus, orderId],
-    );
-  } catch (e) {
-    return { error: pgMessage(e) };
-  }
-
-  revalidatePath("/admin/orders");
-  return { error: null };
+  const result = await advanceOrder(orderId, nextStatus);
+  if (!result.error) revalidatePath("/admin/orders");
+  return result;
 }
