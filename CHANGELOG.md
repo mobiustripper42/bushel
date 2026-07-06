@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.2] - 2026-07-06
+- Phase 10 production cutover: Supabase→Neon data layer + email-code/HMAC admin auth now live in production (PRs #267–#276). Manual patch bump for the deploy; full per-PR breakdown lands at `/retro`.
+
 ## [0.11.1] - 2026-07-04
 - PR #266: Phase 10 + 11 setup: Supabase→Neon and Expo app — DEC-046–050, plan, issues
 
