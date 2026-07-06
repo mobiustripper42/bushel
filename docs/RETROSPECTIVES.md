@@ -1,5 +1,45 @@
 # Retrospectives
 
+## Phase 10 — 2026-07-05 — Supabase → Neon migration
+
+**Points:** 38 / 35 planned (109%)
+**Span:** 3.2 days (2026-07-02 → 2026-07-05)
+**Throughput:** burst — 38 pts in ~3.2d (sub-week phase; no per-week rate) ← headline
+**Estimate calibration:** 1 task re-estimated (10.4, 3→1), 1 added mid-phase (10.4b, +5); net drift +3 ← keeps the point unit honest
+**Sessions:** 2   **PRs merged:** 10 (#266–#277)
+**Issues:** 9 created, 9 closed, 0 moved to Phase 11
+
+### Phase throughput line
+| Phase | Date | Points | Span(d) | Throughput | Re-est'd | Net drift | Sessions | PRs |
+|-------|------|--------|---------|------------|----------|-----------|----------|-----|
+| 10 | 2026-07-05 | 38 | 3.2 | burst (<7d) | 1 | +3 | 2 | 10 |
+
+### What worked
+- The app worked when we were done! Instructions were well documented and clear.
+
+### What didn't
+- Really thought MCP Vercel and Neon were first, but I might have got confused. Otherwise smooth. (The read-only Neon MCP role was created in 10.0, but the client wiring was deferred with no tracking issue — so it resurfaced at session end as "did we skip that?")
+
+### Changes for next phase
+- Pick the right database next time (that's a joke)… but "pick everything last" is a much better strategy — defer the irreversible decision to the last responsible moment. (The 0001 squash worked because the schema wasn't frozen yet; the cutover was safe because Supabase stayed read-only as a rollback net.)
+
+### Scope changes
+- **10.4 re-pointed 3→1**: the schema untangle (drop RLS / `public.users` / `auth.users`) already shipped in the 0001 baseline, leaving only a `sent_by_user_id` comment migration.
+- **10.4b added mid-phase (+5)**: adopt vitest (unit + pg-integration) and retire pgTAP — split out of 10.4's pgTAP work after the dev flagged pgTAP-on-docker as a hack (new DEC-051). 6 pgTAP files ported to vitest via parallel subagents.
+- **0002 folded into the 0001 baseline** during 10.4 (consolidate-while-no-prod-data) — a last-window call.
+- **Vercel + Neon MCP installed at session end** (deferred-and-parked from 10.0). Follow-ups filed: #278 (UX/UI mobile review), #279 (preview-testing docs + prod→main catalog copy).
+
+### PM read
+Thirty-eight points in ~3.2 days is the densest phase this project has run — more mass than Phase 9's 25 and compressed into a third of the calendar. Under the burst rule there's no honest per-week rate to quote, so the record is exactly that: 38 points, two sessions, a full auth-and-data-platform swap executed live to prod. Worth being clear-eyed about *why* it moved this fast — it wasn't raw velocity magic. Most of the irreversible surface — the pg data layer, the HMAC session auth, the login-code flow — was a port from muster with a reference implementation already sitting there to copy against. That's the fastest possible shape for hard work: the design decisions were made in another repo months ago. Don't read 38-in-3.2 as the new baseline; read it as "porting a known-good architecture is cheap, and this phase was mostly that."
+
+The scope ledger is the tightest-relative-to-mass we've had: +3 net drift on 38 points, and both moves were quality-driven pushbacks, not ideation. The dev looked at pgTAP-on-docker, called it a hack, and that judgment spawned 10.4b and re-pointed 10.4 down to a 1 — the dev doing architect work mid-phase, and it landed. Compare Phase 9, which grew by *use* (clicking the preview). Phase 10 grew by *taste* — someone refusing to ship a smell. The 0002-into-0001 squash is the same instinct pointed at the schema: no prod data existed yet, so the baseline got consolidated while consolidation was still free. A last-window call, correctly identified as such.
+
+The one thing that slipped the net is the MCP wiring, and the dev's own answer already found it. The read-only Neon role got created in 10.0, the actual client wiring got deferred *without a tracking issue* — which is why it resurfaced at session end as "did we skip that?" A smaller cousin of the Phase 9 pattern where the prod cutover sat pending across a retro boundary: deferred work without an issue is invisible work, and invisible work only reappears by luck or unease. The fix isn't "remember harder," it's an issue at defer-time. Everything that *was* issue-tracked shipped clean; the one thing that wasn't is the one thing that wobbled.
+
+On the dev's answers — "the app worked when we were done" for a live cutover that dropped OAuth, swapped ~15 call sites, and moved catalog data across two DB platforms is the entire ballgame. First-try-working on a swap with that blast radius *is* the win. On the MCP confusion: the unease is correct — the role existed but the wiring didn't. And "pick everything last" as a joke is actually the phase's thesis: the squash worked because the schema wasn't frozen; the cutover was safe because Supabase stayed read-only as a net. The only caveat — it works when reversibility stays cheap to preserve; it's a discipline, not a physical law, and a phase will eventually come along where "decide last" and "decide cheap" pull apart.
+
+Forward into Phase 11 (Expo mobile): a genuine context switch, and these numbers do not forecast it. Everything that made this phase fast — a muster reference port, sailbook-derived web patterns, a mature Playwright/vitest test loop — evaporates at the Expo boundary. React Native is greenfield here with no known-good repo to copy against, and "check sailbook first" points at a *web* codebase that won't have the patterns a native app needs. Budget Phase 11 against first-time-on-a-new-surface pace, closer to the project's early phases. Carry the two lessons across intact: file the MCP-wiring issue before it evaporates again, and keep "pick the platform last" in hand.
+
 ## Phase 9 — 2026-07-02 — Open-Order Pivot
 
 **Points:** 25 / 21 planned (119% — +2 tasks/+4 pts discovered in preview testing)

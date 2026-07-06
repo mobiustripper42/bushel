@@ -43,6 +43,7 @@ Fibonacci scale: 2, 3, 5, 8. No 1s. Avoid 13s (break down).
 |-------|--------|----------|------------|----------|-----------|----------|
 | 8     | 31²    | 25.5     | 8.5 pts/wk (2 active wks ≈ 15.5) | 0 | 0 | 4 |
 | 9     | 25     | 9.2      | 19.1 pts/wk (1 active wk) | 0 | 0 (+2 tasks/+4 pts added mid-phase) | 3 |
+| 10    | 38     | 3.2      | burst (<7d) — 38 pts in 3.2d | 1 | +3 (10.4b +5 / 10.4 −2) | 2 |
 
 ² #195/#200 (harvest sheet pair) carried no `points:` label — not counted.
 
@@ -264,14 +265,15 @@ Re-keys order identity from the week to the open order, kills the scheduled-clos
 
 | # | Task | Pts | Status |
 |---|---|---|---|
-| 10.0 | Neon project + branches + docker CI Postgres | 3 | [#253](https://github.com/mobiustripper42/bushel/issues/253) |
-| 10.1 | Port `db/migrate.ts` runner + `0001_init.sql` clean baseline | 5 | [#254](https://github.com/mobiustripper42/bushel/issues/254) |
-| 10.2 | `pg` data layer — swap the ~15 supabase-js call sites | 8 | [#255](https://github.com/mobiustripper42/bushel/issues/255) |
-| 10.3 | Email-code auth: muster `session.ts` + `login_codes` + Resend (DEC-047) | 8 | [#256](https://github.com/mobiustripper42/bushel/issues/256) |
-| 10.4 | Delete RLS + untangle auth.users; prune pgTAP (DEC-048) | 3 | [#257](https://github.com/mobiustripper42/bushel/issues/257) |
-| 10.5 | Remove `@supabase/*` deps + env/branch config (DEC-049) | 3 | [#258](https://github.com/mobiustripper42/bushel/issues/258) |
-| 10.6 | Playwright: headless login-code helper (code read from test DB) + full suite green | 3 | [#259](https://github.com/mobiustripper42/bushel/issues/259) |
-| 10.7 | Prod cutover: Neon move co-timed with DEC-041 cutover | 2 | [#260](https://github.com/mobiustripper42/bushel/issues/260) |
+| 10.0 | Neon project + branches + docker CI Postgres | 3 | [x] [#253](https://github.com/mobiustripper42/bushel/issues/253) |
+| 10.1 | Port `db/migrate.ts` runner + `0001_init.sql` clean baseline | 5 | [x] [#254](https://github.com/mobiustripper42/bushel/issues/254) |
+| 10.2 | `pg` data layer — swap the ~15 supabase-js call sites | 8 | [x] [#255](https://github.com/mobiustripper42/bushel/issues/255) |
+| 10.3 | Email-code auth: muster `session.ts` + `login_codes` + Resend (DEC-047) | 8 | [x] [#256](https://github.com/mobiustripper42/bushel/issues/256) |
+| 10.4 | Delete RLS + untangle auth.users; prune pgTAP (DEC-048) | 1 | [x] [#257](https://github.com/mobiustripper42/bushel/issues/257) — re-pointed 3→1 (untangle already shipped in 0001) |
+| 10.4b | Adopt vitest (unit + pg-integration); retire pgTAP (DEC-051) | 5 | [x] [#272](https://github.com/mobiustripper42/bushel/issues/272) — added mid-phase |
+| 10.5 | Remove `@supabase/*` deps + env/branch config (DEC-049) | 3 | [x] [#258](https://github.com/mobiustripper42/bushel/issues/258) |
+| 10.6 | Playwright: headless login-code helper (code read from test DB) + full suite green | 3 | [x] [#259](https://github.com/mobiustripper42/bushel/issues/259) |
+| 10.7 | Prod cutover: Neon move co-timed with DEC-041 cutover | 2 | [x] [#260](https://github.com/mobiustripper42/bushel/issues/260) |
 
 ---
 
