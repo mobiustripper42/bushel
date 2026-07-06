@@ -277,19 +277,17 @@ Re-keys order identity from the week to the open order, kills the scheduled-clos
 
 ---
 
-## Phase 11 — Expo mobile app: muster rehearsal, push-first (20 pts)
+## Phase 11 — Bushel `/api/*` surface for the mobile app (5 pts)
 
-Separate repo `bushel-mobile` (DEC-050): Expo/React Native, push notifications as the point (long-term path off SMS/Twilio for non-SMS users), read-only orders list + one mutation. Annabel = Android sideload APK ($0, full push). Emma = iPhone free-signed 7-day builds, install-only — **iOS remote push is gated on the deferred $99 Apple Developer enrollment** (APNs key requires paid membership). Bushel's first real `/api/*` routes (Server Actions are uncallable from native), authenticated by DEC-047's bearer-consumable session.
+Bushel's first real `/api/*` routes (Server Actions are uncallable from native), authenticated by DEC-047's bearer-consumable session. This is the backend contract the Expo app calls; the app itself is a **separate, independent repo** — `bushel-mobile` Phase 1 (DEC-052). A phase never spans repos: 11.2–11.5 moved to bushel-mobile.
 
 **Gated on Phase 10** (10.2 data layer + 10.3 auth merged) — building API routes against the Supabase layer would be throwaway work.
 
 | # | Task | Pts | Status |
 |---|---|---|---|
 | 11.1 | `/api/*` routes on bushel + bearer-token auth guard | 5 | [#261](https://github.com/mobiustripper42/bushel/issues/261) |
-| 11.2 | Expo app scaffold + email-code login + orders list | 5 | [#262](https://github.com/mobiustripper42/bushel/issues/262) |
-| 11.3 | Expo push: token registration + Android push end-to-end | 5 | [#263](https://github.com/mobiustripper42/bushel/issues/263) |
-| 11.4 | Mark-fulfilled mutation from the app | 2 | [#264](https://github.com/mobiustripper42/bushel/issues/264) |
-| 11.5 | Android EAS build → sideloaded APK; iOS free-sign install | 3 | [#265](https://github.com/mobiustripper42/bushel/issues/265) |
+
+→ **11.2–11.5 moved to bushel-mobile Phase 1 (DEC-052)** — Expo scaffold + login + orders (was #262), push (was #263), mark-fulfilled mutation (was #264), EAS build/sideload (was #265). Recreated as bushel-mobile issues; 15 pts on that repo's own ledger.
 
 DEC-039 (#218's additive-orders decision) lands in `DECISIONS.md` when 9.1 merges; DEC-040–045 are already written. Customer-facing order history (#136) stays in the backlog.
 
