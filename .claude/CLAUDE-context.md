@@ -146,7 +146,7 @@ Failure modes:
 
 ### Data Fetching
 - Server Components + Server Actions query Postgres via `query`/`queryOne` from `src/lib/db.ts` (the pg pool).
-- Mutations via Server Actions (not API routes). Every action gates on `getAdminUser()` (DEC-047) for admin surfaces.
+- Mutations via Server Actions (not API routes) — except `/api/mobile/*` (DEC-050/052), bearer-gated HTTP routes for the bushel-mobile Expo app, which can't invoke Server Actions. Mutations shared with those routes live as service-layer functions (`src/lib/admin/order-mutations.ts`); the route + the action are thin wrappers over one write path. Every action gates on `getAdminUser()` (DEC-047) for admin surfaces; the mobile routes gate on `bearerSubject()` (`src/lib/auth/bearer.ts`).
 - No client-side DB access — customer reads resolve `bbf_customer_token` → `customers.token` server-side (DEC-004).
 
 ### Auth & access
