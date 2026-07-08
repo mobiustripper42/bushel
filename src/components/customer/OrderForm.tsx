@@ -716,10 +716,8 @@ export function OrderForm({
                     rows={3}
                     value={deliveryPreference}
                     onChange={(e) => setDeliveryPreference(e.target.value)}
+                    placeholder="Indicate your preferred date and time"
                   />
-                  <div className="fulfill-help">
-                    Wednesday between 8am and noon. We&rsquo;ll text when we&rsquo;re 30 minutes out.
-                  </div>
                 </div>
               ) : (
                 <div className="fulfill-detail">
