@@ -1,0 +1,21 @@
+{
+  "repo": "mobiustripper42/bushel",
+  "rosters": {
+    "CLAUDE.md": { "skills": true, "agents": true },
+    "docs/AGENTS.md": { "skills": true, "agents": true },
+    "docs/CHEATSHEET.md": { "skills": true, "agents": false }
+  },
+  "historical": {
+    "docs/PROJECT_PLAN.md": "shipped task rows cite what they retired",
+    "docs/RETROSPECTIVES.md": "per-phase record of what was true at phase close",
+    "docs/FUTURE_IDEAS.md": "parked ideas cite sketches that predate the current tree",
+    "docs/RUNBOOK-neon-cutover.md": "a cutover runbook — describes the estate on both sides of a migration that has happened",
+    "docs/BUSHEL-MOBILE-KICKOFF.md": "a handoff brief, frozen at the moment the sibling repo was cut"
+  },
+  "knownForeign": [
+    "review", "security-review", "init", "loop", "simplify", "config", "mcp",
+    "help", "clear", "update-config", "fewer-permission-prompts",
+    "keybindings-help", "claude-api", "session-start-hook",
+    "stripe-best-practices", "stripe-projects", "upgrade-stripe"
+  ]
+}

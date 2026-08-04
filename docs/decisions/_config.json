@@ -1,0 +1,17 @@
+{
+  "spec": "docs/SPEC.md",
+  "families": {},
+  "topics": [
+    "Stack, platform & environments",
+    "Auth & access boundary",
+    "Catalog, pricing & units",
+    "Ordering, orders & statuses",
+    "Store hours & availability",
+    "Fulfillment & invoicing",
+    "Notifications & alerting",
+    "Admin surface & UI",
+    "Testing",
+    "Workflow & process",
+    "Open questions"
+  ]
+}

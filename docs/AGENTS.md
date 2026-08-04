@@ -15,7 +15,7 @@ Several agents and slash-command skills support the development workflow. All ru
 - Before adding a new library or dependency
 - When a task requires a pattern you haven't used yet
 - When scope creep is knocking at the door
-- When a task has a DEC-TBD flagged in PROJECT_PLAN.md
+- When a task has a an unresolved decision flagged in PROJECT_PLAN.md
 
 **Spec:** `.claude/agents/architect.md`
 

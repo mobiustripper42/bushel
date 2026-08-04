@@ -33,7 +33,7 @@ Review recent changes against project conventions and existing patterns. You are
 
 ## Sources of Truth
 - `CLAUDE-context.md § Conventions` — project conventions + stack-specific review concerns (auth model, error contract, data access)
-- `docs/DECISIONS.md` — architectural decisions (don't contradict these)
+- `docs/decisions/DEC-*.md` (read the relevant ones; `docs/DECISIONS.md` is the generated index over them) — architectural decisions (don't contradict these)
 - `docs/SPEC.md` — scope (flag anything that looks like scope creep)
 - Existing code patterns in the codebase — consistency with what's already there
 
