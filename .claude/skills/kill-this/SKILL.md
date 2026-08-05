@@ -26,7 +26,7 @@ TASK_NUM=$(($(grep -c "^## Task " "$SESSION_FILE") + 1))
 
 ## Step 1 — Build check
 
-Look up the project's build check in `CLAUDE.md §Commands` (e.g. `npm run build`, `cargo build`, `make`). Run it. Fix errors before proceeding. Do not commit broken code.
+Look up the project's build check in `.claude/CLAUDE-context.md §Commands` (e.g. `npm run build`, `cargo build`, `make`). Run it. Fix errors before proceeding. Do not commit broken code.
 
 If no build step is defined (markdown-only / domain project), skip silently.
 
@@ -55,6 +55,33 @@ Capture `SUBJECT=$(git log -1 --format=%s)` for the PR title.
 Run `@code-review` against `git diff HEAD~1`. Capture the findings — needed for the PR body and the task block.
 
 When addressing review findings before opening the PR: Read every file before editing it (parallel writes fail silently without a prior Read).
+
+### Step 3.5 — High-blast-radius check (does this PR want `/code-review ultra`?)
+
+`@code-review` hunts the project's known invariants. `/code-review ultra` is a different tool — it launches multiple agents to audit the branch independently from different angles and filters by confidence. It is **user-triggered and billed; Claude cannot launch it.** Do not attempt to run it via Bash or otherwise.
+
+Read the project's trigger table from `.claude/CLAUDE-context.md` under `## Blast-Radius Triggers` and match it against the branch diff (`git diff $(git merge-base HEAD main)...HEAD --name-only`). If that section is absent, fall back to the four generic triggers below.
+
+| Trigger | What to match |
+|---|---|
+| **Money moving** | payment-provider calls, webhook handlers, refunds, fee/tip/balance math |
+| **Money being computed** | hours, rates, pay periods, tips, invoice totals — and any export that carries them |
+| **Auth / capability URL** | session issue and validation, token minting, bearer or signed-link paths, permission checks |
+| **Data-changing migration** | a new migration containing `drop`, `alter … type`, `update`, or `delete` (an additive `add column` does **not** trigger) |
+| **Too big to review well** | the diff is large or sprawling enough that you would not confidently sign off on it yourself |
+
+**The test, when a path isn't listed:** *does a number this code produces end up on someone's paycheck or invoice?* If yes, it's the money path — whether or not a payment provider is anywhere near it. The first two rows exist separately because defining "money" by **where money moves** misses where it is **computed**: a time-clock table can land with no payment file in the diff, and a wrong timestamp, a mis-bucketed pay period, or a double-counted punch is a wrong payment that no provider-shaped trigger would ever catch.
+
+If one or more hit, print exactly this and continue — never block, never run it:
+
+```
+⚠ This PR touches: <triggers>.
+  Consider `/code-review ultra` before merging — it's yours to run; I can't.
+```
+
+If none hit, print nothing. Docs, seeds, agent/skill files, dev tooling, and single-surface UI never trigger it — their blast radius stops at the dev environment.
+
+**Why this is a step and not a rule to remember:** the trigger is a property of the diff, and the moment you'd need to recall it is the moment you're least likely to (late, task finished, PR ready). Checking the diff is reliable; remembering is not.
 
 ## Step 4 — Open the PR
 

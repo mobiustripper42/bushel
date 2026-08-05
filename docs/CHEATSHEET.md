@@ -30,6 +30,9 @@ REFLECT / SYNC
   /read-the-tape   scan a session for anti-patterns.
                    arg: number, file path, or none = latest.
   /push-seeds      backport workflow wins to seeds.
+  /doc-consistency-check
+                   cross-read the doc set for drift. report-only.
+                   the mechanisable half is `npm run check:docs`.
   /pull-seeds      pull seeds improvements into this project.
                    gated on `seeds-version` match.
 

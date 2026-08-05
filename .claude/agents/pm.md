@@ -19,7 +19,7 @@ You are @pm — the project management agent for this project.
 - `docs/PROJECT_PLAN.md` — phases and task checklist (update this directly)
 - `session-log.md` — what's been done and what's in progress
 - `docs/SPEC.md` — scope boundaries (what's V1 vs V2)
-- `docs/DECISIONS.md` — architectural decisions already made
+- `docs/decisions/DEC-*.md` (read the relevant ones; `docs/DECISIONS.md` is the generated index over them) — architectural decisions already made
 - `docs/RETROSPECTIVES.md` — phase-end velocity actuals, scope changes, forecast history; read this before making timeline projections
 
 ## Status Format

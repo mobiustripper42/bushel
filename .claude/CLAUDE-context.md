@@ -135,7 +135,7 @@ Failure modes:
 - Postgres rows are typed by hand at the call site — `query<T>()` / `queryOne<T>()` from `src/lib/db.ts` with an inline row type (DEC-046). No codegen.
 
 ### Next.js 16 routing
-- `src/proxy.ts` is the middleware entry point — export name is `proxy`, not `middleware`. Do NOT create `src/middleware.ts`; Next.js 16 will reject both existing simultaneously.
+- `src/proxy.ts` is the middleware entry point — export name is `proxy`, not `middleware`. Do NOT create src/middleware.ts (unbackticked deliberately — `check:context` reads a backticked path as a claim that it resolves, and this clause exists to say it must not); Next.js 16 will reject both existing simultaneously.
 - Check `src/` structure before writing new auth/routing files.
 
 ### Components
@@ -168,7 +168,7 @@ Failure modes:
 - Components: `PascalCase`
 - Server Actions: `camelCase` in `actions/`
 - DB columns: `snake_case`
-- Migrations: `db/migrations/NNNN_descriptive_name.sql` (zero-padded sequence)
+- Migrations: `db/migrations/<NNNN>_descriptive_name.sql` (zero-padded sequence)
 
 ### UI / Brand
 - White/black base, semantic shadcn tokens. No color for color's sake.
