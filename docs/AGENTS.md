@@ -101,21 +101,7 @@ Several agents and slash-command skills support the development workflow. All ru
 
 ---
 
-### 7. @sync-config
-
-**Purpose:** Classifies diffs between the project's live workflow files and the seeds template repo. Backports structural improvements (push) or forward-ports template changes (pull); flags cross-family patterns.
-
-**When to invoke:**
-- Via `/push-seeds` (project → seeds) or `/pull-seeds` (seeds → project)
-- Also runs unattended via the nightly sync Routine
-
-**Spec:** `.claude/agents/sync-config.md`
-
-**Output:** Per-hunk classification (backport / forward-port / skip) and a proposed change set for review.
-
----
-
-### 8. @ideas
+### 7. @ideas
 
 **Purpose:** Idea curator. Captures new ideas as rows in `docs/FUTURE_IDEAS.md`, dedupes against what's already parked, cross-references SPEC/DECISIONS/PROJECT_PLAN/open issues, and keeps the prioritized index in sync.
 
@@ -236,8 +222,7 @@ Slash commands manage session lifecycle. Time tracking is automatic.
 | @pm | Sonnet | Start/end of sessions | Track progress, flag risks |
 | @ui-reviewer | Sonnet | After UI work, phase boundaries | Design quality |
 | @doc-consistency | Sonnet | Via `/doc-consistency-check`, ad-hoc when docs feel drifted | Cross-reference facts across docs; flag mismatches + placeholders. Report-only |
-| @tape-reader | Sonnet | Via `/read-the-tape` | Audit JSONL transcripts for anti-patterns, propose skill improvements |
-| @sync-config | Sonnet | Via `/push-seeds` / `/pull-seeds`, nightly Routine | Classify template diffs, propose backports/forward-ports |
+| @tape-reader | Sonnet | Via `/read-the-tape` | Audit JSONL transcripts for anti-patterns; writes one cited observation to seeds, edits nothing here |
 | @ideas | Sonnet | Park an idea, re-rank, or audit the parking lot | Curate `docs/FUTURE_IDEAS.md`; edits only that file |
 | /its-alive | — | Session start | Open session file + timestamp + briefing |
 | /pause-this | — | Mid-session break | Safe pause with commit |
@@ -249,9 +234,7 @@ Slash commands manage session lifecycle. Time tracking is automatic.
 | /bump-major | — | Breaking change | Manual major version bump |
 | /promote-production | — | Ship trunk to prod | ff-merge `main` → `production` (deploy-only), push |
 | /doc-consistency-check | — | Ad-hoc, when docs feel drifted | Invokes @doc-consistency; cross-refs `docs/*.md` + root `CLAUDE.md` |
-| /push-seeds | — | After workflow improvements | Backport project-side improvements to seeds templates |
-| /pull-seeds | — | After seeds gets new improvements | Pull template changes into this project |
-| /read-the-tape | — | After a session worth learning from | Audit session JSONL for anti-patterns |
+| /read-the-tape | — | `--queue` on a weekly-ish cadence; bare for one session | Audit session JSONL for anti-patterns; writes observations to seeds, changes nothing here |
 
 **Per-session files:** the workflow uses `sessions/YYYY-MM-DD-HHMM-<dev>-<slug>.md` (one file per session) on the orphan `sessions` branch via `.sessions-worktree/` (DEC-S014). `<dev>` comes from `~/.claude/devname` (one-line file, falls back to `$USER`). The slug is derived from the branch name (`task/X-foo` → `X-foo`, `main` → `main`, etc.). The active JSONL transcript path is captured in the file's frontmatter for later `/read-the-tape` audits.
 
