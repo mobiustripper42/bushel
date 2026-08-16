@@ -60,15 +60,17 @@ npm run db:up                                   # docker compose up (bushel_dev 
 npm run db:down
 npm run db:migrate                              # apply db/migrations/*.sql to DATABASE_URL (or explicit arg)
 # new migration: add db/migrations/NNNN_<name>.sql (next number), then db:migrate
-# prod migrate is ALWAYS the explicit-arg form (DEC-049): npx tsx db/migrate.ts "$DATABASE_URL_UNPOOLED"
+# prod migrate is ALWAYS the explicit-arg form (DEC-049):
+npm run db:migrate -- "$DATABASE_URL_UNPOOLED"
 
 # Testing
 npm run test:unit                               # vitest: unit + pg-integration (DEC-051; needs docker pg for the integration files, skips them if down)
 npm run test:watch                              # vitest watch
-npx playwright test                             # full E2E suite (workers=1 by config — do not override)
-npx playwright test tests/foo.spec.ts --project=desktop  # targeted, dev mode
-npx playwright test --ui                        # browser UI
+npm run test:e2e                                # full E2E suite (workers=1 by config — do not override)
+npm run test:e2e -- tests/foo.spec.ts --project=desktop  # targeted, dev mode
+npm run test:e2e -- --ui                        # browser UI
 ```
+**Never `npx` — it's denied fleet-wide** (see the shell's `## Workflow Notes`), and `deny` beats `allow`, so it cannot be allowlisted per-project. Every binary here has an npm script; add one rather than reaching for `npx`.
 
 ## Additional Docs
 Project-specific docs beyond the baseline `## Key Docs` table in the shell:
@@ -82,10 +84,21 @@ Project-specific docs beyond the baseline `## Key Docs` table in the shell:
 | `docs/AGENTS.md` | The repo-root `AGENTS.md` is a Next.js-agent rules stub for IDE tooling — **not** the project agent doc; `docs/AGENTS.md` is canonical |
 | `docs/BRAND.md` | Voice, type, color |
 
-## Workflow Overrides
-Overrides to the shell's `## Micro Workflow` (customer-side is mobile-prioritized):
-- **Step 5/6 testing** — Playwright (E2E) + vitest (unit for pure logic, pg-integration for DB functions/constraints/triggers — DEC-051); also run mobile/webkit projects for customer-side changes, not just desktop.
-- **Step 7 mobile screenshot** — confirm 375px specifically for the customer-side.
+## Workflow Mechanisms
+The shell's `## Micro Workflow` names three slots (DEC-S042) and this section fills them. Customer-side is mobile-prioritized throughout. Deliberately no step *numbers* — the shell's numbering moves and a stale cross-reference here fails silently.
+
+**Proof** — vitest for pure logic (`src/**/*.test.ts`) and for DB functions, constraints and triggers (`db/tests/`, pg-integration — DEC-051); Playwright `*.spec.ts` in `tests/` for anything a user drives. Test the user, not the function: heavy integration, light unit (DEC-023). A schema change's proof is a pg-integration test that fails against the pre-migration DB and passes after `npm run db:migrate`.
+
+**Proof command** — run what you touched, not the whole chain:
+```bash
+npm run check:decisions && npm run check:context && npm run check:docs   # text-only, fails in ms
+npm run test:unit                          # vitest; needs docker pg for db/tests, skips them if down
+npm run test:e2e -- tests/<file>.spec.ts --project=desktop
+npm run test:e2e -- tests/<file>.spec.ts --project=mobile   # customer-side changes
+```
+`npm run verify` is the full chain. The full Playwright suite is the operator's call, never automatic.
+
+**Surface check** — for anything rendered, open it at **375px** and confirm three things a passing test cannot: you can **reach** the control by the path a real user takes, **operate** it (tap target not overlapped, not behind a backdrop, not off-screen), and **get back out** (close, cancel, escape, back). WebKit for customer-side. For a non-rendered change, name the check that replaces it — a migration's is applying it and confirming row shape and counts, including what happened to existing rows.
 
 ## Migration Protocol (project)
 The migration **discipline** lives in the shell's `## Migration Protocol`. bushel's toolchain:
@@ -109,7 +122,7 @@ One Neon project, two branches — `production` is a downstream deploy pointer, 
 
 Local dev + CI + Playwright + vitest run against **docker Postgres** (`bushel_dev` / `bushel_test` on :5433), not Neon. Neon `main` backs the deployed preview; Neon `production` is empty until the 10.7 cutover.
 
-**Prod-write protection (DEC-049)** — the prod DB URL lives ONLY in Vercel and a deliberately-sourced `.envrc.production` (gitignored), never the shell default. A prod migration is an explicit-arg `npx tsx db/migrate.ts "$PROD_DATABASE_URL"` (use the direct/unpooled endpoint — DDL in a transaction) — there is no default-prod state to forget out of, so no relink dance. Strictly safer than the old Supabase link/relink ritual it replaced.
+**Prod-write protection (DEC-049)** — the prod DB URL lives ONLY in Vercel and a deliberately-sourced `.envrc.production` (gitignored), never the shell default. A prod migration is an explicit-arg `npm run db:migrate -- "$PROD_DATABASE_URL"` (use the direct/unpooled endpoint — DDL in a transaction) — there is no default-prod state to forget out of, so no relink dance. Strictly safer than the old Supabase link/relink ritual it replaced.
 
 ### Env vars (`.env.local`) + Vercel ↔ Neon sync
 
@@ -238,8 +251,8 @@ Build-time version display at `src/components/VersionTag.tsx`. Reads `process.en
 Universal workflow notes live in the shell's `## Workflow Notes`. bushel-specific gotchas:
 
 - **Before starting `npm run dev`:** run `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` first. If it returns 200, skip the start — a server is already up. Only start a new one if the check fails.
-- **Stale `next start` on port 3001:** Playwright's webServer config reuses an existing server on port 3001 when one is running. A `next start` left over from an earlier debug run will serve the previous build's bundle to every test in the new run, producing phantom failures (asset 404s, "old code" assertions, hydration mismatches) that vanish on a fresh process. Before the first targeted `npx playwright test` invocation in a session — especially after build changes — kill any orphan: `lsof -ti:3001 | xargs -r kill -9` (or `pkill -f "next start"`). Re-check with `lsof -ti:3001` — empty output means the port is clean. Do this once per session, not per test run.
-- **Run test commands bare.** Playwright reads `.env.local` via `dotenv` in `playwright.config.ts`, and vitest integration tests default to docker `bushel_test` — neither needs any env prefix. Don't prefix with `source …` or `DATABASE_URL=… &&` unless deliberately retargeting; a leading `source`/`export` falls outside the `Bash(npx *)` allowance and triggers a permission prompt per variation. Just `npx playwright test tests/foo.spec.ts --project=desktop` / `npm run test:unit`.
+- **Stale `next start` on port 3001:** Playwright's webServer config reuses an existing server on port 3001 when one is running. A `next start` left over from an earlier debug run will serve the previous build's bundle to every test in the new run, producing phantom failures (asset 404s, "old code" assertions, hydration mismatches) that vanish on a fresh process. Before the first targeted `npm run test:e2e` invocation in a session — especially after build changes — kill any orphan: `lsof -ti:3001 | xargs -r kill -9` (or `pkill -f "next start"`). Re-check with `lsof -ti:3001` — empty output means the port is clean. Do this once per session, not per test run.
+- **Run test commands bare.** Playwright reads `.env.local` via `dotenv` in `playwright.config.ts`, and vitest integration tests default to docker `bushel_test` — neither needs any env prefix. Don't prefix with `source …` or `DATABASE_URL=… &&` unless deliberately retargeting; a leading `source`/`export` splits the command into segments and triggers a permission prompt per variation. Just `npm run test:e2e -- tests/foo.spec.ts --project=desktop` / `npm run test:unit`.
 
 ## Approval Before Action (project)
 The shell's `## Approval Before Action` applies. bushel addition:

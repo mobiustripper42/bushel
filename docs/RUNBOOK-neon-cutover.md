@@ -58,7 +58,7 @@ session. The gap is only steps 2–4 (a few minutes).
 
 ```bash
 source .envrc.production
-npx tsx db/migrate.ts "$PROD_DATABASE_URL_UNPOOLED"
+npm run db:migrate -- "$PROD_DATABASE_URL_UNPOOLED"
 ```
 
 Verify (Neon SQL Editor or `psql "$PROD_DATABASE_URL_UNPOOLED" -c '…'`):
