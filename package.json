@@ -16,6 +16,7 @@
     "db:migrate": "tsx db/migrate.ts",
     "test:unit": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "verify": "npm run check:decisions && npm run check:context && npm run check:docs && npm run lint && npm run test:unit && npm run build"
   },
   "dependencies": {

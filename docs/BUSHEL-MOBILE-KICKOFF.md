@@ -2,7 +2,7 @@
 
 **For:** a fresh Claude Code session with **three repos connected**: `bushel` (this repo, the
 Next/pg backend), `bushel-mobile` (the Expo repo — you will create it), and the **seeds**
-template repo (the source `/pull-seeds` installs from). Read this doc + the referenced
+template repo (the source everything below is copied from, by hand). Read this doc + the referenced
 issues/DECs, then execute. You have authority to move + re-spec the app tasks as you go.
 
 **Not for:** the `bushel` side of Phase 11 — task **11.1 (#261)** is being done separately in
@@ -89,19 +89,21 @@ new auth work in bushel beyond 11.1's guard. The app stores the token and sends 
 
 ### B. Create + scaffold `bushel-mobile`
 5. `gh repo create mobiustripper42/bushel-mobile --private --clone` (or create + clone).
-6. `npx create-expo-app@latest .` — TypeScript template. This gives it its own `package.json`
+6. `npx create-expo-app@latest .` — **you run this, not Claude**: `npx` is denied fleet-wide and this one genuinely does fetch a remote package, which is what the deny is for. TypeScript template. This gives it its own `package.json`
    (start version **0.1.0**). `git add -A && git commit && git push -u origin main`.
 
 ### C. Install the seeds workflow (make it a real seeds project)
-7. Install the seeds scaffolding from the **connected seeds repo** (same source `/pull-seeds`
-   uses): the `CLAUDE.md` shell (verbatim — it's seeds-managed), `.claude/skills/*`,
+7. Install the seeds scaffolding by hand from the **connected seeds repo**, per its
+   `CLAUDE.md` § Setting Up a New Dev Project (there is no install skill — DEC-S040 retired
+   both sync skills): the `CLAUDE.md` shell (verbatim — it's seeds-managed), `.claude/skills/*`,
    `.claude/agents/*`, `.claude/seeds-version`, and a `.claude/settings.local.json`.
 8. **`.claude/project-type` = `webapp`** (a native app is neither `webapp` nor `tool` cleanly;
    don't invent a `mobile` type for one repo — DEC-S011. Add one only if muster also goes
    native, and it earns its keep then).
 9. **Write `.claude/CLAUDE-context.md`** for the RN/Expo stack. Carry over these overrides:
    - `## Migration Protocol (project)` → **N/A** (no database).
-   - `## Workflow Overrides` → replace the Playwright/pg/375px test steps with Expo's:
+   - `## Workflow Mechanisms` → refill the `Proof` / `Proof command` / `Surface check` slots
+     with Expo's, replacing bushel's Playwright/pg/375px ones:
      EAS build + on-device verification; no migrations, no RLS, no vitest-pg. Keep test-first
      where behavior changes.
    - `## Conventions` → RN/Expo patterns (expo-router or RN navigation, secure token storage

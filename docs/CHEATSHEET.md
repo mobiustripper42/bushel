@@ -26,15 +26,16 @@ SEMVER  ( dev projects only — needs package.json )
                    ( needs origin/production — DEC-S022 )
   patch bumps      automatic in /its-dead on PR merge.
 
-REFLECT / SYNC
-  /read-the-tape   scan a session for anti-patterns.
-                   arg: number, file path, or none = latest.
-  /push-seeds      backport workflow wins to seeds.
+REFLECT
+  /read-the-tape   scan a session for anti-patterns. writes
+                   observations to seeds; changes nothing here.
+                   arg: --queue, number, file path, or none.
   /doc-consistency-check
                    cross-read the doc set for drift. report-only.
                    the mechanisable half is `npm run check:docs`.
-  /pull-seeds      pull seeds improvements into this project.
-                   gated on `seeds-version` match.
+
+  moving files to/from seeds is by hand — DEC-S040.
+  what differs:    node <seeds>/dev/claude/scripts/drift.mjs .
 
 INFRA                              DOMAIN
   /update-config                     /stripe-best-practices
@@ -57,6 +58,4 @@ THE SHORT VERSION
   end of work:       /kill-this     ->  /its-dead
   start of phase:    /start-phase
   end of phase:      /retro
-  after a rough one: /read-the-tape
-  after a good one:  /push-seeds
-  refresh template:  /pull-seeds
+  after any session:  /read-the-tape --queue  ( weekly-ish )

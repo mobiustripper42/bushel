@@ -293,7 +293,7 @@ DEC-039 (#218's additive-orders decision) lands in `DECISIONS.md` when 9.1 merge
 
 ---
 
-## `seeds` Backports (track via `/sync-config`)
+## `seeds` Backports (carried by hand — DEC-S040)
 
 1. **Test scaffolding** — Playwright config, pgTAP layout, `supabase/seed.sql`, GitHub Actions workflow. Coordinate with parallel session.
 2. **Tech-stack DECISIONS.md template entry** — make stack call explicit on day one.
